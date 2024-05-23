@@ -1,0 +1,249 @@
+To deploy the ELK (Elasticsearch, Logstash, Kibana) stack on Kubernetes, you will need to create Kubernetes manifests for each component. Here are the steps to set up Elasticsearch, Logstash, and Kibana on Kubernetes.
+
+### Step 1: Elasticsearch Deployment
+
+Create a deployment and service for Elasticsearch.
+
+**elasticsearch-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
+        ports:
+        - containerPort: 9200
+        - containerPort: 9300
+        env:
+        - name: discovery.type
+          value: single-node
+        resources:
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+```
+
+**elasticsearch-service.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+spec:
+  ports:
+  - port: 9200
+    targetPort: 9200
+  - port: 9300
+    targetPort: 9300
+  selector:
+    app: elasticsearch
+```
+
+### Step 2: Logstash Deployment
+
+Create a deployment and service for Logstash.
+
+**logstash-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:7.10.0
+        ports:
+        - containerPort: 5000
+        volumeMounts:
+        - name: config-volume
+          mountPath: /usr/share/logstash/pipeline/logstash.conf
+          subPath: logstash.conf
+      volumes:
+      - name: config-volume
+        configMap:
+          name: logstash-config
+```
+
+**logstash-service.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+spec:
+  ports:
+  - port: 5000
+    targetPort: 5000
+  selector:
+    app: logstash
+```
+
+**logstash-configmap.yaml:**
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+data:
+  logstash.conf: |
+    input {
+      kafka {
+        bootstrap_servers => "kafka:9092"
+        topics => ["order_topic"]
+        group_id => "logstash"
+        codec => "json"
+      }
+      file {
+        path => "/var/log/app/*.log"
+        start_position => "beginning"
+      }
+      tcp {
+        port => 5000
+      }
+    }
+    filter {
+      grok {
+        match => { "message" => "%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:loglevel} %{GREEDYDATA:message}" }
+      }
+    }
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch:9200"]
+        index => "orders-%{+YYYY.MM.dd}"
+      }
+      stdout { codec => rubydebug }
+    }
+```
+
+### Step 3: Kibana Deployment
+
+Create a deployment and service for Kibana.
+
+**kibana-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+      - name: kibana
+        image: docker.elastic.co/kibana/kibana:7.10.0
+        ports:
+        - containerPort: 5601
+        env:
+        - name: ELASTICSEARCH_URL
+          value: http://elasticsearch:9200
+```
+
+**kibana-service.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+spec:
+  ports:
+  - port: 5601
+    targetPort: 5601
+  selector:
+    app: kibana
+  type: LoadBalancer
+```
+
+### Step 4: Deploy to Kubernetes
+
+Apply the Kubernetes manifests to your cluster.
+
+```sh
+kubectl apply -f elasticsearch-deployment.yaml
+kubectl apply -f elasticsearch-service.yaml
+kubectl apply -f logstash-configmap.yaml
+kubectl apply -f logstash-deployment.yaml
+kubectl apply -f logstash-service.yaml
+kubectl apply -f kibana-deployment.yaml
+kubectl apply -f kibana-service.yaml
+```
+
+### Step 5: Verify Deployment
+
+Ensure that the pods and services are running correctly.
+
+```sh
+kubectl get pods
+kubectl get services
+```
+
+### Step 6: Update Your Services to Send Logs to Logstash
+
+Make sure your Spring Boot services are configured to send logs to Logstash. You can use Logback with a Logstash encoder.
+
+**Add dependencies in your `pom.xml`:**
+
+```xml
+<dependency>
+    <groupId>net.logstash.logback</groupId>
+    <artifactId>logstash-logback-encoder</artifactId>
+    <version>6.6</version>
+</dependency>
+```
+
+**Add Logback configuration in `src/main/resources/logback-spring.xml`:**
+
+```xml
+<configuration>
+    <appender name="stash" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>logstash:5000</destination>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="stash"/>
+    </root>
+</configuration>
+```
+
+### Conclusion
+
+With these steps, you have set up the ELK stack (Elasticsearch, Logstash, Kibana) on Kubernetes and configured your Spring Boot microservices to send logs to Logstash. This setup allows you to collect, process, and visualize logs from your microservices in a scalable and robust manner using Kubernetes.

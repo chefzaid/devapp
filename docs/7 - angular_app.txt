@@ -1,0 +1,285 @@
+
+
+### Step 2: Set Up Angular Frontend
+
+#### 2.1. Create Angular Project
+
+First, create a new Angular project if you don't have one already:
+
+```bash
+ng new microservices-frontend
+cd microservices-frontend
+ng add @angular/material
+ng generate component user
+ng generate component order
+```
+
+#### 2.2 Install Dependencies
+
+Install the necessary dependencies for HTTP communication and forms:
+
+```bash
+npm install @angular/forms @angular/common @angular/platform-browser @angular/platform-browser-dynamic @angular/router
+```
+
+#### 2.3. Create Services
+
+##### 2.3.1 User Service
+
+Create a user service to interact with the User backend service.
+
+```typescript
+// src/app/services/user.service.ts
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { User } from '../models/user.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class UserService {
+  private baseUrl = 'http://localhost:8080/api/users';
+
+  constructor(private http: HttpClient) { }
+
+  getAllUsers(): Observable<User[]> {
+    return this.http.get<User[]>(this.baseUrl);
+  }
+
+  createUser(user: User): Observable<User> {
+    return this.http.post<User>(this.baseUrl, user);
+  }
+}
+```
+
+##### 2.3.2 Order Service
+
+Create an order service to interact with the Order backend service.
+
+```typescript
+// src/app/services/order.service.ts
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { Order } from '../models/order.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class OrderService {
+  private baseUrl = 'http://localhost:8081/api/orders';
+
+  constructor(private http: HttpClient) { }
+
+  getAllOrders(): Observable<Order[]> {
+    return this.http.get<Order[]>(this.baseUrl);
+  }
+
+  createOrder(order: Order): Observable<Order> {
+    return this.http.post<Order>(this.baseUrl, order);
+  }
+}
+```
+
+#### 2.4. Create Models
+
+Define the models for User and Order.
+
+##### 2.4.1 User Model
+
+```typescript
+// src/app/models/user.model.ts
+export interface User {
+  id?: number;
+  name: string;
+}
+```
+
+##### 2.4.2 Order Model
+
+```typescript
+// src/app/models/order.model.ts
+export interface Order {
+  id?: number;
+  userId: number;
+  productId: number;
+  status?: string;
+}
+```
+
+#### 2.5. Create Components
+
+##### 2.5.1 User Component
+
+Create a component to display and create users.
+
+```typescript
+// src/app/user/user.component.ts
+import { Component, OnInit } from '@angular/core';
+import { UserService } from '../services/user.service';
+import { User } from '../models/user.model';
+
+@Component({
+  selector: 'app-user',
+  templateUrl: './user.component.html',
+  styleUrls: ['./user.component.css']
+})
+export class UserComponent implements OnInit {
+  users: User[] = [];
+  newUser: User = { name: '' };
+
+  constructor(private userService: UserService) { }
+
+  ngOnInit(): void {
+    this.userService.getAllUsers().subscribe(data => {
+      this.users = data;
+    });
+  }
+
+  createUser(): void {
+    this.userService.createUser(this.newUser).subscribe(user => {
+      this.users.push(user);
+      this.newUser = { name: '' };
+    });
+  }
+}
+```
+
+**User Component HTML:**
+
+```html
+<!-- src/app/user/user.component.html -->
+<div>
+  <h2>Users</h2>
+  <ul>
+    <li *ngFor="let user of users">{{ user.name }}</li>
+  </ul>
+
+  <h3>Create New User</h3>
+  <input [(ngModel)]="newUser.name" placeholder="Name">
+  <button (click)="createUser()">Create User</button>
+</div>
+```
+
+#### 2.5.2 Order Component
+
+Create a component to display and create orders.
+
+```typescript
+// src/app/order/order.component.ts
+import { Component, OnInit } from '@angular/core';
+import { OrderService } from '../services/order.service';
+import { Order } from '../models/order.model';
+
+@Component({
+  selector: 'app-order',
+  templateUrl: './order.component.html',
+  styleUrls: ['./order.component.css']
+})
+export class OrderComponent implements OnInit {
+  orders: Order[] = [];
+  newOrder: Order = { userId: 0, productId: 0 };
+
+  constructor(private orderService: OrderService) { }
+
+  ngOnInit(): void {
+    this.orderService.getAllOrders().subscribe(data => {
+      this.orders = data;
+    });
+  }
+
+  createOrder(): void {
+    this.orderService.createOrder(this.newOrder).subscribe(order => {
+      this.orders.push(order);
+      this.newOrder = { userId: 0, productId: 0 };
+    });
+  }
+}
+```
+
+**Order Component HTML:**
+
+```html
+<!-- src/app/order/order.component.html -->
+<div>
+  <h2>Orders</h2>
+  <ul>
+    <li *ngFor="let order of orders">Order ID: {{ order.id }}, User ID: {{ order.userId }}, Product ID: {{ order.productId }}, Status: {{ order.status }}</li>
+  </ul>
+
+  <h3>Create New Order</h3>
+  <input [(ngModel)]="newOrder.userId" placeholder="User ID" type="number">
+  <input [(ngModel)]="newOrder.productId" placeholder="Product ID" type="number">
+  <button (click)="createOrder()">Create Order</button>
+</div>
+```
+
+#### 2.6. Update App Module
+
+Update the `AppModule` to declare the components and import necessary modules.
+
+```typescript
+// src/app/app.module.ts
+import { BrowserModule } from '@angular/platform-browser';
+import { NgModule } from '@angular/core';
+import { HttpClientModule } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+
+import { AppComponent } from './app.component';
+import { UserComponent } from './user/user.component';
+import { OrderComponent } from './order/order.component';
+import { UserService } from './services/user.service';
+import { OrderService } from './services/order.service';
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    UserComponent,
+    OrderComponent
+  ],
+  imports: [
+    BrowserModule,
+    HttpClientModule,
+    FormsModule
+  ],
+  providers: [UserService, OrderService],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+```
+
+#### 2.7 Set Up Routing
+
+Set up routing to navigate between the User and Order components.
+
+```typescript
+// src/app/app-routing.module.ts
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { UserComponent } from './user/user.component';
+import { OrderComponent } from './order/order.component';
+
+const routes: Routes = [
+  { path: 'users', component: UserComponent },
+  { path: 'orders', component: OrderComponent },
+  { path: '', redirectTo: '/users', pathMatch: 'full' }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule { }
+```
+
+Update `app.component.html` to include navigation links.
+
+```html
+<!-- src/app/app.component.html -->
+<nav>
+  <a routerLink="/users">Users</a>
+  <a routerLink="/orders">Orders</a>
+</nav>
+<router-outlet></router-outlet>
+```

@@ -1,0 +1,337 @@
+Setting up Jenkins with Kubernetes involves deploying Jenkins on Kubernetes and configuring it to interact with the Kubernetes cluster. Here's a detailed guide on how to achieve this:
+
+### Step 1: Deploy Jenkins on Kubernetes
+
+#### 1.1 Create a Namespace for Jenkins
+
+First, create a namespace for Jenkins to keep resources organized.
+
+```sh
+kubectl create namespace jenkins
+```
+
+#### 1.2 Create a Persistent Volume and Persistent Volume Claim
+
+Create a persistent volume (PV) and persistent volume claim (PVC) to store Jenkins data.
+
+**jenkins-pv.yaml:**
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jenkins-pv
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /mnt/data/jenkins-pv
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-pvc
+  namespace: jenkins
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+```
+
+Apply the PV and PVC:
+
+```sh
+kubectl apply -f jenkins-pv.yaml
+```
+
+#### 1.3 Create a Jenkins Deployment and Service
+
+Create a deployment and service for Jenkins.
+
+**jenkins-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      containers:
+      - name: jenkins
+        image: jenkins/jenkins:lts
+        ports:
+        - containerPort: 8080
+        - containerPort: 50000
+        volumeMounts:
+        - name: jenkins-data
+          mountPath: /var/jenkins_home
+    volumes:
+    - name: jenkins-data
+      persistentVolumeClaim:
+        claimName: jenkins-pvc
+```
+
+**jenkins-service.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8080
+    targetPort: 8080
+  - port: 50000
+    targetPort: 50000
+  selector:
+    app: jenkins
+```
+
+Apply the Jenkins deployment and service:
+
+```sh
+kubectl apply -f jenkins-deployment.yaml
+kubectl apply -f jenkins-service.yaml
+```
+
+### Step 2: Access Jenkins
+
+After deploying Jenkins, get the external IP of the Jenkins service to access the Jenkins UI.
+
+```sh
+kubectl get services -n jenkins
+```
+
+### Step 3: Configure Jenkins
+
+#### 3.1 Install Necessary Plugins
+
+Once you have access to the Jenkins UI:
+
+1. Install the following plugins:
+   - Kubernetes
+   - Docker Pipeline
+   - Prometheus metrics
+   - Git
+   - Pipeline
+
+#### 3.2 Configure Kubernetes Plugin
+
+1. Go to Jenkins -> Manage Jenkins -> Configure System.
+2. Find the "Cloud" section and click "Add a new cloud" -> "Kubernetes".
+3. Configure the Kubernetes plugin with the following settings:
+   - Kubernetes URL: `https://kubernetes.default:443`
+   - Kubernetes Namespace: `jenkins`
+   - Credentials: Add and use the Kubernetes service account with the required permissions.
+   - Jenkins URL: Set to the URL where Jenkins is accessible.
+
+### Step 4: Create a Jenkins Pipeline
+
+Create a Jenkins pipeline script (Jenkinsfile) to build, deploy, and monitor your Spring Boot applications on Kubernetes.
+
+**Jenkinsfile:**
+
+```groovy
+pipeline {
+    agent {
+        kubernetes {
+            label 'jenkins-agent'
+            defaultContainer 'jnlp'
+            yaml """
+            apiVersion: v1
+            kind: Pod
+            spec:
+              containers:
+              - name: maven
+                image: maven:3.6.3-jdk-11
+                command:
+                - cat
+                tty: true
+              - name: docker
+                image: docker:19.03.12
+                command:
+                - cat
+                tty: true
+                volumeMounts:
+                - mountPath: /var/run/docker.sock
+                  name: docker-sock
+              volumes:
+              - name: docker-sock
+                hostPath:
+                  path: /var/run/docker.sock
+            """
+        }
+    }
+
+    environment {
+        DOCKER_HUB_CREDENTIALS_ID = 'dockerhub-credentials'
+        DOCKER_HUB_REPO = 'your-docker-hub-username'
+        KUBECTL = '/usr/local/bin/kubectl' // Adjust path as necessary
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                container('maven') {
+                    // Build Spring Boot applications
+                    sh 'mvn -f order-service/pom.xml clean package'
+                    sh 'mvn -f user-service/pom.xml clean package'
+                }
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                container('docker') {
+                    // Build and push Docker images
+                    script {
+                        def orderServiceImage = docker.build("${DOCKER_HUB_REPO}/order-service:${env.BUILD_ID}", 'order-service')
+                        def userServiceImage = docker.build("${DOCKER_HUB_REPO}/user-service:${env.BUILD_ID}", 'user-service')
+
+                        docker.withRegistry('https://index.docker.io/v1/', DOCKER_HUB_CREDENTIALS_ID) {
+                            orderServiceImage.push()
+                            userServiceImage.push()
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                // Deploy services to Kubernetes
+                sh """
+                    ${KUBECTL} apply -f k8s/order-service-deployment.yaml
+                    ${KUBECTL} apply -f k8s/user-service-deployment.yaml
+                    ${KUBECTL} apply -f k8s/prometheus-configmap.yaml
+                    ${KUBECTL} apply -f k8s/prometheus-deployment.yaml
+                    ${KUBECTL} apply -f k8s/prometheus-service.yaml
+                    ${KUBECTL} apply -f k8s/grafana-deployment.yaml
+                    ${KUBECTL} apply -f k8s/grafana-service.yaml
+                    ${KUBECTL} apply -f k8s/elasticsearch-deployment.yaml
+                    ${KUBECTL} apply -f k8s/elasticsearch-service.yaml
+                    ${KUBECTL} apply -f k8s/logstash-configmap.yaml
+                    ${KUBECTL} apply -f k8s/logstash-deployment.yaml
+                    ${KUBECTL} apply -f k8s/logstash-service.yaml
+                    ${KUBECTL} apply -f k8s/kibana-deployment.yaml
+                    ${KUBECTL} apply -f k8s/kibana-service.yaml
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean up Docker images
+            container('docker') {
+                sh 'docker image prune -f'
+            }
+        }
+    }
+}
+```
+
+### Step 6: Kubernetes Deployment Manifests for Spring Boot Services
+
+**order-service-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+      - name: order-service
+        image: your-docker-hub-username/order-service:${BUILD_ID}
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: order-service
+  type: ClusterIP
+```
+
+**user-service-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+      - name: user-service
+        image: your-docker-hub-username/user-service:${BUILD_ID}
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: user-service
+  type: ClusterIP
+```
+
+### Step 7: Verify and Configure Grafana
+
+1. Access Grafana in your browser using the LoadBalancer IP and port `3000`.
+2. Log in with the default credentials (username: `admin`, password: `admin`).
+3. Add a new data source and choose `Prometheus`.
+4. Set the URL to the Prometheus service URL, e.g., `http://prometheus:9090`.
+5. Save and test the data source.
+
+### Conclusion
+
+With these steps, you have set up Jenkins to build, deploy, and monitor your Spring Boot microservices on Kubernetes using Prometheus and Grafana.
+
+ Adjust paths, image names, and credentials as necessary for your environment. This setup provides continuous integration and deployment, with monitoring and visualization of metrics using Prometheus and Grafana.

@@ -1,0 +1,369 @@
+Deploying Nexus Repository or Artifactory on Kubernetes involves creating Kubernetes manifests for deployments, services, and persistent storage. Here's how you can set up each of them on Kubernetes:
+
+### Nexus Repository on Kubernetes
+
+#### Step 1: Create Persistent Volume and Persistent Volume Claim
+
+**nexus-pv.yaml:**
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nexus-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/nexus"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nexus-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+#### Step 2: Create Deployment and Service for Nexus
+
+**nexus-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexus
+  labels:
+    app: nexus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nexus
+  template:
+    metadata:
+      labels:
+        app: nexus
+    spec:
+      containers:
+      - name: nexus
+        image: sonatype/nexus3
+        ports:
+        - containerPort: 8081
+        volumeMounts:
+        - name: nexus-data
+          mountPath: /nexus-data
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+      volumes:
+      - name: nexus-data
+        persistentVolumeClaim:
+          claimName: nexus-pvc
+```
+
+**nexus-service.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus
+spec:
+  selector:
+    app: nexus
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+  type: LoadBalancer
+```
+
+#### Step 3: Apply the Manifests
+
+Apply the Persistent Volume, Persistent Volume Claim, Deployment, and Service manifests:
+
+```sh
+kubectl apply -f nexus-pv.yaml
+kubectl apply -f nexus-deployment.yaml
+kubectl apply -f nexus-service.yaml
+```
+
+### Artifactory on Kubernetes
+
+#### Step 1: Create Persistent Volume and Persistent Volume Claim
+
+**artifactory-pv.yaml:**
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: artifactory-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/artifactory"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: artifactory-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+#### Step 2: Create Deployment and Service for Artifactory
+
+**artifactory-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: artifactory
+  labels:
+    app: artifactory
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: artifactory
+  template:
+    metadata:
+      labels:
+        app: artifactory
+    spec:
+      containers:
+      - name: artifactory
+        image: docker.bintray.io/jfrog/artifactory-oss:latest
+        ports:
+        - containerPort: 8081
+        volumeMounts:
+        - name: artifactory-data
+          mountPath: /var/opt/jfrog/artifactory
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+      volumes:
+      - name: artifactory-data
+        persistentVolumeClaim:
+          claimName: artifactory-pvc
+```
+
+**artifactory-service.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: artifactory
+spec:
+  selector:
+    app: artifactory
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+  type: LoadBalancer
+```
+
+#### Step 3: Apply the Manifests
+
+Apply the Persistent Volume, Persistent Volume Claim, Deployment, and Service manifests:
+
+```sh
+kubectl apply -f artifactory-pv.yaml
+kubectl apply -f artifactory-deployment.yaml
+kubectl apply -f artifactory-service.yaml
+```
+
+### Summary
+
+#### Nexus Repository:
+
+1. **Create Persistent Volume and Persistent Volume Claim**:
+    ```yaml
+    apiVersion: v1
+    kind: PersistentVolume
+    metadata:
+      name: nexus-pv
+    spec:
+      capacity:
+        storage: 10Gi
+      accessModes:
+        - ReadWriteOnce
+      hostPath:
+        path: "/mnt/data/nexus"
+    ---
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: nexus-pvc
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+    ```
+    Apply with:
+    ```sh
+    kubectl apply -f nexus-pv.yaml
+    ```
+
+2. **Create Deployment and Service**:
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: nexus
+      labels:
+        app: nexus
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: nexus
+      template:
+        metadata:
+          labels:
+            app: nexus
+        spec:
+          containers:
+          - name: nexus
+            image: sonatype/nexus3
+            ports:
+            - containerPort: 8081
+            volumeMounts:
+            - name: nexus-data
+              mountPath: /nexus-data
+          volumes:
+          - name: nexus-data
+            persistentVolumeClaim:
+              claimName: nexus-pvc
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: nexus
+    spec:
+      selector:
+        app: nexus
+      ports:
+        - protocol: TCP
+          port: 8081
+          targetPort: 8081
+      type: LoadBalancer
+    ```
+    Apply with:
+    ```sh
+    kubectl apply -f nexus-deployment.yaml
+    kubectl apply -f nexus-service.yaml
+    ```
+
+#### Artifactory:
+
+1. **Create Persistent Volume and Persistent Volume Claim**:
+    ```yaml
+    apiVersion: v1
+    kind: PersistentVolume
+    metadata:
+      name: artifactory-pv
+    spec:
+      capacity:
+        storage: 10Gi
+      accessModes:
+        - ReadWriteOnce
+      hostPath:
+        path: "/mnt/data/artifactory"
+    ---
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: artifactory-pvc
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+    ```
+    Apply with:
+    ```sh
+    kubectl apply -f artifactory-pv.yaml
+    ```
+
+2. **Create Deployment and Service**:
+    ```yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: artifactory
+      labels:
+        app: artifactory
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: artifactory
+      template:
+        metadata:
+          labels:
+            app: artifactory
+        spec:
+          containers:
+          - name: artifactory
+            image: docker.bintray.io/jfrog/artifactory-oss:latest
+            ports:
+            - containerPort: 8081
+            volumeMounts:
+            - name: artifactory-data
+              mountPath: /var/opt/jfrog/artifactory
+          volumes:
+          - name: artifactory-data
+            persistentVolumeClaim:
+              claimName: artifactory-pvc
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: artifactory
+    spec:
+      selector:
+        app: artifactory
+      ports:
+        - protocol: TCP
+          port: 8081
+          targetPort: 8081
+      type: LoadBalancer
+    ```
+    Apply with:
+    ```sh
+    kubectl apply -f artifactory-deployment.yaml
+    kubectl apply -f artifactory-service.yaml
+    ```
+
+This setup ensures that Nexus or Artifactory is deployed on Kubernetes with persistent storage, allowing you to manage your artifacts efficiently.

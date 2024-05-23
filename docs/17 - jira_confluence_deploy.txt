@@ -1,0 +1,235 @@
+Setting up Jira and Confluence using Docker and Kubernetes involves the following steps:
+
+1. **Docker Setup**
+2. **Kubernetes Setup**
+3. **Persistent Storage Configuration**
+4. **Deployment Manifests for Jira and Confluence**
+
+### 1. Docker Setup
+
+First, we will set up Jira and Confluence using Docker to ensure everything works correctly before deploying them to Kubernetes.
+
+#### 1.1. Jira Docker Setup
+
+1. **Pull the Jira Docker Image:**
+
+   ```sh
+   docker pull atlassian/jira-software
+   ```
+
+2. **Run the Jira Container:**
+
+   ```sh
+   docker run -d --name jira -p 8080:8080 atlassian/jira-software
+   ```
+
+3. **Access Jira:**
+   - Open your browser and go to `http://localhost:8080`.
+
+#### 1.2. Confluence Docker Setup
+
+1. **Pull the Confluence Docker Image:**
+
+   ```sh
+   docker pull atlassian/confluence-server
+   ```
+
+2. **Run the Confluence Container:**
+
+   ```sh
+   docker run -d --name confluence -p 8090:8090 atlassian/confluence-server
+   ```
+
+3. **Access Confluence:**
+   - Open your browser and go to `http://localhost:8090`.
+
+### 2. Kubernetes Setup
+
+Now, let's set up Jira and Confluence on Kubernetes.
+
+#### 2.1 Create Persistent Volume and Persistent Volume Claim
+
+We'll create a Persistent Volume (PV) and Persistent Volume Claim (PVC) for both Jira and Confluence.
+
+**jira-pv.yaml:**
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jira-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/jira"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jira-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+**confluence-pv.yaml:**
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: confluence-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/confluence"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: confluence-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+### 3. Deployment Manifests for Jira and Confluence
+
+#### 3.1 Jira Deployment
+
+**jira-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jira
+  labels:
+    app: jira
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jira
+  template:
+    metadata:
+      labels:
+        app: jira
+    spec:
+      containers:
+      - name: jira
+        image: atlassian/jira-software
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: jira-data
+          mountPath: /var/atlassian/application-data/jira
+      volumes:
+      - name: jira-data
+        persistentVolumeClaim:
+          claimName: jira-pvc
+```
+
+**jira-service.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: jira
+spec:
+  selector:
+    app: jira
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: LoadBalancer
+```
+
+#### 3.2 Confluence Deployment
+
+**confluence-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: confluence
+  labels:
+    app: confluence
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: confluence
+  template:
+    metadata:
+      labels:
+        app: confluence
+    spec:
+      containers:
+      - name: confluence
+        image: atlassian/confluence-server
+        ports:
+        - containerPort: 8090
+        volumeMounts:
+        - name: confluence-data
+          mountPath: /var/atlassian/application-data/confluence
+      volumes:
+      - name: confluence-data
+        persistentVolumeClaim:
+          claimName: confluence-pvc
+```
+
+**confluence-service.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: confluence
+spec:
+  selector:
+    app: confluence
+  ports:
+    - protocol: TCP
+      port: 8090
+      targetPort: 8090
+  type: LoadBalancer
+```
+
+### 4. Apply the Manifests
+
+Apply the Persistent Volume, Persistent Volume Claim, Deployment, and Service manifests:
+
+```sh
+kubectl apply -f jira-pv.yaml
+kubectl apply -f jira-deployment.yaml
+kubectl apply -f jira-service.yaml
+
+kubectl apply -f confluence-pv.yaml
+kubectl apply -f confluence-deployment.yaml
+kubectl apply -f confluence-service.yaml
+```
+
+### Summary
+
+1. **Set up Jira and Confluence using Docker** to ensure they work correctly.
+2. **Create Persistent Volumes and Persistent Volume Claims** for Jira and Confluence on Kubernetes.
+3. **Create Deployment and Service manifests** for Jira and Confluence.
+4. **Apply the Kubernetes manifests** to deploy Jira and Confluence on Kubernetes.
+
+This setup ensures that Jira and Confluence are deployed on Kubernetes with persistent storage, allowing you to manage your project and documentation effectively.

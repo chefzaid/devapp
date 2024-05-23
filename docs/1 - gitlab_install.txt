@@ -1,0 +1,140 @@
+Setting up GitLab on-premise involves installing GitLab on your own servers, either directly or via containerization using Docker or Kubernetes. Below is a step-by-step guide to set up GitLab on-premise using different methods:
+
+### Method 1: Direct Installation on Linux (Ubuntu)
+
+#### Step 1: Update and Install Dependencies
+
+```sh
+sudo apt-get update
+sudo apt-get install -y curl openssh-server ca-certificates tzdata perl
+```
+
+#### Step 2: Add the GitLab Repository
+
+```sh
+curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.deb.sh | sudo bash
+```
+
+#### Step 3: Install GitLab
+
+Replace `gitlab.example.com` with your desired domain name or IP address.
+
+```sh
+sudo EXTERNAL_URL="http://gitlab.example.com" apt-get install gitlab-ee
+```
+
+#### Step 4: Configure GitLab
+
+1. Edit the GitLab configuration file if needed:
+
+    ```sh
+    sudo nano /etc/gitlab/gitlab.rb
+    ```
+
+2. Reconfigure GitLab:
+
+    ```sh
+    sudo gitlab-ctl reconfigure
+    ```
+
+#### Step 5: Access GitLab
+
+Open your browser and navigate to `http://gitlab.example.com`. Set up your admin account and start using GitLab.
+
+### Method 2: Docker Installation
+
+#### Step 1: Pull the GitLab Docker Image
+
+```sh
+docker pull gitlab/gitlab-ee:latest
+```
+
+#### Step 2: Run the GitLab Container
+
+Replace `/srv/gitlab` with your preferred data storage path and `http://gitlab.example.com` with your desired domain name or IP address.
+
+```sh
+docker run --detach \
+  --hostname gitlab.example.com \
+  --publish 443:443 --publish 80:80 --publish 22:22 \
+  --name gitlab \
+  --restart always \
+  --volume /srv/gitlab/config:/etc/gitlab \
+  --volume /srv/gitlab/logs:/var/log/gitlab \
+  --volume /srv/gitlab/data:/var/opt/gitlab \
+  gitlab/gitlab-ee:latest
+```
+
+#### Step 3: Access GitLab
+
+Open your browser and navigate to `http://gitlab.example.com`. Set up your admin account and start using GitLab.
+
+### Method 3: Kubernetes Installation
+
+#### Step 1: Create a Namespace for GitLab
+
+```sh
+kubectl create namespace gitlab
+```
+
+#### Step 2: Install Helm
+
+Follow the Helm installation guide for your platform: [Install Helm](https://helm.sh/docs/intro/install/).
+
+#### Step 3: Add the GitLab Helm Repository
+
+```sh
+helm repo add gitlab https://charts.gitlab.io/
+helm repo update
+```
+
+#### Step 4: Install GitLab Using Helm
+
+Create a `values.yaml` file to customize your GitLab installation. Here's an example `values.yaml`:
+
+**values.yaml:**
+
+```yaml
+global:
+  hosts:
+    domain: example.com
+    externalIP: <your-external-ip>
+  ingress:
+    configureCertmanager: false
+    tls:
+      enabled: false
+
+certmanager-issuer:
+  email: you@example.com
+
+gitlab:
+  gitlab-runner:
+    runners:
+      privileged: true
+```
+
+Install GitLab using Helm:
+
+```sh
+helm install gitlab gitlab/gitlab -n gitlab -f values.yaml
+```
+
+#### Step 5: Access GitLab
+
+Get the external IP of the GitLab service:
+
+```sh
+kubectl get svc -n gitlab
+```
+
+Open your browser and navigate to the external IP. Set up your admin account and start using GitLab.
+
+### Summary
+
+- **Direct Installation on Linux**: Best for a straightforward setup on dedicated hardware or a VM.
+- **Docker Installation**: Good for isolated environments and easy management.
+- **Kubernetes Installation**: Best for scalable, production-grade deployments with orchestration needs.
+
+### Additional Configuration
+
+Regardless of the method chosen, additional configuration steps may be required for SSL/TLS, external storage, backups, and CI/CD integration. Refer to the [GitLab documentation](https://docs.gitlab.com/) for detailed instructions on advanced configuration and management.

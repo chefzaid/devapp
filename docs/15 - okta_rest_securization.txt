@@ -1,0 +1,148 @@
+Integrating Okta authentication into a Spring Boot application involves configuring the application to use Okta as the OAuth 2.0 and OpenID Connect (OIDC) provider. Below are the steps to integrate Okta authentication with the Spring Boot example provided earlier.
+
+### Step 1: Set Up Okta Application
+
+1. **Sign up for an Okta Developer Account**: If you don't already have an Okta account, sign up at [developer.okta.com](https://developer.okta.com/).
+
+2. **Create a New Application**:
+    - Log in to your Okta account.
+    - Navigate to the **Applications** section.
+    - Click on **Create App Integration**.
+    - Select **OIDC - OpenID Connect** and **Web Application**.
+    - Click **Next**.
+
+3. **Configure Application Settings**:
+    - **App integration name**: Give your app a name (e.g., `Spring Boot App`).
+    - **Sign-in redirect URIs**: Add `http://localhost:8080/login/oauth2/code/okta` as a redirect URI.
+    - **Sign-out redirect URIs**: Add `http://localhost:8080` as a sign-out URI.
+    - Click **Save** to create the application.
+
+4. **Retrieve Client Credentials**:
+    - After creating the application, you will see a **Client ID** and **Client Secret**. Save these for use in your Spring Boot application.
+    - Note the **Issuer URI** as well (e.g., `https://dev-123456.okta.com/oauth2/default`).
+
+### Step 2: Add Dependencies
+
+Add the necessary dependencies to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-oauth2-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.security</groupId>
+    <artifactId>spring-security-oauth2-jose</artifactId>
+</dependency>
+```
+
+### Step 3: Configure Okta in Spring Boot
+
+Add Okta-related configurations to your `application.properties`:
+
+```properties
+spring.security.oauth2.client.registration.okta.client-id=<your-client-id>
+spring.security.oauth2.client.registration.okta.client-secret=<your-client-secret>
+spring.security.oauth2.client.registration.okta.scope=openid, profile, email
+spring.security.oauth2.client.provider.okta.issuer-uri=https://<your-okta-domain>/oauth2/default
+spring.security.oauth2.client.registration.okta.redirect-uri=http://localhost:8080/login/oauth2/code/okta
+```
+
+Replace `<your-client-id>`, `<your-client-secret>`, and `<your-okta-domain>` with the values from your Okta application setup.
+
+### Step 4: Configure Security
+
+Create a security configuration class to set up OAuth 2.0 login:
+
+**SecurityConfig.java:**
+
+```java
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+
+@EnableWebSecurity
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+            .authorizeRequests()
+                .antMatchers("/", "/index.html").permitAll()
+                .anyRequest().authenticated()
+                .and()
+            .oauth2Login();
+    }
+}
+```
+
+### Step 5: Update Controllers
+
+Update your controllers to use the authenticated user's information:
+
+**OrderController.java:**
+
+```java
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/orders")
+public class OrderController {
+
+    private final OrderService orderService;
+
+    public OrderController(OrderService orderService) {
+        this.orderService = orderService;
+    }
+
+    @GetMapping
+    public List<Order> getAllOrders(@AuthenticationPrincipal OidcUser oidcUser) {
+        // Access user information from OidcUser
+        String userName = oidcUser.getFullName();
+        // Add logic to handle orders based on user information if needed
+        return orderService.getAllOrders();
+    }
+
+    @GetMapping("/{id}")
+    public Optional<Order> getOrderById(@AuthenticationPrincipal OidcUser oidcUser, @PathVariable Long id) {
+        // Access user information from OidcUser
+        String userName = oidcUser.getFullName();
+        // Add logic to handle orders based on user information if needed
+        return orderService.getOrderById(id);
+    }
+
+    @PostMapping
+    public Order createOrder(@AuthenticationPrincipal OidcUser oidcUser, @RequestBody Order order) {
+        // Access user information from OidcUser
+        String userName = oidcUser.getFullName();
+        // Add logic to handle orders based on user information if needed
+        return orderService.createOrder(order);
+    }
+}
+```
+
+### Step 6: Run Your Application
+
+Start your Spring Boot application and access it in your browser. When you try to access a protected endpoint, you should be redirected to the Okta login page. After logging in, you will be redirected back to your application with authenticated access.
+
+### Summary
+
+1. **Set up an Okta application** to use as your OAuth 2.0 provider.
+2. **Add OAuth 2.0 dependencies** to your Spring Boot application.
+3. **Configure Okta properties** in your `application.properties` file.
+4. **Configure Spring Security** to use OAuth 2.0 login.
+5. **Update your controllers** to use authenticated user information.
+6. **Run your application** and verify Okta authentication.
+
+This setup provides a secure way to authenticate users using Okta and integrate it seamlessly into your Spring Boot application.

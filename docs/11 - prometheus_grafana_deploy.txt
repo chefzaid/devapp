@@ -1,0 +1,187 @@
+To deploy Prometheus and Grafana on Kubernetes, we need to create Kubernetes manifests for both Prometheus and Grafana. Prometheus will be configured to scrape metrics from the Spring Boot applications, and Grafana will be used to visualize these metrics.
+
+### Step 1: Prometheus Deployment
+
+Create a deployment and service for Prometheus.
+
+**prometheus-configmap.yaml:**
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+
+    scrape_configs:
+      - job_name: 'spring-boot'
+        metrics_path: '/actuator/prometheus'
+        static_configs:
+          - targets: ['order-service:8080', 'user-service:8080']
+```
+
+**prometheus-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus:latest
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/prometheus/prometheus.yml
+          subPath: prometheus.yml
+      volumes:
+      - name: config-volume
+        configMap:
+          name: prometheus-config
+```
+
+**prometheus-service.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  ports:
+  - port: 9090
+    targetPort: 9090
+  selector:
+    app: prometheus
+  type: LoadBalancer
+```
+
+### Step 2: Grafana Deployment
+
+Create a deployment and service for Grafana.
+
+**grafana-deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:latest
+        ports:
+        - containerPort: 3000
+```
+
+**grafana-service.yaml:**
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: grafana
+  type: LoadBalancer
+```
+
+### Step 3: Deploy to Kubernetes
+
+Apply the Kubernetes manifests to your cluster.
+
+```sh
+kubectl apply -f prometheus-configmap.yaml
+kubectl apply -f prometheus-deployment.yaml
+kubectl apply -f prometheus-service.yaml
+kubectl apply -f grafana-deployment.yaml
+kubectl apply -f grafana-service.yaml
+```
+
+### Step 4: Verify Deployment
+
+Ensure that the pods and services are running correctly.
+
+```sh
+kubectl get pods
+kubectl get services
+```
+
+### Step 5: Configure Spring Boot Applications
+
+Ensure that your Spring Boot applications are configured to expose Prometheus metrics.
+
+Add the necessary dependencies in your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+<dependency>
+    <groupId>io.micrometer</groupId>
+    <artifactId>micrometer-registry-prometheus</artifactId>
+</dependency>
+```
+
+Configure `application.properties` to enable Prometheus metrics:
+
+```properties
+management.endpoints.web.exposure.include=*
+management.endpoint.prometheus.enabled=true
+```
+
+### Step 6: Access Prometheus and Grafana
+
+After deploying, you can access Prometheus and Grafana using the LoadBalancer IPs provided by your Kubernetes cluster. You can find the IPs by running:
+
+```sh
+kubectl get services
+```
+
+### Step 7: Configure Grafana
+
+1. Open Grafana in your browser using the LoadBalancer IP and port `3000`.
+2. Log in with the default credentials (username: `admin`, password: `admin`).
+3. Add a new data source and choose `Prometheus`.
+4. Set the URL to the Prometheus service URL, e.g., `http://<prometheus-service-ip>:9090`.
+5. Save and test the data source.
+
+### Step 8: Create Dashboards in Grafana
+
+1. Create a new dashboard in Grafana.
+2. Add panels to visualize metrics collected by Prometheus.
+3. Use queries like `http_requests_total` or other metrics exposed by your Spring Boot applications.
+
+### Conclusion
+
+With these steps, you have set up Prometheus and Grafana on Kubernetes and configured your Spring Boot microservices to expose metrics to Prometheus. This setup allows you to monitor and visualize metrics from your microservices in a scalable and robust manner using Kubernetes.

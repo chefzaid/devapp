@@ -51,6 +51,7 @@ local.properties
 .settings/
 .loadpath
 .classpath
+.project
 
 # Idea
 *.iml

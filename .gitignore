@@ -50,6 +50,7 @@ gradle-wrapper.jar
 local.properties
 .settings/
 .loadpath
+.classpath
 
 # Idea
 *.iml

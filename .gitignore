@@ -1,3 +1,9 @@
+# Angular
+/node_modules
+/dist
+/.angular
+.editorconfig
+
 # Compiled class files
 *.class
 

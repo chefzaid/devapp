@@ -1,0 +1,12 @@
+<div>
+    <h3>Create New Order</h3>
+    <input [(ngModel)]="newOrder.user.id" placeholder="User ID" type="number">
+    <input [(ngModel)]="newOrder.productId" placeholder="Product ID" type="number">
+    <button (click)="createOrder()">Create Order</button>
+
+    <h2>Orders</h2>
+    <ul>
+        <li *ngFor="let order of orders">Order ID: {{ order.id }}, User ID: {{ order.user.id }}, Product ID: {{
+            order.productId }}, Status: {{ order.status }}</li>
+    </ul>
+</div>

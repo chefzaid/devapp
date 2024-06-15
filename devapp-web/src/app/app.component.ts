@@ -6,6 +6,6 @@ import { Component } from '@angular/core';
   templateUrl: './app.component.html'
 })
 export class AppComponent {
-  title = 'sample-angular-app';
+  title = 'DevApp Web';
 }
                 

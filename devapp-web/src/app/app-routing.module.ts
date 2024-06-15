@@ -1,12 +1,12 @@
-
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { HomeComponent } from './home/home.component';
-import { OrdersComponent } from './orders/orders.component';
+import { UserComponent } from './user/user.component';
+import { OrderComponent } from './order/order.component';
 
 const routes: Routes = [
-  { path: '', component: HomeComponent },
-  { path: 'orders', component: OrdersComponent }
+  { path: 'users', component: UserComponent },
+  { path: 'orders', component: OrderComponent },
+  { path: '', redirectTo: '/users', pathMatch: 'full' }
 ];
 
 @NgModule({
@@ -14,4 +14,3 @@ const routes: Routes = [
   exports: [RouterModule]
 })
 export class AppRoutingModule { }
-                

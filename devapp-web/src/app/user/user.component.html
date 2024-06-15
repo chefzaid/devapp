@@ -1,0 +1,10 @@
+<div>
+    <h3>Create New User</h3>
+    <input [(ngModel)]="newUser.name" placeholder="Name">
+    <button (click)="createUser()">Create User</button>
+
+    <h2>Users</h2>
+    <ul>
+        <li *ngFor="let user of users">{{ user.name }}</li>
+    </ul>
+</div>

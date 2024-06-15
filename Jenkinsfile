@@ -89,8 +89,12 @@ pipeline {
                     ${KUBECTL} apply -f k8s/postgres-persistentvolumeclaim.yaml
                     ${KUBECTL} apply -f k8s/postgres-deployment.yaml
                     ${KUBECTL} apply -f k8s/postgres-service.yaml
-                    ${KUBECTL} apply -f k8s/order-service-deployment.yaml
-                    ${KUBECTL} apply -f k8s/user-service-deployment.yaml
+                    ${KUBECTL} apply -f k8s/order-app-deployment.yaml
+                    ${KUBECTL} apply -f k8s/order-app-deployment.yaml
+                    ${KUBECTL} apply -f k8s/user-app-deployment.yaml
+                  	${KUBECTL} apply -f k8s/user-app-service.yaml
+                  	${KUBECTL} apply -f k8s/devapp-web-deployment.yaml
+                    ${KUBECTL} apply -f k8s/devapp-web-deployment.yaml
                 """
             }
         }

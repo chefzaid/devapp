@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devapp-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: devapp-web
+  template:
+    metadata:
+      labels:
+        app: devapp-web
+    spec:
+      containers:
+      - name: devapp-web
+        image: your-docker-hub-username/devapp-web
+        ports:
+        - containerPort: 8080

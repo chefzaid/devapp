@@ -11,6 +11,8 @@
 	<packaging>pom</packaging>
 
 	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>17</java.version>
 		<springboot.version>3.3.1-SNAPSHOT</springboot.version>
 		<springfox.version>3.0.0</springfox.version>
@@ -69,7 +71,7 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		
+
 		<!-- Prometheus -->
 		<dependency>
 			<groupId>io.micrometer</groupId>
@@ -86,8 +88,8 @@
 
 	<modules>
 		<module>devapp-common</module>
-		<module>order-service</module>
-		<module>user-service</module>
+		<module>order-app</module>
+		<module>user-app</module>
 	</modules>
 
 	<dependencyManagement>
@@ -107,6 +109,7 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				 <version>${springboot.version}</version>
 				<configuration>
 					<excludes>
 						<exclude>

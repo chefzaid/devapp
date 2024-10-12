@@ -1,4 +1,4 @@
-package io.simpleit.devapp.user_app.repository;
+package io.simpleit.devapp.user.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

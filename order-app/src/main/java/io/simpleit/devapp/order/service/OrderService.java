@@ -1,4 +1,4 @@
-package io.simpleit.devapp.order_app.service;
+package io.simpleit.devapp.order.service;
 
 import java.util.List;
 
@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 import io.simpleit.devapp.common.domain.Order;
 import io.simpleit.devapp.common.util.Constants;
-import io.simpleit.devapp.order_app.repository.OrderRepository;
+import io.simpleit.devapp.order.repository.OrderRepository;
 import lombok.extern.slf4j.Slf4j;
 
 @Service

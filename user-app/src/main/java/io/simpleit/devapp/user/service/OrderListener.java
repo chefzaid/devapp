@@ -1,4 +1,4 @@
-package io.simpleit.devapp.user_app.service;
+package io.simpleit.devapp.user.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;

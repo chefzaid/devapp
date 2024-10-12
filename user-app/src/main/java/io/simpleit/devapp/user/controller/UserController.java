@@ -1,4 +1,4 @@
-package io.simpleit.devapp.user_app.controller;
+package io.simpleit.devapp.user.controller;
 
 import java.util.List;
 
@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.simpleit.devapp.common.domain.User;
-import io.simpleit.devapp.user_app.service.UserService;
+import io.simpleit.devapp.user.service.UserService;
 
 @RestController
 @RequestMapping("/api/users")

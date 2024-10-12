@@ -1,4 +1,4 @@
-package io.simpleit.devapp.order_app;
+package io.simpleit.devapp.order;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

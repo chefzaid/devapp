@@ -1,4 +1,4 @@
-package io.simpleit.devapp.order_app.repository;
+package io.simpleit.devapp.order.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

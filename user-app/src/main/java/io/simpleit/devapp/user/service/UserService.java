@@ -1,4 +1,4 @@
-package io.simpleit.devapp.user_app.service;
+package io.simpleit.devapp.user.service;
 
 import java.util.List;
 
@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import io.simpleit.devapp.common.domain.User;
-import io.simpleit.devapp.user_app.repository.UserRepository;
+import io.simpleit.devapp.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 
 @Service

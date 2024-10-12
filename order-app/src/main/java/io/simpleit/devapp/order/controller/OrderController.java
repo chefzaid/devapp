@@ -1,4 +1,4 @@
-package io.simpleit.devapp.order_app.controller;
+package io.simpleit.devapp.order.controller;
 
 import java.util.List;
 
@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.simpleit.devapp.common.domain.Order;
-import io.simpleit.devapp.order_app.service.OrderService;
+import io.simpleit.devapp.order.service.OrderService;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
 @RestController

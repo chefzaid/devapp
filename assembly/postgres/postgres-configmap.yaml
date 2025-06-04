@@ -5,3 +5,4 @@ metadata:
 data:
   POSTGRES_DB: mydatabase
   POSTGRES_USER: myuser
+

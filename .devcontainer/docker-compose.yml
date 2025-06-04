@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  devapp:
+    image: mcr.microsoft.com/devcontainers/universal:2
+    volumes:
+      - ..:/workspace:cached
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: devdb
+      DB_USERNAME: devuser
+      DB_PASSWORD: devpass
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: devdb
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+volumes:
+  postgres-data:

@@ -15,7 +15,6 @@ Simple set of microservices with the following requirements:
 
 Optionally, add:
 - A Redis store is used for caching
-- Authentication is managed by Okta
 - Set up Kubernetes and Docker (with private registry)
 - Tools (Gitlab, JIRA, Confluence, Nexus/Artifactory)
 

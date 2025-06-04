@@ -16,4 +16,5 @@ spec:
       - name: devapp-web
         image: your-docker-hub-username/devapp-web
         ports:
-        - containerPort: 8080
+          - containerPort: 80
+

@@ -1,4 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { UserService } from '../services/user.service';
+import { FormsModule } from '@angular/forms';
 
 import { UserComponent } from './user.component';
 
@@ -8,7 +11,9 @@ describe('UserComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      declarations: [UserComponent]
+      imports: [HttpClientTestingModule, FormsModule],
+      declarations: [UserComponent],
+      providers: [UserService]
     });
     fixture = TestBed.createComponent(UserComponent);
     component = fixture.componentInstance;

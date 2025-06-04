@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 import io.simpleit.devapp.common.domain.Order;
 import io.simpleit.devapp.order.service.OrderService;
@@ -24,17 +22,17 @@ public class OrderController {
 	private OrderService orderService;
 
         @GetMapping
-        public List<Order> getAllOrders(@AuthenticationPrincipal OidcUser user) {
+        public List<Order> getAllOrders() {
                 return orderService.getAllOrders();
         }
 
         @GetMapping("/{id}")
-        public Optional<Order> getOrder(@AuthenticationPrincipal OidcUser user, @PathVariable Long id) {
+        public Optional<Order> getOrder(@PathVariable Long id) {
                 return orderService.getOrderById(id);
         }
 
         @PostMapping
-        public Order createOrder(@AuthenticationPrincipal OidcUser user, @RequestBody Order order) {
+        public Order createOrder(@RequestBody Order order) {
                 return orderService.createOrder(order);
         }
 

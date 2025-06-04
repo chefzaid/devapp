@@ -49,10 +49,9 @@ class OrderServiceTest {
     void getOrderById_returnsOrder() {
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
-        Optional<Order> result = orderService.getOrderById(1L);
+        Order result = orderService.getOrderById(1L);
 
-        assertTrue(result.isPresent());
-        assertEquals(order, result.get());
+        assertEquals(order, result);
     }
 
     @Test

@@ -3,7 +3,7 @@ package io.simpleit.devapp.order.controller;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,8 +18,11 @@ import io.simpleit.devapp.order.service.OrderService;
 @RequestMapping("/api/orders")
 public class OrderController {
 
-	@Autowired
-	private OrderService orderService;
+        private final OrderService orderService;
+
+        public OrderController(OrderService orderService) {
+                this.orderService = orderService;
+        }
 
         @GetMapping
         public List<Order> getAllOrders() {
@@ -27,12 +30,12 @@ public class OrderController {
         }
 
         @GetMapping("/{id}")
-        public Optional<Order> getOrder(@PathVariable Long id) {
+        public Order getOrder(@PathVariable Long id) {
                 return orderService.getOrderById(id);
         }
 
         @PostMapping
-        public Order createOrder(@RequestBody Order order) {
+        public Order createOrder(@Valid @RequestBody Order order) {
                 return orderService.createOrder(order);
         }
 

@@ -2,7 +2,7 @@ package io.simpleit.devapp.user.controller;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,8 +16,11 @@ import io.simpleit.devapp.user.service.UserService;
 @RequestMapping("/api/users")
 public class UserController {
 
-	@Autowired
-	private UserService userService;
+        private final UserService userService;
+
+        public UserController(UserService userService) {
+                this.userService = userService;
+        }
 
         @GetMapping
         public List<User> getAllUsers() {
@@ -25,7 +28,7 @@ public class UserController {
         }
 
         @PostMapping
-        public User createUser(@RequestBody User u) {
+        public User createUser(@Valid @RequestBody User u) {
                 return userService.createUser(u);
         }
 }

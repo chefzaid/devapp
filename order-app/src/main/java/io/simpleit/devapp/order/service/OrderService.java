@@ -3,10 +3,11 @@ package io.simpleit.devapp.order.service;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 
 import io.simpleit.devapp.common.domain.Order;
 import io.simpleit.devapp.common.util.Constants;
@@ -15,12 +16,11 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class OrderService {
 
-	@Autowired
-	private OrderRepository orderRepository;
-	@Autowired
-        private KafkaTemplate<String, Order> kafkaTemplate;
+        private final OrderRepository orderRepository;
+        private final KafkaTemplate<String, Order> kafkaTemplate;
 
         public List<Order> getAllOrders() {
                 log.info("Fetching orders");
@@ -28,9 +28,10 @@ public class OrderService {
         }
 
         @Cacheable(value = "orders", key = "#id")
-        public Optional<Order> getOrderById(Long id) {
+        public Order getOrderById(Long id) {
                 log.info("Fetching order {}", id);
-                return orderRepository.findById(id);
+                return orderRepository.findById(id)
+                        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
         }
 
         public Order createOrder(Order order) {

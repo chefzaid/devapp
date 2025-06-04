@@ -1,0 +1,9 @@
+{
+    "name": "devapp",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "devapp",
+    "workspaceFolder": "/workspace/devapp",
+    "remoteUser": "vscode",
+    "forwardPorts": [8080],
+    "postCreateCommand": "mvn -q install -DskipTests"
+}

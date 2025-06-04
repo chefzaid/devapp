@@ -7,19 +7,23 @@ import org.springframework.stereotype.Service;
 import io.simpleit.devapp.common.domain.Order;
 import io.simpleit.devapp.common.domain.User;
 
+import io.simpleit.devapp.user.service.NotificationService;
+
 @Service
 public class OrderListener {
 
-	@Autowired
+    @Autowired
     private UserService userService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @KafkaListener(topics = "order_topic", groupId = "group_id", containerFactory = "kafkaListenerContainerFactory")
     public void consume(Order order) {
         // Notify the user about the order
-    	User user = userService.getUser(order.getUser().getId());
-    	if (user != null) {
-    		System.out.println("Notifying user " + user.getName() + " about order " + order.getId());
-            // TODO: Add your notification logic here
-    	}
+        User user = userService.getUser(order.getUser().getId());
+        if (user != null) {
+            notificationService.notifyUser(user, order);
+        }
     }
 }

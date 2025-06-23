@@ -11,8 +11,7 @@ describe('OrderComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule, FormsModule],
-      declarations: [OrderComponent],
+      imports: [HttpClientTestingModule, FormsModule, OrderComponent],
       providers: [OrderService]
     });
     fixture = TestBed.createComponent(OrderComponent);

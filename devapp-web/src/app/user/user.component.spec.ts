@@ -11,8 +11,7 @@ describe('UserComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule, FormsModule],
-      declarations: [UserComponent],
+      imports: [HttpClientTestingModule, FormsModule, UserComponent],
       providers: [UserService]
     });
     fixture = TestBed.createComponent(UserComponent);

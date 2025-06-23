@@ -1,15 +1,76 @@
 version: '3.8'
 services:
   devapp:
-    image: mcr.microsoft.com/devcontainers/universal:2
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
-      - ..:/workspace:cached
+      - ..:/workspace/devapp:cached
+      - devapp-node-modules:/workspace/devapp/devapp-web/node_modules
+      - devapp-maven-cache:/home/vscode/.m2
     environment:
+      # Development profile (uses H2 by default)
+      SPRING_PROFILES_ACTIVE: dev
+      # Production database connection (when using prod profile)
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: devdb
       DB_USERNAME: devuser
       DB_PASSWORD: devpass
+      # Node.js environment
+      NODE_ENV: development
+    ports:
+      - "4200:4200"  # Angular dev server
+      - "8080:8080"  # User app
+      - "8081:8081"  # Order app
+      - "8082:8082"  # H2 console
+    depends_on:
+      - postgres
+      - kafka
+      - redis
+    command: sleep infinity
+  # Zookeeper service (required for Kafka)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+
+  # Kafka service
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+
+  # Redis service (for caching)
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  # PostgreSQL service
   postgres:
     image: postgres:16
     restart: unless-stopped
@@ -23,3 +84,9 @@ services:
       - postgres-data:/var/lib/postgresql/data
 volumes:
   postgres-data:
+  redis-data:
+  zookeeper-data:
+  zookeeper-logs:
+  kafka-data:
+  devapp-node-modules:
+  devapp-maven-cache:

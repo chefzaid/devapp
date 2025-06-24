@@ -1,0 +1,154 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: devappdb_test
+      POSTGRES_USER: devappuser
+      POSTGRES_PASSWORD: testpassword
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devappuser -d devappdb_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka-test:
+    image: confluentinc/cp-kafka:7.4.0
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-test:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-test:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9093:9092"
+    depends_on:
+      - zookeeper-test
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  zookeeper-test:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SERVER_ID: 1
+    ports:
+      - "2182:2181"
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-test:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-app-test:
+    build:
+      context: ./user-app
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: test
+      DB_URL: jdbc:postgresql://postgres-test:5432/devappdb_test
+      DB_USERNAME: devappuser
+      DB_PASSWORD: testpassword
+      KAFKA_BOOTSTRAP_SERVERS: kafka-test:9092
+      KAFKA_CONSUMER_GROUP_ID: test_group_id
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      kafka-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  order-app-test:
+    build:
+      context: ./order-app
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: test
+      DB_URL: jdbc:postgresql://postgres-test:5432/devappdb_test
+      DB_USERNAME: devappuser
+      DB_PASSWORD: testpassword
+      KAFKA_BOOTSTRAP_SERVERS: kafka-test:9092
+      REDIS_HOST: redis-test
+      REDIS_PORT: 6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      kafka-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  devapp-web-test:
+    build:
+      context: ./devapp-web
+      dockerfile: Dockerfile
+    environment:
+      USER_API_URL: http://user-app-test:8080
+      ORDER_API_URL: http://order-app-test:8081
+    ports:
+      - "4200:80"
+    depends_on:
+      user-app-test:
+        condition: service_healthy
+      order-app-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  test-runner:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./devapp-web:/app
+      - /app/node_modules
+    command: ["sh", "-c", "npm ci && npm run test:integration"]
+    environment:
+      USER_API_URL: http://user-app-test:8080
+      ORDER_API_URL: http://order-app-test:8081
+      WEB_URL: http://devapp-web-test:80
+    depends_on:
+      devapp-web-test:
+        condition: service_healthy
+
+volumes:
+  postgres_test_data:
+
+networks:
+  default:
+    name: devapp-test-network

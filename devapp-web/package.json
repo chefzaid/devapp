@@ -6,11 +6,17 @@
     "ng": "ng",
     "start": "ng serve --host 0.0.0.0 --port 4200",
     "build": "ng build",
-    "test": "ng test --watch=false --browsers=ChromeHeadless",
-    "e2e": "cypress run",
     "build-prod": "ng build --configuration production",
     "start-prod": "ng serve --configuration production --host 0.0.0.0",
-    "watch": "ng build --watch --configuration development"
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test --watch=false --browsers=ChromeHeadless",
+    "test:ci": "ng test --watch=false --browsers=ChromeHeadless --code-coverage --reporters=progress,junit",
+    "test:integration": "cypress run --config-file cypress.config.integration.js",
+    "test:e2e": "cypress run",
+    "lint": "ng lint",
+    "lint:fix": "ng lint --fix",
+    "analyze": "ng build --stats-json && npx webpack-bundle-analyzer dist/devapp-web/stats.json",
+    "serve:prod": "npx http-server dist/devapp-web -p 4200"
   },
   "private": true,
   "dependencies": {

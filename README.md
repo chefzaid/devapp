@@ -38,7 +38,7 @@ For the fastest development experience, use the provided devcontainer:
 
 ### Infrastructure & Deployment
 - **Containerization**: Dockerfiles for all services with multi-stage builds
-- **Kubernetes**: Production-ready manifests in `assembly/` directory
+- **Kubernetes**: Production-ready manifests in `k8s/` directory
 - **CI/CD**: Jenkins pipeline for automated build, test, and deployment
 - **Monitoring**: Integrated observability with metrics, logging, and distributed tracing
 
@@ -124,15 +124,15 @@ docker push your-registry/devapp-web:latest
 
 ```bash
 # Deploy infrastructure components
-kubectl apply -f assembly/postgres
-kubectl apply -f assembly/kafka
-kubectl apply -f assembly/grafana
-kubectl apply -f assembly/elk
+kubectl apply -f k8s/postgres
+kubectl apply -f k8s/kafka
+kubectl apply -f k8s/grafana
+kubectl apply -f k8s/elk
 
 # Deploy applications
-kubectl apply -f assembly/user-app-deployment.yaml -f assembly/user-app-service.yaml
-kubectl apply -f assembly/order-app-deployment.yaml -f assembly/order-app-service.yaml
-kubectl apply -f assembly/devapp-web-deployment.yaml -f assembly/devapp-web-service.yaml
+kubectl apply -f k8s/user-app-deployment.yaml -f k8s/user-app-service.yaml
+kubectl apply -f k8s/order-app-deployment.yaml -f k8s/order-app-service.yaml
+kubectl apply -f k8s/devapp-web-deployment.yaml -f k8s/devapp-web-service.yaml
 ```
 
 ### CI/CD Pipeline

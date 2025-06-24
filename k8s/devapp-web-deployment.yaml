@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devapp-web
+  labels:
+    app: devapp-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: devapp-web
+  template:
+    metadata:
+      labels:
+        app: devapp-web
+    spec:
+      containers:
+      - name: devapp-web
+        image: your-registry/devapp-web:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: USER_API_URL
+          value: "http://user-app:8080"
+        - name: ORDER_API_URL
+          value: "http://order-app:8081"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+

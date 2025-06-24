@@ -1,6 +1,6 @@
 # DevApp
 
-DevApp is a modern microservice architecture demonstration project featuring two Spring Boot 3.4.1 services (`user-app` and `order-app`) and an Angular 20 frontend (`devapp-web`). The services communicate via REST APIs and Kafka messaging, with full containerization support for both development and production deployment.
+DevApp is a modern microservice architecture demonstration project featuring two Spring Boot services (`user-app` and `order-app`) and an Angular frontend (`devapp-web`). The services communicate via REST APIs and Kafka messaging, with full containerization support for both development and production deployment.
 
 ## 🚀 Quick Start
 

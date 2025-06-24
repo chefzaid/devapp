@@ -47,7 +47,7 @@ For the fastest development experience, use the provided devcontainer:
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | **Java** | 21 (LTS) | Runtime for Spring Boot services |
-| **Spring Boot** | 3.4.1 | Microservice framework with web, JPA, Kafka, security starters |
+| **Spring Boot** | 3.5.3 | Microservice framework with web, JPA, Kafka, security starters |
 | **Angular** | 20 | Modern frontend framework with standalone components |
 | **Node.js** | 24 (LTS) | JavaScript runtime for Angular development |
 | **PostgreSQL** | Latest | Production database for both services |
@@ -159,6 +159,70 @@ npm run e2e               # E2E tests (Cypress)
 # Integration tests
 bash .devcontainer/scripts/test-setup.sh
 ```
+
+## 📖 API Documentation
+
+### User Service (Port 8080)
+
+#### Endpoints
+- `GET /api/users` - Get all users
+- `GET /api/users/{id}` - Get user by ID
+- `POST /api/users` - Create new user
+
+#### Example Usage
+```bash
+# Get all users
+curl http://localhost:8080/api/users
+
+# Get user by ID
+curl http://localhost:8080/api/users/1
+
+# Create new user
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name": "John Doe"}'
+```
+
+### Order Service (Port 8081)
+
+#### Endpoints
+- `GET /api/orders` - Get all orders
+- `GET /api/orders/{id}` - Get order by ID
+- `POST /api/orders` - Create new order
+
+#### Example Usage
+```bash
+# Get all orders
+curl http://localhost:8081/api/orders
+
+# Get order by ID
+curl http://localhost:8081/api/orders/1
+
+# Create new order
+curl -X POST http://localhost:8081/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "productId": 12345,
+    "user": {"id": 1, "name": "John Doe"},
+    "status": "PENDING"
+  }'
+```
+
+### Health Checks
+
+Both services provide health check endpoints:
+- `GET /actuator/health` - Overall health status
+- `GET /actuator/info` - Application information
+- `GET /actuator/metrics` - Application metrics
+- `GET /actuator/prometheus` - Prometheus metrics
+
+### Authentication
+
+For development, both services use basic authentication:
+- Username: `admin`
+- Password: `password`
+
+**Note**: API endpoints (`/api/**`) are publicly accessible for development convenience.
 
 ## 📚 Additional Resources
 

@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import io.simpleit.devapp.common.domain.Order;
 import io.simpleit.devapp.common.domain.User;
 
-import io.simpleit.devapp.user.service.NotificationService;
 
 @Service
 public class OrderListener {

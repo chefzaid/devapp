@@ -1,10 +1,41 @@
-<div>
-    <h3>Create New User</h3>
-    <input [(ngModel)]="newUser.name" placeholder="Name">
-    <button (click)="createUser()">Create User</button>
+<div class="container">
+    <h1>User Management</h1>
 
-    <h2>Users</h2>
-    <ul>
-        <li *ngFor="let user of users">{{ user.name }}</li>
-    </ul>
+    <!-- Error Message -->
+    <div *ngIf="error" class="error-message">
+        {{ error }}
+        <button (click)="error = null" class="close-btn">×</button>
+    </div>
+
+    <!-- Create User Form -->
+    <div class="form-section">
+        <h3>Create New User</h3>
+        <div class="form-group">
+            <input
+                [(ngModel)]="newUser.name"
+                placeholder="Enter user name"
+                [disabled]="creating"
+                class="form-input">
+            <button
+                (click)="createUser()"
+                [disabled]="creating || !newUser.name.trim()"
+                class="btn btn-primary">
+                {{ creating ? 'Creating...' : 'Create User' }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Users List -->
+    <div class="users-section">
+        <h2>Users</h2>
+        <div *ngIf="loading" class="loading">Loading users...</div>
+        <div *ngIf="!loading && users.length === 0" class="no-data">No users found.</div>
+        <ul *ngIf="!loading && users.length > 0" class="users-list">
+            <li *ngFor="let user of users" class="user-item">
+                <span class="user-id">#{{ user.id }}</span>
+                <span class="user-name">{{ user.name }}</span>
+            </li>
+        </ul>
+        <button *ngIf="!loading" (click)="loadUsers()" class="btn btn-secondary">Refresh</button>
+    </div>
 </div>

@@ -14,7 +14,7 @@ Built on Microsoft's Java devcontainer base image with Ubuntu and pre-configured
 ## 🛠️ What's Included
 
 ### Development Tools
-- **Java 21** - Latest LTS version for Spring Boot 3.4.1
+- **Java 21** - Latest LTS version for Spring Boot 3.5.3
 - **Maven 3.9.x** - Build tool for Java projects
 - **Node.js 24.x** - LTS version for Angular 20
 - **Angular CLI 20** - Command line interface for Angular

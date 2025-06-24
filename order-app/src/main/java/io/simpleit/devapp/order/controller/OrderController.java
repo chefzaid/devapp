@@ -1,7 +1,6 @@
 package io.simpleit.devapp.order.controller;
 
 import java.util.List;
-import java.util.Optional;
 
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;

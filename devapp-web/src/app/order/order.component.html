@@ -1,12 +1,72 @@
-<div>
-    <h3>Create New Order</h3>
-    <input [(ngModel)]="newOrder.user.id" placeholder="User ID" type="number">
-    <input [(ngModel)]="newOrder.productId" placeholder="Product ID" type="number">
-    <button (click)="createOrder()">Create Order</button>
+<div class="container">
+    <h1>Order Management</h1>
 
-    <h2>Orders</h2>
-    <ul>
-        <li *ngFor="let order of orders">Order ID: {{ order.id }}, User ID: {{ order.user.id }}, Product ID: {{
-            order.productId }}, Status: {{ order.status }}</li>
-    </ul>
+    <!-- Error Message -->
+    <div *ngIf="error" class="error-message">
+        {{ error }}
+        <button (click)="error = null" class="close-btn">×</button>
+    </div>
+
+    <!-- Create Order Form -->
+    <div class="form-section">
+        <h3>Create New Order</h3>
+        <div class="form-group">
+            <div class="form-field">
+                <label for="userSelect">User:</label>
+                <select
+                    id="userSelect"
+                    [(ngModel)]="newOrder.user.id"
+                    (ngModelChange)="onUserChange($event)"
+                    [disabled]="creating || loadingUsers"
+                    class="form-select">
+                    <option value="0">Select a user</option>
+                    <option *ngFor="let user of users" [value]="user.id">
+                        {{ user.name }}
+                    </option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="productInput">Product ID:</label>
+                <input
+                    id="productInput"
+                    [(ngModel)]="newOrder.productId"
+                    placeholder="Enter product ID"
+                    type="number"
+                    [disabled]="creating"
+                    class="form-input">
+            </div>
+            <button
+                (click)="createOrder()"
+                [disabled]="creating || !newOrder.user.id || !newOrder.productId"
+                class="btn btn-primary">
+                {{ creating ? 'Creating...' : 'Create Order' }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Orders List -->
+    <div class="orders-section">
+        <h2>Orders</h2>
+        <div *ngIf="loading" class="loading">Loading orders...</div>
+        <div *ngIf="!loading && orders.length === 0" class="no-data">No orders found.</div>
+        <div *ngIf="!loading && orders.length > 0" class="orders-grid">
+            <div *ngFor="let order of orders" class="order-card">
+                <div class="order-header">
+                    <span class="order-id">Order #{{ order.id }}</span>
+                    <span class="order-status" [class]="'status-' + order.status?.toLowerCase()">
+                        {{ order.status }}
+                    </span>
+                </div>
+                <div class="order-details">
+                    <div class="detail-item">
+                        <strong>User:</strong> {{ order.user.name }}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Product ID:</strong> {{ order.productId }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button *ngIf="!loading" (click)="loadOrders()" class="btn btn-secondary">Refresh</button>
+    </div>
 </div>

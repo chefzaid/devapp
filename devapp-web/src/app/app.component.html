@@ -1,5 +1,26 @@
-<nav>
-  <a routerLink="/users">Users</a>
-  <a routerLink="/orders">Orders</a>
-</nav>
-<router-outlet></router-outlet>
+<div class="app-container">
+  <header class="app-header">
+    <h1 class="app-title">DevApp</h1>
+    <nav class="app-nav">
+      <a routerLink="/users" routerLinkActive="active" class="nav-link">
+        <span class="nav-icon">👥</span>
+        Users
+      </a>
+      <a routerLink="/orders" routerLinkActive="active" class="nav-link">
+        <span class="nav-icon">📦</span>
+        Orders
+      </a>
+    </nav>
+  </header>
+
+  <main class="app-main">
+    <router-outlet></router-outlet>
+  </main>
+
+  <footer class="app-footer">
+    <p>&copy; 2024 DevApp - Microservices Demo</p>
+  </footer>
+
+  <!-- Notification component -->
+  <app-notification></app-notification>
+</div>

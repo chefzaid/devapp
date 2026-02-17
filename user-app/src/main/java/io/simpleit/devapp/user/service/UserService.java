@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
@@ -29,6 +31,7 @@ public class UserService {
                         .orElseThrow(() -> new EntityNotFoundException("User not found"));
         }
 
+        @Transactional
         public User createUser(User user) {
                 return userRepository.save(user);
         }

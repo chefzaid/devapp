@@ -9,6 +9,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.ToString;
 
 @Entity
 @Table(name = "order_table")
@@ -24,6 +25,7 @@ public class Order {
     @ManyToOne
     @JoinColumn(name = "user_id")
     @NotNull
+    @ToString.Exclude
     private User user;
 
 }

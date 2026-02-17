@@ -5,6 +5,8 @@ import java.util.List;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
@@ -33,6 +35,7 @@ public class OrderService {
                         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
         }
 
+        @Transactional
         public Order createOrder(Order order) {
                 Order savedOrder = orderRepository.save(order);
                 kafkaTemplate.send(Constants.ORDER_TOPIC, savedOrder);

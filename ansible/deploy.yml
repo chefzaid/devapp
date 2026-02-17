@@ -1,0 +1,88 @@
+---
+- name: Deploy DevApp to Kubernetes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    k8s_namespace: "{{ namespace | default('devapp') }}"
+    app_version: "{{ version | default('latest') }}"
+    registry: "{{ registry | default('local') }}"
+    deploy_monitoring: "{{ monitoring | default(false) }}"
+
+  tasks:
+    - name: Ensure Kubernetes Namespace Exists
+      kubernetes.core.k8s:
+        name: "{{ k8s_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Deploy Infrastructure (Postgres)
+      command: kubectl apply -f ../k8s/postgres/ -n {{ k8s_namespace }}
+      register: deploy_postgres
+      changed_when: "'created' in deploy_postgres.stdout or 'configured' in deploy_postgres.stdout"
+
+    - name: Deploy Infrastructure (Kafka)
+      command: kubectl apply -f ../k8s/kafka/ -n {{ k8s_namespace }}
+      register: deploy_kafka
+      changed_when: "'created' in deploy_kafka.stdout or 'configured' in deploy_kafka.stdout"
+
+    - name: Deploy Infrastructure (Redis)
+      command: kubectl apply -f ../k8s/redis/ -n {{ k8s_namespace }}
+      ignore_errors: yes
+      register: deploy_redis
+      changed_when: "'created' in deploy_redis.stdout or 'configured' in deploy_redis.stdout"
+
+    - name: Deploy Monitoring (Optional)
+      block:
+        - name: Deploy ELK Stack
+          command: kubectl apply -f ../k8s/elk/ -n {{ k8s_namespace }}
+          ignore_errors: yes
+
+        - name: Deploy Grafana/Prometheus
+          command: kubectl apply -f ../k8s/grafana/ -n {{ k8s_namespace }}
+          ignore_errors: yes
+      when: deploy_monitoring | bool
+
+    - name: Wait for Infrastructure Ready (Postgres)
+      command: kubectl wait --for=condition=ready pod -l app=postgres -n {{ k8s_namespace }} --timeout=120s
+      ignore_errors: yes
+
+    - name: Wait for Infrastructure Ready (Kafka)
+      command: kubectl wait --for=condition=ready pod -l app=kafka -n {{ k8s_namespace }} --timeout=120s
+      ignore_errors: yes
+
+    - name: Create Temporary Deployment Manifests
+      file:
+        path: ../k8s/tmp
+        state: directory
+        mode: '0755'
+
+    - name: Copy Deployment Templates
+      shell: cp ../k8s/*-deployment.yaml ../k8s/*-service.yaml ../k8s/tmp/
+      args:
+        warn: false
+
+    - name: Update Image Versions in Deployment Files
+      replace:
+        path: "../k8s/tmp/{{ item }}-deployment.yaml"
+        regexp: 'image: (your-registry|local)/{{ item }}:latest'
+        replace: 'image: {{ registry }}/{{ item }}:{{ app_version }}'
+      with_items:
+        - user-app
+        - order-app
+        - devapp-web
+
+    - name: Deploy Applications
+      command: kubectl apply -f ../k8s/tmp/ -n {{ k8s_namespace }}
+      register: deploy_apps
+      changed_when: "'created' in deploy_apps.stdout or 'configured' in deploy_apps.stdout"
+
+    - name: Clean up Temporary Files
+      file:
+        path: ../k8s/tmp
+        state: absent
+
+    - name: Display Deployment Status
+      debug:
+        msg: "Deployment complete! Check status with: kubectl get pods -n {{ k8s_namespace }}"

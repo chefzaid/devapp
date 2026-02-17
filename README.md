@@ -120,20 +120,49 @@ docker push your-registry/order-app:latest
 docker push your-registry/devapp-web:latest
 ```
 
-### Kubernetes Deployment
+### Kubernetes Deployment (One Click)
+
+We provide a streamlined deployment script that uses **Ansible** to orchestrate the deployment of infrastructure and applications to Kubernetes.
+
+**Prerequisites:**
+- Docker
+- kubectl (configured for your cluster)
+- Maven (for building backend)
+- Ansible (for deployment orchestration)
+
+**Usage:**
 
 ```bash
-# Deploy infrastructure components
-kubectl apply -f k8s/postgres
-kubectl apply -f k8s/kafka
-kubectl apply -f k8s/grafana
-kubectl apply -f k8s/elk
+# Deploy everything with default settings
+./deploy.sh
 
-# Deploy applications
-kubectl apply -f k8s/user-app-deployment.yaml -f k8s/user-app-service.yaml
-kubectl apply -f k8s/order-app-deployment.yaml -f k8s/order-app-service.yaml
-kubectl apply -f k8s/devapp-web-deployment.yaml -f k8s/devapp-web-service.yaml
+# Deploy specific version to custom namespace
+./deploy.sh -v 1.0.0 -n my-devapp
+
+# Deploy with monitoring stack (ELK + Grafana)
+./deploy.sh -m
+
+# Deploy only (skip build) using custom registry
+./deploy.sh -d -r myregistry.com/devapp
 ```
+
+**Parameters:**
+- `-v <version>`: Application version tag (default: `latest`)
+- `-r <registry>`: Docker registry prefix (default: `local`)
+- `-n <namespace>`: Kubernetes namespace target (default: `devapp`)
+- `-d`: Deploy only mode (skips `mvn package`, `npm build`, and `docker build`)
+- `-m`: Include monitoring stack (Elasticsearch, Logstash, Kibana, Prometheus, Grafana)
+
+The script performs the following:
+1. Builds Java Backend (Maven)
+2. Builds Angular Frontend (npm)
+3. Builds Docker Images
+4. Invokes Ansible Playbook to:
+   - Create Namespace
+   - Deploy Infrastructure (Postgres, Kafka, Redis)
+   - Deploy Monitoring (optional)
+   - Wait for Infrastructure readiness
+   - Deploy Application Microservices with correct image tags
 
 ### CI/CD Pipeline
 

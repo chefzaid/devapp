@@ -84,6 +84,18 @@ pipeline {
                   limits:
                     memory: "512Mi"
                     cpu: "200m"
+              - name: ansible
+                image: cytopia/ansible:latest
+                command:
+                - cat
+                tty: true
+                resources:
+                  requests:
+                    memory: "128Mi"
+                    cpu: "100m"
+                  limits:
+                    memory: "256Mi"
+                    cpu: "200m"
               volumes:
               - name: docker-sock
                 hostPath:
@@ -459,40 +471,17 @@ pipeline {
                 K8S_NAMESPACE = 'devapp-staging'
             }
             steps {
-                container('kubectl') {
+                container('ansible') {
                     script {
                         try {
                             sh '''
-                                echo "Deploying to staging environment..."
-
-                                # Create namespace if it doesn't exist
-                                kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-
-                                # Deploy infrastructure components
-                                kubectl apply -f k8s/postgres -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/kafka -n ${K8S_NAMESPACE}
-
-                                # Wait for infrastructure to be ready
-                                kubectl wait --for=condition=ready pod -l app=postgres -n ${K8S_NAMESPACE} --timeout=300s
-                                kubectl wait --for=condition=ready pod -l app=kafka -n ${K8S_NAMESPACE} --timeout=300s
-
-                                # Update image tags in deployment files
-                                sed -i "s|image: your-registry/user-app:latest|image: ${DOCKER_REGISTRY}/${DOCKER_REPO}/user-app:${APP_VERSION}|g" k8s/user-app-deployment.yaml
-                                sed -i "s|image: your-registry/order-app:latest|image: ${DOCKER_REGISTRY}/${DOCKER_REPO}/order-app:${APP_VERSION}|g" k8s/order-app-deployment.yaml
-                                sed -i "s|image: your-registry/devapp-web:latest|image: ${DOCKER_REGISTRY}/${DOCKER_REPO}/devapp-web:${APP_VERSION}|g" k8s/devapp-web-deployment.yaml
-
-                                # Deploy applications
-                                kubectl apply -f k8s/user-app-deployment.yaml -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/user-app-service.yaml -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/order-app-deployment.yaml -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/order-app-service.yaml -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/devapp-web-deployment.yaml -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/devapp-web-service.yaml -n ${K8S_NAMESPACE}
-
-                                # Wait for deployments to be ready
-                                kubectl rollout status deployment/user-app -n ${K8S_NAMESPACE} --timeout=600s
-                                kubectl rollout status deployment/order-app -n ${K8S_NAMESPACE} --timeout=600s
-                                kubectl rollout status deployment/devapp-web -n ${K8S_NAMESPACE} --timeout=600s
+                                echo "Deploying to staging environment using Ansible..."
+                                ansible-playbook ansible/deploy.yml \
+                                    -i ansible/inventory \
+                                    -e "namespace=${K8S_NAMESPACE}" \
+                                    -e "version=${APP_VERSION}" \
+                                    -e "registry=${DOCKER_REGISTRY}/${DOCKER_REPO}" \
+                                    -e "monitoring=false"
 
                                 echo "Staging deployment completed successfully!"
                             '''
@@ -571,36 +560,15 @@ pipeline {
                     }
 
                     if (deployApproved) {
-                        container('kubectl') {
+                        container('ansible') {
                             sh '''
-                                echo "Deploying to production environment..."
-
-                                # Create namespace if it doesn't exist
-                                kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-
-                                # Deploy infrastructure (if not already deployed)
-                                kubectl apply -f k8s/postgres -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/kafka -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/grafana -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/elk -n ${K8S_NAMESPACE}
-
-                                # Update image tags
-                                sed -i "s|image: your-registry/user-app:latest|image: ${DOCKER_REGISTRY}/${DOCKER_REPO}/user-app:${APP_VERSION}|g" k8s/user-app-deployment.yaml
-                                sed -i "s|image: your-registry/order-app:latest|image: ${DOCKER_REGISTRY}/${DOCKER_REPO}/order-app:${APP_VERSION}|g" k8s/order-app-deployment.yaml
-                                sed -i "s|image: your-registry/devapp-web:latest|image: ${DOCKER_REGISTRY}/${DOCKER_REPO}/devapp-web:${APP_VERSION}|g" k8s/devapp-web-deployment.yaml
-
-                                # Deploy applications
-                                kubectl apply -f k8s/user-app-deployment.yaml -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/user-app-service.yaml -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/order-app-deployment.yaml -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/order-app-service.yaml -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/devapp-web-deployment.yaml -n ${K8S_NAMESPACE}
-                                kubectl apply -f k8s/devapp-web-service.yaml -n ${K8S_NAMESPACE}
-
-                                # Wait for deployments
-                                kubectl rollout status deployment/user-app -n ${K8S_NAMESPACE} --timeout=600s
-                                kubectl rollout status deployment/order-app -n ${K8S_NAMESPACE} --timeout=600s
-                                kubectl rollout status deployment/devapp-web -n ${K8S_NAMESPACE} --timeout=600s
+                                echo "Deploying to production environment using Ansible..."
+                                ansible-playbook ansible/deploy.yml \
+                                    -i ansible/inventory \
+                                    -e "namespace=${K8S_NAMESPACE}" \
+                                    -e "version=${APP_VERSION}" \
+                                    -e "registry=${DOCKER_REGISTRY}/${DOCKER_REPO}" \
+                                    -e "monitoring=true"
 
                                 echo "Production deployment completed successfully!"
                             '''

@@ -22,10 +22,15 @@ spec:
         env:
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
-        - name: DB_URL
-          value: "jdbc:postgresql://postgres:5432/$(POSTGRES_DB)"
-        - name: DB_DRIVER
-          value: "org.postgresql.Driver"
+        - name: DB_HOST
+          value: "postgres"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: POSTGRES_DB
         - name: DB_USERNAME
           valueFrom:
             configMapKeyRef:
@@ -36,15 +41,10 @@ spec:
             secretKeyRef:
               name: postgres-secret
               key: POSTGRES_PASSWORD
-        - name: POSTGRES_DB
-          valueFrom:
-            configMapKeyRef:
-              name: postgres-config
-              key: POSTGRES_DB
         - name: KAFKA_BOOTSTRAP_SERVERS
           value: "kafka:9092"
-        - name: KAFKA_CONSUMER_GROUP_ID
-          value: "group_id"
+        - name: KAFKA_CONSUMER_GROUP
+          value: "user-service-group"
         livenessProbe:
           httpGet:
             path: /actuator/health

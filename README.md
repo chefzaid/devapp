@@ -134,16 +134,16 @@ We provide a streamlined deployment script that uses **Ansible** to orchestrate 
 
 ```bash
 # Deploy everything with default settings
-./deploy.sh
+./deployment/deploy.sh
 
 # Deploy specific version to custom namespace
-./deploy.sh -v 1.0.0 -n my-devapp
+./deployment/deploy.sh -v 1.0.0 -n my-devapp
 
 # Deploy with monitoring stack (ELK + Grafana)
-./deploy.sh -m
+./deployment/deploy.sh -m
 
 # Deploy only (skip build) using custom registry
-./deploy.sh -d -r myregistry.com/devapp
+./deployment/deploy.sh -d -r myregistry.com/devapp
 ```
 
 **Parameters:**

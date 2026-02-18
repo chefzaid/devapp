@@ -95,7 +95,6 @@
 		<module>devapp-common</module>
 		<module>order-app</module>
 		<module>user-app</module>
-		<module>api-gateway</module>
 	</modules>
 
 	<dependencyManagement>

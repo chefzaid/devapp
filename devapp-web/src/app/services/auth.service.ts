@@ -1,46 +1,52 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { OAuthService, AuthConfig } from 'angular-oauth2-oidc';
 import { environment } from '../../environments/environment';
-import { Router } from '@angular/router';
+import { BehaviorSubject, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = `${environment.apiUrl}/auth`;
-  private tokenKey = 'auth_token';
-  private isLoggedInSubject = new BehaviorSubject<boolean>(this.hasToken());
+  private isLoggedInSubject = new BehaviorSubject<boolean>(false);
   public isLoggedIn$ = this.isLoggedInSubject.asObservable();
 
-  constructor(private http: HttpClient, private router: Router) { }
-
-  login(credentials: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/login`, credentials).pipe(
-      tap(response => {
-        if (response && response.token) {
-          localStorage.setItem(this.tokenKey, response.token);
-          this.isLoggedInSubject.next(true);
-        }
-      })
-    );
+  constructor(private oauthService: OAuthService) {
+    this.configure();
   }
 
-  logout(): void {
-    localStorage.removeItem(this.tokenKey);
+  private configure() {
+    const authConfig: AuthConfig = {
+      issuer: window.location.origin + environment.keycloakUrl + '/realms/devapp',
+      redirectUri: window.location.origin + '/',
+      clientId: 'devapp-web',
+      responseType: 'code',
+      scope: 'openid profile email',
+      showDebugInformation: true,
+      requireHttps: false
+    };
+    this.oauthService.configure(authConfig);
+    this.oauthService.loadDiscoveryDocumentAndTryLogin().then(() => {
+        this.isLoggedInSubject.next(this.oauthService.hasValidAccessToken());
+    });
+    this.oauthService.events.subscribe(e => {
+       this.isLoggedInSubject.next(this.oauthService.hasValidAccessToken());
+    });
+  }
+
+  login() {
+    this.oauthService.initCodeFlow();
+  }
+
+  logout() {
+    this.oauthService.logOut();
     this.isLoggedInSubject.next(false);
-    this.router.navigate(['/login']);
   }
 
-  getToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
-  }
-
-  private hasToken(): boolean {
-    return !!localStorage.getItem(this.tokenKey);
+  getToken(): string {
+    return this.oauthService.getAccessToken();
   }
 
   isLoggedIn(): boolean {
-      return this.hasToken();
+      return this.oauthService.hasValidAccessToken();
   }
 }

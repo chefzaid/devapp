@@ -1,10 +1,11 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: kafka
   labels:
     app: kafka
 spec:
+  serviceName: kafka
   replicas: 1
   selector:
     matchLabels:
@@ -34,6 +35,9 @@ spec:
           value: "true"
         - name: KAFKA_DELETE_TOPIC_ENABLE
           value: "true"
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /var/lib/kafka/data
         livenessProbe:
           tcpSocket:
             port: 9092
@@ -44,3 +48,11 @@ spec:
             port: 9092
           initialDelaySeconds: 10
           periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: kafka-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi

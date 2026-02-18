@@ -11,7 +11,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://keycloak:8080/realms/devapp
+          issuer-uri: http://localhost/auth/realms/devapp
+          jwk-set-uri: http://keycloak:8080/realms/devapp/protocol/openid-connect/certs
 
 management:
   endpoints:

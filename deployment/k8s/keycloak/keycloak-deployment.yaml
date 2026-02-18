@@ -26,6 +26,24 @@ spec:
           value: "admin"
         - name: KC_PROXY
           value: "edge"
+        - name: KC_DB
+          value: "postgres"
+        - name: KC_DB_URL
+          value: "jdbc:postgresql://postgres:5432/keycloak"
+        - name: KC_DB_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: POSTGRES_USER
+        - name: KC_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: KC_HOSTNAME_URL
+          value: "http://localhost/auth"
+        - name: KC_HOSTNAME_ADMIN_URL
+          value: "http://localhost/auth"
         ports:
         - name: http
           containerPort: 8080

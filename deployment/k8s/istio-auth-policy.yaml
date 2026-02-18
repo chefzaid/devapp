@@ -1,0 +1,35 @@
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: gateway-jwt
+  namespace: devapp
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway # Apply to the Ingress Gateway
+  jwtRules:
+  - issuer: "http://localhost/auth/realms/devapp"
+    jwksUri: "http://keycloak.devapp.svc.cluster.local:8080/realms/devapp/protocol/openid-connect/certs"
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: gateway-auth-policy
+  namespace: devapp
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  action: ALLOW
+  rules:
+  # Allow public access to everything EXCEPT /api/*
+  - to:
+    - operation:
+        notPaths: ["/api/*"]
+  # Allow authenticated access to /api/*
+  - from:
+    - source:
+        requestPrincipals: ["*"]
+    to:
+    - operation:
+        paths: ["/api/*"]

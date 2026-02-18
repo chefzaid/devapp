@@ -1,6 +1,7 @@
 package io.simpleit.devapp.user.controller;
 
 import io.simpleit.devapp.common.security.JwtUtil;
+import jakarta.validation.Valid;
 import io.simpleit.devapp.user.dto.AuthRequest;
 import io.simpleit.devapp.user.dto.AuthResponse;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequest authRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody AuthRequest authRequest) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())

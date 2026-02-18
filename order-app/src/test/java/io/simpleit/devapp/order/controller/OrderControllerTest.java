@@ -2,6 +2,7 @@ package io.simpleit.devapp.order.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.simpleit.devapp.common.domain.Order;
+import io.simpleit.devapp.common.domain.OrderStatus;
 import io.simpleit.devapp.common.domain.User;
 import io.simpleit.devapp.order.service.OrderService;
 import org.junit.jupiter.api.Test;
@@ -52,13 +53,13 @@ class OrderControllerTest {
         Order order1 = new Order();
         order1.setId(1L);
         order1.setProductId(101L);
-        order1.setStatus("PENDING");
+        order1.setStatus(OrderStatus.PENDING);
         order1.setUser(user);
         
         Order order2 = new Order();
         order2.setId(2L);
         order2.setProductId(102L);
-        order2.setStatus("COMPLETED");
+        order2.setStatus(OrderStatus.COMPLETED);
         order2.setUser(user);
         
         List<Order> orders = Arrays.asList(order1, order2);
@@ -88,7 +89,7 @@ class OrderControllerTest {
         Order order = new Order();
         order.setId(1L);
         order.setProductId(101L);
-        order.setStatus("PENDING");
+        order.setStatus(OrderStatus.PENDING);
         order.setUser(user);
         
         when(orderService.getOrderById(1L)).thenReturn(order);
@@ -116,7 +117,7 @@ class OrderControllerTest {
         Order savedOrder = new Order();
         savedOrder.setId(1L);
         savedOrder.setProductId(101L);
-        savedOrder.setStatus("PENDING");
+        savedOrder.setStatus(OrderStatus.PENDING);
         savedOrder.setUser(user);
 
         when(orderService.createOrder(any(Order.class))).thenReturn(savedOrder);

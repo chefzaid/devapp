@@ -1,7 +1,7 @@
 <div class="app-container">
   <header class="app-header">
     <h1 class="app-title">DevApp</h1>
-    <nav class="app-nav">
+    <nav class="app-nav" *ngIf="isLoggedIn$ | async">
       <a routerLink="/users" routerLinkActive="active" class="nav-link">
         <span class="nav-icon">👥</span>
         Users
@@ -9,6 +9,10 @@
       <a routerLink="/orders" routerLinkActive="active" class="nav-link">
         <span class="nav-icon">📦</span>
         Orders
+      </a>
+      <a (click)="logout()" class="nav-link" style="cursor: pointer;">
+        <span class="nav-icon">🚪</span>
+        Logout
       </a>
     </nav>
   </header>

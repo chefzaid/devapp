@@ -2,9 +2,47 @@
 
 DevApp is a modern microservice architecture demonstration project featuring two Spring Boot services (`user-app` and `order-app`), an Angular frontend (`devapp-web`), and a comprehensive infrastructure stack including **Istio Service Mesh**, **Keycloak**, **Kafka**, and **PostgreSQL**.
 
-## 🏗 Architecture
+## 🛠 Technologies Used
+
+### Core Stack
+*   **Backend**: Java 21, Spring Boot 3.5.3
+*   **Frontend**: Angular 21
+*   **Database**: PostgreSQL
+*   **Messaging**: Kafka, Zookeeper
+*   **Caching**: Redis
+*   **Security**: Keycloak (OIDC/OAuth2)
+
+### Infrastructure & DevOps
+*   **Orchestration**: Kubernetes (K8s)
+*   **Service Mesh**: Istio
+*   **Containerization**: Docker
+*   **CI/CD**: Jenkins, ArgoCD, Ansible, Git
+*   **Monitoring**: Prometheus, Grafana
+*   **Logging**: ELK Stack (Elasticsearch, Logstash, Kibana)
+*   **Code Quality**: SonarQube
+
+## 🏗 Architecture & Service Interaction
 
 The application adopts a cloud-native architecture leveraging Kubernetes and Istio for traffic management and security.
+
+### Traffic Flow
+1.  **Client/Browser** initiates requests to the **Istio Ingress Gateway**.
+2.  **Istio Gateway** routes traffic based on URI prefixes:
+    *   `/` -> **DevApp Web** (Angular Frontend)
+    *   `/api/users/**` -> **User Service**
+    *   `/api/orders/**` -> **Order Service**
+    *   `/auth/**` -> **Keycloak**
+3.  **Authentication**:
+    *   The frontend authenticates with **Keycloak** using OIDC (Authorization Code Flow) to obtain a JWT.
+    *   API requests include the JWT in the `Authorization` header.
+    *   **Istio** validates the JWT at the gateway level.
+    *   **Backend Services** (User/Order) act as Resource Servers and validate the JWT signature/roles locally.
+
+### Inter-Service Communication
+*   **Order Service** initiates an order creation process.
+*   **Order Service** publishes an event to **Kafka** to validate the user.
+*   **User Service** consumes the event, validates the user status, and publishes a result event back to **Kafka**.
+*   **Order Service** consumes the result and updates the order status (Saga Pattern).
 
 ```mermaid
 graph TD
@@ -29,15 +67,27 @@ graph TD
     OrderApp -- Redis --> Redis[Redis]
 ```
 
-### Key Components
+## 🔄 CI/CD Pipeline
 
-*   **Istio Ingress Gateway**: Central entry point. Handles routing, load balancing, and edge authentication.
-*   **Keycloak**: Identity and Access Management (IAM). Handles user authentication via OIDC and issues JWTs.
-*   **DevApp Web**: Angular 20 frontend. Uses `angular-oauth2-oidc` for Single Sign-On (SSO).
-*   **User Service**: Spring Boot microservice for user management. Acts as an OAuth2 Resource Server.
-*   **Order Service**: Spring Boot microservice for order management. Acts as an OAuth2 Resource Server.
-*   **Kafka & Zookeeper**: Stateful streaming platform for event-driven communication (Saga pattern). deployed as StatefulSets with persistent storage.
-*   **PostgreSQL**: Shared relational database (with separate logical databases for services).
+The Continuous Integration and Continuous Deployment (CI/CD) pipeline is fully automated using **Jenkins**, **Ansible**, and **ArgoCD**.
+
+### Workflow
+1.  **Git**: Developer pushes code to the repository.
+2.  **Jenkins**: Detects changes and triggers the pipeline.
+    *   **Checkout**: Pulls the latest code.
+    *   **Tests**: Runs backend (Maven) and frontend (NPM) unit tests.
+    *   **Quality Gate**: Analyzes code with **SonarQube**.
+    *   **Build**: Builds JARs and Angular artifacts.
+    *   **Security Scan**: Checks dependencies (OWASP Dependency Check) and scans Docker images (Trivy).
+    *   **Integration Tests**: Spins up a test environment (Docker Compose) and runs integration tests.
+    *   **Push**: Pushes Docker images to the registry.
+    *   **Deploy (Staging)**: Uses **Ansible** to deploy manifests to the staging namespace in Kubernetes.
+    *   **Smoke Tests**: Verifies the deployment health.
+    *   **Deploy (Production)**: Uses **Ansible** (after manual approval) to deploy to the production namespace.
+
+### Infrastructure Management
+*   **ArgoCD**: Follows the GitOps pattern to manage the deployment of CI/CD tools themselves (Jenkins, SonarQube, etc.) and other infrastructure components. It ensures the cluster state matches the configuration in `deployment/k8s/argocd`.
+*   **Ansible**: Used by the Jenkins pipeline to template and apply application manifests (`deployment/ansible/deploy.yml`).
 
 ## 🚀 Quick Start
 

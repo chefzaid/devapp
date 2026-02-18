@@ -33,6 +33,11 @@
       register: deploy_redis
       changed_when: "'created' in deploy_redis.stdout or 'configured' in deploy_redis.stdout"
 
+    - name: Deploy IAM (Keycloak)
+      command: kubectl apply -f ../k8s/keycloak/ -n {{ k8s_namespace }}
+      register: deploy_keycloak
+      changed_when: "'created' in deploy_keycloak.stdout or 'configured' in deploy_keycloak.stdout"
+
     - name: Deploy Monitoring (Optional)
       block:
         - name: Deploy ELK Stack
@@ -72,6 +77,7 @@
         - user-app
         - order-app
         - devapp-web
+        - api-gateway
 
     - name: Deploy Applications
       command: kubectl apply -f ../k8s/tmp/ -n {{ k8s_namespace }}

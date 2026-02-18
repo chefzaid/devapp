@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm-config
+  namespace: devapp
+data:
+  realm-export.json: |
+    {
+      "realm": "devapp",
+      "enabled": true,
+      "users": [
+        {
+          "username": "user",
+          "enabled": true,
+          "email": "user@example.com",
+          "firstName": "Test",
+          "lastName": "User",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "password",
+              "temporary": false
+            }
+          ],
+          "realmRoles": [ "user" ],
+          "clientRoles": {
+            "account": [ "view-profile", "manage-account" ]
+          }
+        }
+      ],
+      "roles": {
+        "realm": [
+          {
+            "name": "user",
+            "description": "User role"
+          },
+          {
+            "name": "admin",
+            "description": "Admin role"
+          }
+        ]
+      },
+      "clients": [
+        {
+          "clientId": "api-gateway",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "secret",
+          "redirectUris": [
+            "http://localhost:8080/login/oauth2/code/keycloak",
+            "http://api-gateway:8080/login/oauth2/code/keycloak",
+             "*"
+          ],
+          "webOrigins": [ "*" ],
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "publicClient": false,
+          "protocol": "openid-connect"
+        },
+        {
+          "clientId": "devapp-web",
+          "enabled": true,
+          "publicClient": true,
+          "redirectUris": [ "*" ],
+          "webOrigins": [ "*" ],
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": true
+        }
+      ]
+    }

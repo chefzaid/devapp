@@ -1,0 +1,78 @@
+---
+- name: Deploy CI/CD Infrastructure to Kubernetes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Create Jenkins Namespace
+      command: kubectl apply -f ../k8s/jenkins/00-namespace.yaml
+      register: jenkins_ns
+      changed_when: "'created' in jenkins_ns.stdout"
+
+    - name: Deploy Jenkins Infrastructure
+      command: kubectl apply -f ../k8s/jenkins/
+      register: jenkins_deploy
+      changed_when: "'created' in jenkins_deploy.stdout or 'configured' in jenkins_deploy.stdout"
+
+    - name: Create SonarQube Namespace
+      command: kubectl apply -f ../k8s/sonarqube/00-namespace.yaml
+      register: sonarqube_ns
+      changed_when: "'created' in sonarqube_ns.stdout"
+
+    - name: Deploy SonarQube Infrastructure
+      command: kubectl apply -f ../k8s/sonarqube/
+      register: sonarqube_deploy
+      changed_when: "'created' in sonarqube_deploy.stdout or 'configured' in sonarqube_deploy.stdout"
+
+    - name: Create GitLab Namespace
+      command: kubectl apply -f ../k8s/gitlab/00-namespace.yaml
+      register: gitlab_ns
+      changed_when: "'created' in gitlab_ns.stdout"
+
+    - name: Deploy GitLab Infrastructure
+      command: kubectl apply -f ../k8s/gitlab/
+      register: gitlab_deploy
+      changed_when: "'created' in gitlab_deploy.stdout or 'configured' in gitlab_deploy.stdout"
+
+    - name: Create ArgoCD Namespace
+      command: kubectl apply -f ../k8s/argocd/00-namespace.yaml
+      register: argocd_ns
+      changed_when: "'created' in argocd_ns.stdout"
+
+    - name: Deploy ArgoCD Infrastructure
+      command: kubectl apply -n argocd -f ../k8s/argocd/01-install.yaml
+      register: argocd_deploy
+      changed_when: "'created' in argocd_deploy.stdout or 'configured' in argocd_deploy.stdout"
+
+    - name: Deploy ArgoCD Application
+      command: kubectl apply -n argocd -f ../k8s/argocd/02-devapp-application.yaml
+      register: argocd_app
+      changed_when: "'created' in argocd_app.stdout or 'configured' in argocd_app.stdout"
+
+    - name: Wait for Jenkins to be ready
+      command: kubectl wait --for=condition=ready pod -l app=jenkins -n jenkins --timeout=300s
+      ignore_errors: yes
+
+    - name: Display Deployment Info
+      debug:
+        msg: |
+          CI/CD Tools Deployed Successfully!
+
+          jenkins:
+            url: http://<node-ip>:30000
+            agent-port: 30001
+            initial-admin-password: kubectl exec -n jenkins -it deployment/jenkins -- cat /var/jenkins_home/secrets/initialAdminPassword
+
+          sonarqube:
+            url: http://<node-ip>:30002
+            default-creds: admin/admin
+
+          gitlab:
+            url: http://<node-ip>:30080
+            ssh-port: 30022
+            root-password: kubectl get secret -n gitlab gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode
+
+          argocd:
+            instructions: Port-forward the service (kubectl port-forward svc/argocd-server -n argocd 8080:443) or patch to NodePort.
+            initial-admin-password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d

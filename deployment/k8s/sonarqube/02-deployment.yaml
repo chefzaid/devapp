@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonarqube
+  namespace: sonarqube
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonarqube
+  template:
+    metadata:
+      labels:
+        app: sonarqube
+    spec:
+      initContainers:
+      - name: init-sysctl
+        image: busybox
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      containers:
+      - name: sonarqube
+        image: sonarqube:lts-community
+        ports:
+        - containerPort: 9000
+        env:
+        - name: SONAR_JDBC_URL
+          value: "jdbc:postgresql://localhost:5432/sonarqube"
+        - name: SONAR_JDBC_USERNAME
+          value: "sonar"
+        - name: SONAR_JDBC_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sonarqube-db-credentials
+              key: jdbc-password
+        volumeMounts:
+        - name: sonarqube-data
+          mountPath: /opt/sonarqube/data
+        - name: sonarqube-extensions
+          mountPath: /opt/sonarqube/extensions
+        - name: sonarqube-logs
+          mountPath: /opt/sonarqube/logs
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+      - name: db
+        image: postgres:15
+        env:
+        - name: POSTGRES_USER
+          value: "sonar"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sonarqube-db-credentials
+              key: postgresql-password
+        - name: POSTGRES_DB
+          value: "sonarqube"
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+      volumes:
+      - name: sonarqube-data
+        persistentVolumeClaim:
+          claimName: sonarqube-data
+      - name: sonarqube-extensions
+        persistentVolumeClaim:
+          claimName: sonarqube-extensions
+      - name: sonarqube-logs
+        persistentVolumeClaim:
+          claimName: sonarqube-logs
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-data

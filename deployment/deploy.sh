@@ -63,7 +63,7 @@ if [ "$DEPLOY_ONLY" = false ]; then
     cd "$ROOT_DIR/devapp-web"
     if command -v npm >/dev/null 2>&1; then
         npm install
-        npm run build --prod
+        npm run build-prod
     else
         echo "⚠️  npm not found. Assuming build will happen in Docker or artifacts exist."
     fi
@@ -75,14 +75,12 @@ if [ "$DEPLOY_ONLY" = false ]; then
     docker build -t "$REGISTRY/user-app:$VERSION" user-app
     docker build -t "$REGISTRY/order-app:$VERSION" order-app
     docker build -t "$REGISTRY/devapp-web:$VERSION" devapp-web
-    docker build -t "$REGISTRY/api-gateway:$VERSION" api-gateway
 
     # Tag 'latest' as well for convenience
     if [ "$VERSION" != "latest" ]; then
         docker tag "$REGISTRY/user-app:$VERSION" "$REGISTRY/user-app:latest"
         docker tag "$REGISTRY/order-app:$VERSION" "$REGISTRY/order-app:latest"
         docker tag "$REGISTRY/devapp-web:$VERSION" "$REGISTRY/devapp-web:latest"
-        docker tag "$REGISTRY/api-gateway:$VERSION" "$REGISTRY/api-gateway:latest"
     fi
 
     # Push if registry is not local
@@ -91,7 +89,6 @@ if [ "$DEPLOY_ONLY" = false ]; then
         docker push "$REGISTRY/user-app:$VERSION"
         docker push "$REGISTRY/order-app:$VERSION"
         docker push "$REGISTRY/devapp-web:$VERSION"
-        docker push "$REGISTRY/api-gateway:$VERSION"
     fi
 else
     echo -e "${YELLOW}⏩ Skipping build steps (Deploy Only mode)${NC}"

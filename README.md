@@ -72,6 +72,29 @@ graph TD
 The Continuous Integration and Continuous Deployment (CI/CD) pipeline is fully automated using **Jenkins**, **Ansible**, and **ArgoCD**.
 
 ### Workflow
+
+```mermaid
+graph LR
+    Dev[Developer] -->|Push| Git[Git Repository]
+    Git -->|Webhook| Jenkins[Jenkins CI]
+
+    subgraph Jenkins Pipeline
+        Checkout --> Tests
+        Tests --> Quality[SonarQube]
+        Quality --> Build
+        Build --> Security[Trivy Scan]
+        Security --> PushImage[Push to Registry]
+        PushImage --> Ansible
+    end
+
+    Ansible -->|Apply Manifests| K8s[Kubernetes Cluster]
+
+    Git -->|Sync (GitOps)| ArgoCD[ArgoCD]
+    ArgoCD -.->|Reconcile| K8s
+
+    style ArgoCD stroke-dasharray: 5 5
+```
+
 1.  **Git**: Developer pushes code to the repository.
 2.  **Jenkins**: Detects changes and triggers the pipeline.
     *   **Checkout**: Pulls the latest code.
@@ -86,7 +109,7 @@ The Continuous Integration and Continuous Deployment (CI/CD) pipeline is fully a
     *   **Deploy (Production)**: Uses **Ansible** (after manual approval) to deploy to the production namespace.
 
 ### Infrastructure Management
-*   **ArgoCD**: Follows the GitOps pattern to manage the deployment of CI/CD tools themselves (Jenkins, SonarQube, etc.) and other infrastructure components. It ensures the cluster state matches the configuration in `deployment/k8s/argocd`.
+*   **ArgoCD**: Configured to monitor the `deployment/k8s` directory, enabling a GitOps workflow. While the active CI/CD pipeline uses Jenkins and Ansible for push-based deployments (modifying image tags dynamically), ArgoCD can be used to ensure the cluster state matches the git repository (reconciling to the versions defined in Git).
 *   **Ansible**: Used by the Jenkins pipeline to template and apply application manifests (`deployment/ansible/deploy.yml`).
 
 ## 🚀 Quick Start

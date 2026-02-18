@@ -1,3 +1,72 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sonarqube
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarqube-data
+  namespace: sonarqube
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarqube-extensions
+  namespace: sonarqube
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarqube-logs
+  namespace: sonarqube
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: sonarqube
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sonarqube-db-credentials
+  namespace: sonarqube
+type: Opaque
+stringData:
+  # In a production environment, use a secure secret manager or external secrets.
+  # For local development, these are acceptable.
+  postgresql-password: sonar
+  jdbc-password: sonar
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -83,3 +152,18 @@ spec:
       - name: postgres-data
         persistentVolumeClaim:
           claimName: postgres-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarqube
+  namespace: sonarqube
+spec:
+  type: NodePort
+  ports:
+    - port: 9000
+      targetPort: 9000
+      nodePort: 30002
+  selector:
+    app: sonarqube

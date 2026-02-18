@@ -1,3 +1,10 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+
+---
 # This is an auto-generated file. DO NOT EDIT
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
@@ -33373,3 +33380,23 @@ spec:
       app.kubernetes.io/name: argocd-server
   policyTypes:
   - Ingress
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devapp
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/REPLACE_WITH_YOUR_REPO_URL/devapp.git'
+    targetRevision: HEAD
+    path: deployment/k8s
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: devapp
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

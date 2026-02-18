@@ -18,34 +18,34 @@
         state: present
 
     - name: Deploy Infrastructure (Postgres)
-      command: kubectl apply -f ../k8s/postgres/ -n {{ k8s_namespace }}
+      command: kubectl apply -f ../k8s/postgres.yaml -n {{ k8s_namespace }}
       register: deploy_postgres
       changed_when: "'created' in deploy_postgres.stdout or 'configured' in deploy_postgres.stdout"
 
     - name: Deploy Infrastructure (Kafka)
-      command: kubectl apply -f ../k8s/kafka/ -n {{ k8s_namespace }}
+      command: kubectl apply -f ../k8s/kafka.yaml -n {{ k8s_namespace }}
       register: deploy_kafka
       changed_when: "'created' in deploy_kafka.stdout or 'configured' in deploy_kafka.stdout"
 
     - name: Deploy Infrastructure (Redis)
-      command: kubectl apply -f ../k8s/redis/ -n {{ k8s_namespace }}
+      command: kubectl apply -f ../k8s/redis.yaml -n {{ k8s_namespace }}
       ignore_errors: yes
       register: deploy_redis
       changed_when: "'created' in deploy_redis.stdout or 'configured' in deploy_redis.stdout"
 
     - name: Deploy IAM (Keycloak)
-      command: kubectl apply -f ../k8s/keycloak/ -n {{ k8s_namespace }}
+      command: kubectl apply -f ../k8s/keycloak.yaml -n {{ k8s_namespace }}
       register: deploy_keycloak
       changed_when: "'created' in deploy_keycloak.stdout or 'configured' in deploy_keycloak.stdout"
 
     - name: Deploy Monitoring (Optional)
       block:
         - name: Deploy ELK Stack
-          command: kubectl apply -f ../k8s/elk/ -n {{ k8s_namespace }}
+          command: kubectl apply -f ../k8s/elk.yaml -n {{ k8s_namespace }}
           ignore_errors: yes
 
         - name: Deploy Grafana/Prometheus
-          command: kubectl apply -f ../k8s/grafana/ -n {{ k8s_namespace }}
+          command: kubectl apply -f ../k8s/monitoring.yaml -n {{ k8s_namespace }}
           ignore_errors: yes
       when: deploy_monitoring | bool
 
@@ -58,7 +58,7 @@
       ignore_errors: yes
 
     - name: Deploy Istio Configuration
-      command: kubectl apply -f ../k8s/istio/ -n {{ k8s_namespace }}
+      command: kubectl apply -f ../k8s/istio.yaml -n {{ k8s_namespace }}
       register: deploy_istio
       changed_when: "'created' in deploy_istio.stdout or 'configured' in deploy_istio.stdout"
 

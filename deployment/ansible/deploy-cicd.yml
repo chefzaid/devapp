@@ -5,50 +5,30 @@
   gather_facts: false
 
   tasks:
-    - name: Create Jenkins Namespace
-      command: kubectl apply -f ../k8s/jenkins/00-namespace.yaml
-      register: jenkins_ns
-      changed_when: "'created' in jenkins_ns.stdout"
-
-    - name: Deploy Jenkins Infrastructure
-      command: kubectl apply -f ../k8s/jenkins/
+    - name: Deploy Jenkins
+      command: kubectl apply -f ../k8s/jenkins.yaml
       register: jenkins_deploy
       changed_when: "'created' in jenkins_deploy.stdout or 'configured' in jenkins_deploy.stdout"
 
-    - name: Create SonarQube Namespace
-      command: kubectl apply -f ../k8s/sonarqube/00-namespace.yaml
-      register: sonarqube_ns
-      changed_when: "'created' in sonarqube_ns.stdout"
-
-    - name: Deploy SonarQube Infrastructure
-      command: kubectl apply -f ../k8s/sonarqube/
+    - name: Deploy SonarQube
+      command: kubectl apply -f ../k8s/sonarqube.yaml
       register: sonarqube_deploy
       changed_when: "'created' in sonarqube_deploy.stdout or 'configured' in sonarqube_deploy.stdout"
 
-    - name: Create GitLab Namespace
-      command: kubectl apply -f ../k8s/gitlab/00-namespace.yaml
-      register: gitlab_ns
-      changed_when: "'created' in gitlab_ns.stdout"
-
-    - name: Deploy GitLab Infrastructure
-      command: kubectl apply -f ../k8s/gitlab/
+    - name: Deploy GitLab
+      command: kubectl apply -f ../k8s/gitlab.yaml
       register: gitlab_deploy
       changed_when: "'created' in gitlab_deploy.stdout or 'configured' in gitlab_deploy.stdout"
 
-    - name: Create ArgoCD Namespace
-      command: kubectl apply -f ../k8s/argocd/00-namespace.yaml
-      register: argocd_ns
-      changed_when: "'created' in argocd_ns.stdout"
+    - name: Ensure ArgoCD Namespace Exists
+      shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      register: argocd_ns_create
+      changed_when: "'created' in argocd_ns_create.stdout"
 
-    - name: Deploy ArgoCD Infrastructure
-      command: kubectl apply -n argocd -f ../k8s/argocd/01-install.yaml
+    - name: Deploy ArgoCD
+      command: kubectl apply -f ../k8s/argocd.yaml -n argocd
       register: argocd_deploy
       changed_when: "'created' in argocd_deploy.stdout or 'configured' in argocd_deploy.stdout"
-
-    - name: Deploy ArgoCD Application
-      command: kubectl apply -n argocd -f ../k8s/argocd/02-devapp-application.yaml
-      register: argocd_app
-      changed_when: "'created' in argocd_app.stdout or 'configured' in argocd_app.stdout"
 
     - name: Wait for Jenkins to be ready
       command: kubectl wait --for=condition=ready pod -l app=jenkins -n jenkins --timeout=300s

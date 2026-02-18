@@ -7,6 +7,11 @@ spring:
     bootstrap-servers: localhost:9092
     consumer:
       group-id: group_id
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/devapp
 
 management:
   endpoints:

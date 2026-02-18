@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(controllers = OrderController.class,
     excludeAutoConfiguration = {
         org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration.class,
         org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration.class,
         org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration.class
     })

@@ -57,6 +57,11 @@
       command: kubectl wait --for=condition=ready pod -l app=kafka -n {{ k8s_namespace }} --timeout=120s
       ignore_errors: yes
 
+    - name: Deploy Istio Configuration
+      command: kubectl apply -f ../k8s/istio/ -n {{ k8s_namespace }}
+      register: deploy_istio
+      changed_when: "'created' in deploy_istio.stdout or 'configured' in deploy_istio.stdout"
+
     - name: Create Temporary Deployment Manifests
       file:
         path: ../k8s/tmp
@@ -64,20 +69,27 @@
         mode: '0755'
 
     - name: Copy Deployment Templates
-      shell: cp ../k8s/*-deployment.yaml ../k8s/*-service.yaml ../k8s/tmp/
+      shell: cp ../k8s/app/*.yaml ../k8s/tmp/
       args:
         warn: false
 
-    - name: Update Image Versions in Deployment Files
+    - name: Update Image Versions (User App)
       replace:
-        path: "../k8s/tmp/{{ item }}-deployment.yaml"
-        regexp: 'image: (your-registry|local)/{{ item }}:latest'
-        replace: 'image: {{ registry }}/{{ item }}:{{ app_version }}'
-      with_items:
-        - user-app
-        - order-app
-        - devapp-web
-        - api-gateway
+        path: ../k8s/tmp/01-user-app.yaml
+        regexp: 'image: (your-registry|local)/user-app:latest'
+        replace: 'image: {{ registry }}/user-app:{{ app_version }}'
+
+    - name: Update Image Versions (Order App)
+      replace:
+        path: ../k8s/tmp/02-order-app.yaml
+        regexp: 'image: (your-registry|local)/order-app:latest'
+        replace: 'image: {{ registry }}/order-app:{{ app_version }}'
+
+    - name: Update Image Versions (DevApp Web)
+      replace:
+        path: ../k8s/tmp/03-devapp-web.yaml
+        regexp: 'image: (your-registry|local)/devapp-web:latest'
+        replace: 'image: {{ registry }}/devapp-web:{{ app_version }}'
 
     - name: Deploy Applications
       command: kubectl apply -f ../k8s/tmp/ -n {{ k8s_namespace }}

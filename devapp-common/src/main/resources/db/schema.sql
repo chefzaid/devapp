@@ -6,7 +6,11 @@ CREATE TABLE IF NOT EXISTS users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     username VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL
+    password VARCHAR(255) NOT NULL,
+    created_by VARCHAR(255),
+    created_date TIMESTAMP,
+    last_modified_by VARCHAR(255),
+    last_modified_date TIMESTAMP
 );
 
 -- Order table
@@ -15,5 +19,9 @@ CREATE TABLE IF NOT EXISTS order_table (
     product_id BIGINT NOT NULL,
     status VARCHAR(50),
     user_id BIGINT,
+    created_by VARCHAR(255),
+    created_date TIMESTAMP,
+    last_modified_by VARCHAR(255),
+    last_modified_date TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );

@@ -13,13 +13,15 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 @Entity
 @Data
-@ToString(exclude = "orders")
+@EqualsAndHashCode(callSuper = true)
+@ToString
 @Table(name = "users")
-public class User {
+public class User extends BaseEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -37,5 +39,7 @@ public class User {
 	
 	@OneToMany(mappedBy = "user")
         @JsonIgnore
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
 	List<Order> orders;
 }

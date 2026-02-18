@@ -11,6 +11,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 import io.simpleit.devapp.common.domain.Order;
+import io.simpleit.devapp.common.domain.OrderStatus;
 import io.simpleit.devapp.common.util.Constants;
 import io.simpleit.devapp.order.repository.OrderRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class OrderService {
 
         @Transactional
         public Order createOrder(Order order) {
+                order.setStatus(OrderStatus.PENDING);
                 Order savedOrder = orderRepository.save(order);
                 kafkaTemplate.send(Constants.ORDER_TOPIC, savedOrder);
                 return savedOrder;

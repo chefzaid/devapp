@@ -1,4 +1,4 @@
-package io.simpleit.devapp.order.config;
+package io.simpleit.devapp.user.config;
 
 import java.util.HashMap;
 import java.util.Map;

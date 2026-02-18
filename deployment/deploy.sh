@@ -5,6 +5,10 @@
 
 set -e
 
+# Determine script directory and root directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+ROOT_DIR="$SCRIPT_DIR/.."
+
 # Colors
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -52,18 +56,19 @@ echo "Namespace: $NAMESPACE"
 if [ "$DEPLOY_ONLY" = false ]; then
     # 1. Build Backend
     echo -e "${YELLOW}🔨 Building Java Applications...${NC}"
-    mvn clean package -DskipTests
+    mvn clean package -DskipTests -f "$ROOT_DIR/pom.xml"
 
     # 2. Build Frontend
     echo -e "${YELLOW}🔨 Building Angular Application...${NC}"
-    cd devapp-web
+    cd "$ROOT_DIR/devapp-web"
     if command -v npm >/dev/null 2>&1; then
         npm install
         npm run build --prod
     else
         echo "⚠️  npm not found. Assuming build will happen in Docker or artifacts exist."
     fi
-    cd ..
+    # Change back to project root for docker builds
+    cd "$ROOT_DIR"
 
     # 3. Build Docker Images
     echo -e "${YELLOW}🐳 Building Docker Images...${NC}"
@@ -92,8 +97,8 @@ fi
 # 4. Deploy with Ansible
 echo -e "${YELLOW}📜 Running Ansible Playbook for Deployment...${NC}"
 if command -v ansible-playbook >/dev/null 2>&1; then
-    ansible-playbook ansible/deploy.yml \
-        -i ansible/inventory \
+    ansible-playbook "$SCRIPT_DIR/ansible/deploy.yml" \
+        -i "$SCRIPT_DIR/ansible/inventory" \
         -e "namespace=$NAMESPACE" \
         -e "version=$VERSION" \
         -e "registry=$REGISTRY" \
@@ -101,7 +106,7 @@ if command -v ansible-playbook >/dev/null 2>&1; then
 else
     echo -e "${RED}❌ Ansible not found! Cannot deploy.${NC}"
     echo "Please install ansible or run the playbook manually:"
-    echo "ansible-playbook ansible/deploy.yml -e ..."
+    echo "ansible-playbook deployment/ansible/deploy.yml -e ..."
     exit 1
 fi
 

@@ -476,8 +476,8 @@ pipeline {
                         try {
                             sh '''
                                 echo "Deploying to staging environment using Ansible..."
-                                ansible-playbook ansible/deploy.yml \
-                                    -i ansible/inventory \
+                                ansible-playbook deployment/ansible/deploy.yml \
+                                    -i deployment/ansible/inventory \
                                     -e "namespace=${K8S_NAMESPACE}" \
                                     -e "version=${APP_VERSION}" \
                                     -e "registry=${DOCKER_REGISTRY}/${DOCKER_REPO}" \
@@ -563,8 +563,8 @@ pipeline {
                         container('ansible') {
                             sh '''
                                 echo "Deploying to production environment using Ansible..."
-                                ansible-playbook ansible/deploy.yml \
-                                    -i ansible/inventory \
+                                ansible-playbook deployment/ansible/deploy.yml \
+                                    -i deployment/ansible/inventory \
                                     -e "namespace=${K8S_NAMESPACE}" \
                                     -e "version=${APP_VERSION}" \
                                     -e "registry=${DOCKER_REGISTRY}/${DOCKER_REPO}" \

@@ -2,11 +2,11 @@
 -- This data is shared between user-app and order-app
 
 -- Insert sample users
-INSERT INTO user (name) VALUES ('John Doe');
-INSERT INTO user (name) VALUES ('Jane Smith');
-INSERT INTO user (name) VALUES ('Bob Johnson');
-INSERT INTO user (name) VALUES ('Alice Brown');
-INSERT INTO user (name) VALUES ('Charlie Wilson');
+INSERT INTO users (name, username, password) VALUES ('John Doe', 'john.doe', '$2a$10$slYQmyNdGzTn7ZLBXBChFOC9f6kFjAqPhccnP6DxlWXx2lPk1C3G6');
+INSERT INTO users (name, username, password) VALUES ('Jane Smith', 'jane.smith', '$2a$10$slYQmyNdGzTn7ZLBXBChFOC9f6kFjAqPhccnP6DxlWXx2lPk1C3G6');
+INSERT INTO users (name, username, password) VALUES ('Bob Johnson', 'bob.johnson', '$2a$10$slYQmyNdGzTn7ZLBXBChFOC9f6kFjAqPhccnP6DxlWXx2lPk1C3G6');
+INSERT INTO users (name, username, password) VALUES ('Alice Brown', 'alice.brown', '$2a$10$slYQmyNdGzTn7ZLBXBChFOC9f6kFjAqPhccnP6DxlWXx2lPk1C3G6');
+INSERT INTO users (name, username, password) VALUES ('Charlie Wilson', 'charlie.wilson', '$2a$10$slYQmyNdGzTn7ZLBXBChFOC9f6kFjAqPhccnP6DxlWXx2lPk1C3G6');
 
 -- Insert sample orders
 INSERT INTO order_table (product_id, status, user_id) VALUES (1001, 'PENDING', 1);

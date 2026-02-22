@@ -10,6 +10,11 @@
       register: jenkins_deploy
       changed_when: "'created' in jenkins_deploy.stdout or 'configured' in jenkins_deploy.stdout"
 
+    - name: Configure Jenkins Nexus Settings
+      command: kubectl apply -f ../k8s/jenkins-config.yaml
+      register: jenkins_config
+      changed_when: "'created' in jenkins_config.stdout or 'configured' in jenkins_config.stdout"
+
     - name: Deploy SonarQube
       command: kubectl apply -f ../k8s/sonarqube.yaml
       register: sonarqube_deploy
@@ -19,6 +24,11 @@
       command: kubectl apply -f ../k8s/gitlab.yaml
       register: gitlab_deploy
       changed_when: "'created' in gitlab_deploy.stdout or 'configured' in gitlab_deploy.stdout"
+
+    - name: Deploy Nexus
+      command: kubectl apply -f ../k8s/nexus.yaml
+      register: nexus_deploy
+      changed_when: "'created' in nexus_deploy.stdout or 'configured' in nexus_deploy.stdout"
 
     - name: Ensure ArgoCD Namespace Exists
       shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
@@ -52,6 +62,11 @@
             url: http://<node-ip>:30080
             ssh-port: 30022
             root-password: kubectl get secret -n gitlab gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode
+
+          nexus:
+            url: http://<node-ip>:30005
+            docker-registry: http://<node-ip>:30006
+            initial-creds: admin / (cat /nexus-data/admin.password in pod)
 
           argocd:
             instructions: Port-forward the service (kubectl port-forward svc/argocd-server -n argocd 8080:443) or patch to NodePort.

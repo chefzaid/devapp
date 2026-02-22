@@ -186,3 +186,7 @@ mvn clean verify
 cd devapp-web
 npm test
 ```
+
+## License
+GPL 3.0
+

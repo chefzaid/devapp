@@ -47,6 +47,10 @@ pipeline {
                 volumeMounts:
                 - name: npm-cache
                   mountPath: /root/.npm
+                - name: npm-config
+                  mountPath: /root/.npmrc
+                  subPath: .npmrc
+                  readOnly: true
               - name: docker
                 image: docker:24.0.7-dind
                 command:
@@ -113,6 +117,9 @@ pipeline {
               - name: maven-settings
                 configMap:
                   name: jenkins-maven-settings
+              - name: npm-config
+                configMap:
+                  name: jenkins-npm-config
             """
         }
     }

@@ -20,12 +20,18 @@ DevApp is a modern microservice architecture demonstration project featuring two
 *   **Monitoring**: Prometheus, Grafana
 *   **Logging**: ELK Stack (Elasticsearch, Logstash, Kibana)
 *   **Code Quality**: SonarQube
-*   **Artifacts**: Artifactory (OSS) - configured with 40GB storage.
+*   **Artifacts**: Nexus Repository Manager OSS - configured with 40GB storage.
 
-> **Note**: The Artifactory instance is the **OSS version**, which primarily supports Maven/Gradle (JARs). It does **not** natively support private Docker Registries or NPM repositories.
+> **Note**: Nexus OSS supports Maven (JARs), NPM, and Docker repositories.
 >
-> *   **JARs**: Supported. A `settings.xml` ConfigMap is deployed and mounted in Jenkins, but active mirroring is commented out by default. You must configure repositories (`libs-release`, `libs-snapshot`) and remote proxies (e.g., to Maven Central) in the Artifactory UI, then uncomment the mirror configuration in the `jenkins-maven-settings` ConfigMap.
-> *   **Docker/NPM**: Not supported by the OSS version. Builds will continue to use public registries (NPM Registry, Docker Hub) unless you upgrade to Artifactory Pro or JFrog Container Registry and update the build configuration.
+> *   **Configuration**: A `settings.xml` and `.npmrc` ConfigMap are deployed and mounted in Jenkins, but active mirroring is commented out/disabled by default.
+> *   **Setup Required**:
+>     1.  Login to Nexus (`http://localhost:30005`), retrieve the admin password from the pod (`/nexus-data/admin.password`), and change it.
+>     2.  Create Repositories:
+>         *   Maven: `maven-public` (Group) proxying Central.
+>         *   NPM: `npm-group` proxying NPM Registry.
+>         *   Docker: Hosted repository on port 5000 (exposed as NodePort 30006).
+>     3.  Update the `jenkins-maven-settings` and `jenkins-npm-config` ConfigMaps with the new credentials and uncomment the configuration to enable Nexus usage in the pipeline.
 
 ## 🏗 Architecture & Service Interaction
 
@@ -106,10 +112,10 @@ graph LR
     *   **Checkout**: Pulls the latest code.
     *   **Tests**: Runs backend (Maven) and frontend (NPM) unit tests.
     *   **Quality Gate**: Analyzes code with **SonarQube**.
-    *   **Build**: Builds JARs and Angular artifacts (stored in **Artifactory**).
+    *   **Build**: Builds JARs and Angular artifacts (stored in **Nexus**).
     *   **Security Scan**: Checks dependencies (OWASP Dependency Check) and scans Docker images (Trivy).
     *   **Integration Tests**: Spins up a test environment (Docker Compose) and runs integration tests.
-    *   **Push**: Pushes Docker images to the registry (or **Artifactory** Docker registry).
+    *   **Push**: Pushes Docker images to the registry (or **Nexus** Docker registry).
     *   **Deploy (Staging)**: Uses **Ansible** to deploy manifests to the staging namespace in Kubernetes.
     *   **Smoke Tests**: Verifies the deployment health.
     *   **Deploy (Production)**: Uses **Ansible** (after manual approval) to deploy to the production namespace.

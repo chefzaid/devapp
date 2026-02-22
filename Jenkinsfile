@@ -27,7 +27,11 @@ pipeline {
                     cpu: "1000m"
                 volumeMounts:
                 - name: maven-cache
-                  mountPath: /root/.m2
+                  mountPath: /root/.m2/repository
+                - name: maven-settings
+                  mountPath: /root/.m2/settings.xml
+                  subPath: settings.xml
+                  readOnly: true
               - name: node
                 image: node:24-alpine
                 command:
@@ -106,6 +110,9 @@ pipeline {
               - name: npm-cache
                 persistentVolumeClaim:
                   claimName: jenkins-npm-cache
+              - name: maven-settings
+                configMap:
+                  name: jenkins-maven-settings
             """
         }
     }

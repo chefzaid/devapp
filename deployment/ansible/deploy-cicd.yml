@@ -10,6 +10,11 @@
       register: jenkins_deploy
       changed_when: "'created' in jenkins_deploy.stdout or 'configured' in jenkins_deploy.stdout"
 
+    - name: Configure Jenkins Artifactory Settings
+      command: kubectl apply -f ../k8s/jenkins-config.yaml
+      register: jenkins_config
+      changed_when: "'created' in jenkins_config.stdout or 'configured' in jenkins_config.stdout"
+
     - name: Deploy SonarQube
       command: kubectl apply -f ../k8s/sonarqube.yaml
       register: sonarqube_deploy

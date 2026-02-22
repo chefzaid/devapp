@@ -20,7 +20,12 @@ DevApp is a modern microservice architecture demonstration project featuring two
 *   **Monitoring**: Prometheus, Grafana
 *   **Logging**: ELK Stack (Elasticsearch, Logstash, Kibana)
 *   **Code Quality**: SonarQube
-*   **Artifacts**: Artifactory
+*   **Artifacts**: Artifactory (OSS) - configured with 40GB storage.
+
+> **Note**: The Artifactory instance is the **OSS version**, which primarily supports Maven/Gradle (JARs). It does **not** natively support private Docker Registries or NPM repositories.
+>
+> *   **JARs**: Supported. A `settings.xml` ConfigMap is deployed and mounted in Jenkins, but active mirroring is commented out by default. You must configure repositories (`libs-release`, `libs-snapshot`) and remote proxies (e.g., to Maven Central) in the Artifactory UI, then uncomment the mirror configuration in the `jenkins-maven-settings` ConfigMap.
+> *   **Docker/NPM**: Not supported by the OSS version. Builds will continue to use public registries (NPM Registry, Docker Hub) unless you upgrade to Artifactory Pro or JFrog Container Registry and update the build configuration.
 
 ## 🏗 Architecture & Service Interaction
 

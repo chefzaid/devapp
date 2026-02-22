@@ -1,6 +1,6 @@
 # DevApp
 
-DevApp is a modern microservice architecture demonstration project featuring two Spring Boot services (`user-app` and `order-app`), an Angular frontend (`devapp-web`), and a comprehensive infrastructure stack including **Istio Service Mesh**, **Keycloak**, **Kafka**, and **PostgreSQL**.
+DevApp is a modern microservice architecture demonstration/template project featuring two Spring Boot services (`user-app` and `order-app`), an Angular frontend (`devapp-web`), and a comprehensive infrastructure stack including **Istio Service Mesh**, **Keycloak**, **Kafka**, and **PostgreSQL**.
 
 ## 🛠 Technologies Used
 

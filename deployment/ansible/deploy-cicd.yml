@@ -20,6 +20,11 @@
       register: gitlab_deploy
       changed_when: "'created' in gitlab_deploy.stdout or 'configured' in gitlab_deploy.stdout"
 
+    - name: Deploy Artifactory
+      command: kubectl apply -f ../k8s/artifactory.yaml
+      register: artifactory_deploy
+      changed_when: "'created' in artifactory_deploy.stdout or 'configured' in artifactory_deploy.stdout"
+
     - name: Ensure ArgoCD Namespace Exists
       shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
       register: argocd_ns_create
@@ -52,6 +57,10 @@
             url: http://<node-ip>:30080
             ssh-port: 30022
             root-password: kubectl get secret -n gitlab gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode
+
+          artifactory:
+            url: http://<node-ip>:30003
+            default-creds: admin/password
 
           argocd:
             instructions: Port-forward the service (kubectl port-forward svc/argocd-server -n argocd 8080:443) or patch to NodePort.

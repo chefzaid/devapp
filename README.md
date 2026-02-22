@@ -20,6 +20,7 @@ DevApp is a modern microservice architecture demonstration project featuring two
 *   **Monitoring**: Prometheus, Grafana
 *   **Logging**: ELK Stack (Elasticsearch, Logstash, Kibana)
 *   **Code Quality**: SonarQube
+*   **Artifacts**: Artifactory
 
 ## 🏗 Architecture & Service Interaction
 
@@ -100,10 +101,10 @@ graph LR
     *   **Checkout**: Pulls the latest code.
     *   **Tests**: Runs backend (Maven) and frontend (NPM) unit tests.
     *   **Quality Gate**: Analyzes code with **SonarQube**.
-    *   **Build**: Builds JARs and Angular artifacts.
+    *   **Build**: Builds JARs and Angular artifacts (stored in **Artifactory**).
     *   **Security Scan**: Checks dependencies (OWASP Dependency Check) and scans Docker images (Trivy).
     *   **Integration Tests**: Spins up a test environment (Docker Compose) and runs integration tests.
-    *   **Push**: Pushes Docker images to the registry.
+    *   **Push**: Pushes Docker images to the registry (or **Artifactory** Docker registry).
     *   **Deploy (Staging)**: Uses **Ansible** to deploy manifests to the staging namespace in Kubernetes.
     *   **Smoke Tests**: Verifies the deployment health.
     *   **Deploy (Production)**: Uses **Ansible** (after manual approval) to deploy to the production namespace.

@@ -1,7 +1,7 @@
-# Test profile for verifying centralized database scripts
+# Test profile for order-app
 spring:
   application:
-    name: user-app-test
+    name: order-app-test
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
@@ -10,7 +10,7 @@ spring:
     url: jdbc:h2:mem:testdb
     driver-class-name: org.h2.Driver
     username: sa
-    password: 
+    password:
   h2:
     console:
       enabled: true
@@ -18,7 +18,7 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
-      ddl-auto: none  # Let SQL scripts handle schema creation
+      ddl-auto: none
     show-sql: true
     properties:
       hibernate:
@@ -27,3 +27,11 @@ spring:
     init:
       mode: always
       schema-locations: classpath:db/schema.sql
+  kafka:
+    bootstrap-servers: localhost:9092
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost/auth/realms/devapp
+          jwk-set-uri: http://localhost/auth/realms/devapp/protocol/openid-connect/certs

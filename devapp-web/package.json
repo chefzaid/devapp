@@ -11,7 +11,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false --browsers=ChromeHeadless",
     "test:ci": "ng test --watch=false --browsers=ChromeHeadless --code-coverage --reporters=progress,junit",
-    "test:integration": "cypress run --config-file cypress.config.integration.js",
+    "test:integration": "cypress run --config-file cypress.config.integration.ts",
     "test:e2e": "cypress run",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",

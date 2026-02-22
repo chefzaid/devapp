@@ -45,6 +45,10 @@ spec:
           value: "kafka:9092"
         - name: KAFKA_CONSUMER_GROUP
           value: "user-service-group"
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
         livenessProbe:
           httpGet:
             path: /actuator/health

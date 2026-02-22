@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component("database")
@@ -26,30 +25,6 @@ public class DatabaseHealthIndicator implements HealthIndicator {
             return Health.down()
                     .withDetail("error", e.getMessage())
                     .withDetail("status", "Database connection failed")
-                    .build();
-        }
-    }
-}
-
-@Component("kafka")
-@RequiredArgsConstructor
-class KafkaHealthIndicator implements HealthIndicator {
-
-    private final KafkaTemplate<String, Object> kafkaTemplate;
-
-    @Override
-    public Health health() {
-        try {
-            // Simple check - if we can get metrics, Kafka is likely healthy
-            var metrics = kafkaTemplate.metrics();
-            return Health.up()
-                    .withDetail("status", "Kafka connection successful")
-                    .withDetail("metricsCount", metrics.size())
-                    .build();
-        } catch (Exception e) {
-            return Health.down()
-                    .withDetail("error", e.getMessage())
-                    .withDetail("status", "Kafka connection failed")
                     .build();
         }
     }

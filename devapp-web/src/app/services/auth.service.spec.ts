@@ -1,61 +1,62 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { AuthService } from './auth.service';
-import { Router } from '@angular/router';
-import { environment } from '../../environments/environment';
+import { OAuthService } from 'angular-oauth2-oidc';
+import { BehaviorSubject, Subject } from 'rxjs';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let httpMock: HttpTestingController;
-  let routerSpy = jasmine.createSpyObj('Router', ['navigate']);
+  let oauthServiceSpy: jasmine.SpyObj<OAuthService>;
 
   beforeEach(() => {
+    const spy = jasmine.createSpyObj('OAuthService', [
+      'configure',
+      'loadDiscoveryDocumentAndTryLogin',
+      'hasValidAccessToken',
+      'getAccessToken',
+      'initCodeFlow',
+      'logOut'
+    ], {
+      events: new Subject()
+    });
+    spy.loadDiscoveryDocumentAndTryLogin.and.returnValue(Promise.resolve(true));
+    spy.hasValidAccessToken.and.returnValue(false);
+
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
       providers: [
         AuthService,
-        { provide: Router, useValue: routerSpy }
+        { provide: OAuthService, useValue: spy }
       ]
     });
+    oauthServiceSpy = TestBed.inject(OAuthService) as jasmine.SpyObj<OAuthService>;
     service = TestBed.inject(AuthService);
-    httpMock = TestBed.inject(HttpTestingController);
-    localStorage.clear();
-  });
-
-  afterEach(() => {
-    httpMock.verify();
   });
 
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
 
-  it('should login and store token', () => {
-    const mockResponse = { token: 'fake-token' };
-    const credentials = { username: 'test', password: 'password' };
-
-    service.login(credentials).subscribe(response => {
-      expect(localStorage.getItem('auth_token')).toBe('fake-token');
-    });
-
-    const req = httpMock.expectOne(`${environment.apiUrl}/auth/login`);
-    expect(req.request.method).toBe('POST');
-    req.flush(mockResponse);
+  it('should configure oauth on creation', () => {
+    expect(oauthServiceSpy.configure).toHaveBeenCalled();
+    expect(oauthServiceSpy.loadDiscoveryDocumentAndTryLogin).toHaveBeenCalled();
   });
 
-  it('should logout and clear token', () => {
-    localStorage.setItem('auth_token', 'fake-token');
+  it('should call initCodeFlow on login', () => {
+    service.login();
+    expect(oauthServiceSpy.initCodeFlow).toHaveBeenCalled();
+  });
+
+  it('should call logOut on logout', () => {
     service.logout();
-    expect(localStorage.getItem('auth_token')).toBeNull();
-    expect(routerSpy.navigate).toHaveBeenCalledWith(['/login']);
+    expect(oauthServiceSpy.logOut).toHaveBeenCalled();
   });
 
-  it('should return true if logged in', () => {
-    localStorage.setItem('auth_token', 'fake-token');
+  it('should return token from oauthService', () => {
+    oauthServiceSpy.getAccessToken.and.returnValue('test-token');
+    expect(service.getToken()).toBe('test-token');
+  });
+
+  it('should delegate isLoggedIn to hasValidAccessToken', () => {
+    oauthServiceSpy.hasValidAccessToken.and.returnValue(true);
     expect(service.isLoggedIn()).toBeTrue();
-  });
-
-  it('should return false if not logged in', () => {
-    expect(service.isLoggedIn()).toBeFalse();
   });
 });

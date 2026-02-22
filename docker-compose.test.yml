@@ -65,12 +65,20 @@ services:
       context: ./user-app
       dockerfile: Dockerfile
     environment:
-      SPRING_PROFILES_ACTIVE: test
-      DB_URL: jdbc:postgresql://postgres-test:5432/devappdb_test
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres-test
+      DB_PORT: 5432
+      DB_NAME: devappdb_test
       DB_USERNAME: devappuser
       DB_PASSWORD: testpassword
       KAFKA_BOOTSTRAP_SERVERS: kafka-test:9092
-      KAFKA_CONSUMER_GROUP_ID: test_group_id
+      KAFKA_CONSUMER_GROUP: test-user-group
+      REDIS_HOST: redis-test
+      REDIS_PORT: 6379
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_SQL_INIT_MODE: never
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost/auth/realms/devapp
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://localhost/auth/realms/devapp/protocol/openid-connect/certs
     ports:
       - "8080:8080"
     depends_on:
@@ -79,7 +87,7 @@ services:
       kafka-test:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -89,13 +97,20 @@ services:
       context: ./order-app
       dockerfile: Dockerfile
     environment:
-      SPRING_PROFILES_ACTIVE: test
-      DB_URL: jdbc:postgresql://postgres-test:5432/devappdb_test
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres-test
+      DB_PORT: 5432
+      DB_NAME: devappdb_test
       DB_USERNAME: devappuser
       DB_PASSWORD: testpassword
       KAFKA_BOOTSTRAP_SERVERS: kafka-test:9092
+      KAFKA_CONSUMER_GROUP: test-order-group
       REDIS_HOST: redis-test
       REDIS_PORT: 6379
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_SQL_INIT_MODE: never
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://localhost/auth/realms/devapp
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://localhost/auth/realms/devapp/protocol/openid-connect/certs
     ports:
       - "8081:8081"
     depends_on:
@@ -106,7 +121,7 @@ services:
       redis-test:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -126,7 +141,7 @@ services:
       order-app-test:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:80/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5

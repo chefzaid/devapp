@@ -26,7 +26,7 @@ describe('OrderService', () => {
       expect(data).toEqual(mockOrders);
     });
 
-    const req = http.expectOne('http://localhost:8081/api/orders');
+    const req = http.expectOne('/api/orders');
     expect(req.request.method).toBe('GET');
     req.flush(mockOrders);
   });
@@ -38,7 +38,7 @@ describe('OrderService', () => {
       expect(data).toEqual(order);
     });
 
-    const req = http.expectOne('http://localhost:8081/api/orders');
+    const req = http.expectOne('/api/orders');
     expect(req.request.method).toBe('POST');
     req.flush(order);
   });

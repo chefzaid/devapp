@@ -26,7 +26,7 @@ describe('UserService', () => {
       expect(data).toEqual(mockUsers);
     });
 
-    const req = http.expectOne('http://localhost:8080/api/users');
+    const req = http.expectOne('/api/users');
     expect(req.request.method).toBe('GET');
     req.flush(mockUsers);
   });
@@ -38,7 +38,7 @@ describe('UserService', () => {
       expect(data).toEqual(user);
     });
 
-    const req = http.expectOne('http://localhost:8080/api/users');
+    const req = http.expectOne('/api/users');
     expect(req.request.method).toBe('POST');
     req.flush(user);
   });

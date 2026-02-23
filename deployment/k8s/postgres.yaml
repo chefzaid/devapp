@@ -33,29 +33,16 @@ data:
 
 ---
 apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: postgres-pv
-spec:
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data" # This path is for demonstration purposes, adjust as needed.
-
-
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-pvc
 spec:
+  storageClassName: longhorn
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
+      storage: 2Gi
 
 
 ---
@@ -69,7 +56,7 @@ spec:
     targetPort: 5432
   selector:
     app: postgres
-  type: LoadBalancer
+  type: ClusterIP
 
 
 ---

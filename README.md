@@ -1,6 +1,6 @@
 # DevApp
 
-DevApp is a modern microservice architecture demonstration/template project featuring two Spring Boot services (`user-app` and `order-app`), an Angular frontend (`devapp-web`), and a comprehensive infrastructure stack including **Istio Service Mesh**, **Keycloak**, **Kafka**, and **PostgreSQL**.
+DevApp is a modern microservice architecture demonstration/template project featuring two Spring Boot services (`user-app` and `order-app`), an Angular frontend (`devapp-web`), and a comprehensive infrastructure stack deployed on **K3s** with **Longhorn** distributed storage, **Keycloak**, **Kafka**, and **PostgreSQL**.
 
 ## 🛠 Technologies Used
 
@@ -13,179 +13,397 @@ DevApp is a modern microservice architecture demonstration/template project feat
 *   **Security**: Keycloak (OIDC/OAuth2)
 
 ### Infrastructure & DevOps
-*   **Orchestration**: Kubernetes (K8s)
-*   **Service Mesh**: Istio
+*   **Orchestration**: K3s (Lightweight Kubernetes)
+*   **Storage**: Longhorn (distributed block storage)
+*   **Ingress**: Nginx Ingress Controller
 *   **Containerization**: Docker
-*   **CI/CD**: Jenkins, ArgoCD, Ansible, Git
-*   **Monitoring**: Prometheus, Grafana
-*   **Logging**: ELK Stack (Elasticsearch, Logstash, Kibana)
+*   **CI/CD**: Jenkins (K8s-native build agents)
 *   **Code Quality**: SonarQube
-*   **Artifacts**: Nexus Repository Manager OSS - configured with 40GB storage.
+*   **Artifacts**: Nexus Repository Manager OSS
+*   **Monitoring**: Prometheus, Grafana
 
-> **Note**: Nexus OSS supports Maven (JARs), NPM, and Docker repositories.
+> **Note on Nexus**: Nexus OSS supports Maven (JARs), NPM, and Docker repositories.
 >
-> *   **Configuration**: A `settings.xml` and `.npmrc` ConfigMap are deployed and mounted in Jenkins, but active mirroring is commented out/disabled by default.
+> *   ConfigMaps for `settings.xml` and `.npmrc` are deployed for Jenkins agents, but mirroring is disabled by default.
 > *   **Setup Required**:
->     1.  Login to Nexus (`http://localhost:30005`), retrieve the admin password from the pod (`/nexus-data/admin.password`), and change it.
->     2.  Create Repositories:
->         *   Maven: `maven-public` (Group) proxying Central.
->         *   NPM: `npm-group` proxying NPM Registry.
->         *   Docker: Hosted repository on port 5000 (exposed as NodePort 30006).
->     3.  Update the `jenkins-maven-settings` and `jenkins-npm-config` ConfigMaps with the new credentials and uncomment the configuration to enable Nexus usage in the pipeline.
+>     1.  Login to Nexus (`http://<SERVER_IP>:30005`), retrieve admin password: `kubectl exec -n nexus deployment/nexus -- cat /nexus-data/admin.password`
+>     2.  Create repositories: Maven `maven-public` (Group proxying Central), NPM `npm-group`, Docker hosted on port 5000.
+>     3.  Update `jenkins-maven-settings` and `jenkins-npm-config` ConfigMaps with credentials and uncomment the Nexus mirror configuration.
 
 ## 🏗 Architecture & Service Interaction
 
-The application adopts a cloud-native architecture leveraging Kubernetes and Istio for traffic management and security.
+The application adopts a cloud-native architecture on a K3s Kubernetes cluster with Nginx Ingress for traffic management.
 
 ### Traffic Flow
-1.  **Client/Browser** initiates requests to the **Istio Ingress Gateway**.
-2.  **Istio Gateway** routes traffic based on URI prefixes:
-    *   `/` -> **DevApp Web** (Angular Frontend)
-    *   `/api/users/**` -> **User Service**
-    *   `/api/orders/**` -> **Order Service**
-    *   `/auth/**` -> **Keycloak**
+1.  **Client/Browser** connects to the **Nginx Ingress Controller** (port 30090, or port 80 via iptables).
+2.  **Ingress** routes traffic based on URI prefixes:
+    *   `/` → **DevApp Web** (Angular Frontend)
+    *   `/api/users/**` → **User Service**
+    *   `/api/orders/**` → **Order Service**
+    *   `/auth/**` → **Keycloak**
 3.  **Authentication**:
-    *   The frontend authenticates with **Keycloak** using OIDC (Authorization Code Flow) to obtain a JWT.
+    *   The frontend authenticates with **Keycloak** using OIDC (Authorization Code Flow + PKCE).
     *   API requests include the JWT in the `Authorization` header.
-    *   **Istio** validates the JWT at the gateway level.
-    *   **Backend Services** (User/Order) act as Resource Servers and validate the JWT signature/roles locally.
+    *   Backend services validate the JWT as OAuth2 Resource Servers.
 
-### Inter-Service Communication
-*   **Order Service** initiates an order creation process.
-*   **Order Service** publishes an event to **Kafka** to validate the user.
-*   **User Service** consumes the event, validates the user status, and publishes a result event back to **Kafka**.
-*   **Order Service** consumes the result and updates the order status (Saga Pattern).
+### Inter-Service Communication (Saga Pattern)
+*   **Order Service** creates an order with status `PENDING` and publishes to Kafka topic `order_topic`.
+*   **User Service** consumes the event, validates the user, sets status to `APPROVED`/`REJECTED`, and publishes to `order_result_topic`.
+*   **Order Service** consumes the result and updates the order status in the database.
 
 ```mermaid
 graph TD
-    User[User/Browser] -->|HTTP/HTTPS| Ingress[Istio Ingress Gateway]
+    User[User/Browser] -->|HTTP| Ingress[Nginx Ingress]
     Ingress -->|/| Web[DevApp Web]
     Ingress -->|/api/users| UserApp[User Service]
     Ingress -->|/api/orders| OrderApp[Order Service]
     Ingress -->|/auth| Keycloak[Keycloak]
 
-    Web -- OIDC Auth (Code Flow) --> Keycloak
+    Web -- OIDC Auth --> Keycloak
     Web -- API Calls + JWT --> Ingress
 
-    UserApp -- Verify JWT (JWKS) --> Keycloak
-    OrderApp -- Verify JWT (JWKS) --> Keycloak
+    UserApp -- Verify JWT --> Keycloak
+    OrderApp -- Verify JWT --> Keycloak
 
-    UserApp -- Kafka --> Kafka[Kafka Cluster]
+    UserApp -- Kafka --> Kafka[Kafka]
     OrderApp -- Kafka --> Kafka
 
     UserApp -- JDBC --> Postgres[PostgreSQL]
     OrderApp -- JDBC --> Postgres
     Keycloak -- JDBC --> Postgres
-    OrderApp -- Redis --> Redis[Redis]
+    OrderApp -- Cache --> Redis[Redis]
 ```
 
 ## 🔄 CI/CD Pipeline
 
-The Continuous Integration and Continuous Deployment (CI/CD) pipeline is fully automated using **Jenkins**, **Ansible**, and **ArgoCD**.
+The CI/CD pipeline runs on **Jenkins** with Kubernetes-native build agents (pods spun up per build).
 
-### Workflow
+### Pipeline Stages
 
 ```mermaid
 graph LR
-    Dev[Developer] -->|Push| Git[Git Repository]
-    Git -->|Webhook| Jenkins[Jenkins CI]
+    Dev[Developer] -->|Push| Git[GitHub]
+    Git -->|Poll/Webhook| Jenkins[Jenkins]
 
     subgraph Jenkins Pipeline
-        Checkout --> Tests
-        Tests --> Quality[SonarQube]
-        Quality --> Build
-        Build --> Security[Trivy Scan]
-        Security --> PushImage[Push to Registry]
-        PushImage --> Ansible
+        Checkout --> Quality[Code Quality]
+        Quality --> Build[Build Apps]
+        Build --> DockerBuild[Docker Build]
+        DockerBuild --> Import[Import to K3s]
+        Import --> Deploy[Deploy & Smoke Test]
     end
 
-    Ansible -->|Apply Manifests| K8s[Kubernetes Cluster]
-
-    Git -->|Sync (GitOps)| ArgoCD[ArgoCD]
-    ArgoCD -.->|Reconcile| K8s
-
-    style ArgoCD stroke-dasharray: 5 5
+    Deploy -->|kubectl| K3s[K3s Cluster]
 ```
 
-1.  **Git**: Developer pushes code to the repository.
-2.  **Jenkins**: Detects changes and triggers the pipeline.
-    *   **Checkout**: Pulls the latest code.
-    *   **Tests**: Runs backend (Maven) and frontend (NPM) unit tests.
-    *   **Quality Gate**: Analyzes code with **SonarQube**.
-    *   **Build**: Builds JARs and Angular artifacts (stored in **Nexus**).
-    *   **Security Scan**: Checks dependencies (OWASP Dependency Check) and scans Docker images (Trivy).
-    *   **Integration Tests**: Spins up a test environment (Docker Compose) and runs integration tests.
-    *   **Push**: Pushes Docker images to the registry (or **Nexus** Docker registry).
-    *   **Deploy (Staging)**: Uses **Ansible** to deploy manifests to the staging namespace in Kubernetes.
-    *   **Smoke Tests**: Verifies the deployment health.
-    *   **Deploy (Production)**: Uses **Ansible** (after manual approval) to deploy to the production namespace.
+1.  **Checkout**: Pulls latest code from GitHub.
+2.  **Code Quality** (parallel): Backend tests (Maven), Frontend lint & tests (npm).
+3.  **Build Applications** (parallel): Maven package (fat JARs), Angular production build.
+4.  **Docker Build**: Builds 3 Docker images (user-app, order-app, devapp-web).
+5.  **Import to K3s**: Imports images directly into K3s containerd (no external registry needed).
+6.  **Deploy & Smoke Test**: Updates K8s deployments with new image tags, verifies health endpoints.
 
-### Infrastructure Management
-*   **ArgoCD**: Configured to monitor the `deployment/k8s` directory, enabling a GitOps workflow. While the active CI/CD pipeline uses Jenkins and Ansible for push-based deployments (modifying image tags dynamically), ArgoCD can be used to ensure the cluster state matches the git repository (reconciling to the versions defined in Git).
-*   **Ansible**: Used by the Jenkins pipeline to template and apply application manifests (`deployment/ansible/deploy.yml`).
+### How It Works on K3s
+Instead of pushing to a Docker registry, the pipeline:
+- Builds Docker images using the host's Docker daemon (socket mounted into build pods).
+- Saves images as tarballs to a shared volume.
+- Uses `k3s ctr images import` to load them into K3s's containerd runtime.
+- Updates deployments with `kubectl set image` for rolling updates.
 
-## 🚀 Quick Start
+## 📦 Current Deployment
+
+### Service Access (replace `<SERVER_IP>` with your server's IP)
+
+| Service | URL | Default Credentials |
+|---------|-----|-------------------|
+| **Frontend** | `http://<SERVER_IP>:30080` | — |
+| **Frontend (Ingress)** | `http://<SERVER_IP>:30090` | — |
+| **User API** | `http://<SERVER_IP>:30090/api/users` | JWT required |
+| **Order API** | `http://<SERVER_IP>:30090/api/orders` | JWT required |
+| **Actuator** | `http://<SERVER_IP>:30090/actuator/health` | — |
+| **Jenkins** | `http://<SERVER_IP>:30000` | See setup below |
+| **SonarQube** | `http://<SERVER_IP>:30002` | admin / admin |
+| **Nexus** | `http://<SERVER_IP>:30005` | admin / (see pod) |
+| **Prometheus** | `http://<SERVER_IP>:30003` | — |
+| **Grafana** | `http://<SERVER_IP>:30004` | admin / admin |
+| **Longhorn UI** | `kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80` | — |
+
+### K8s Namespaces
+
+| Namespace | Contents |
+|-----------|----------|
+| `devapp` | All application services + infrastructure (PostgreSQL, Kafka, Redis, Keycloak, Prometheus, Grafana) |
+| `jenkins` | Jenkins controller + build agent resources |
+| `sonarqube` | SonarQube + its PostgreSQL |
+| `nexus` | Nexus Repository Manager |
+| `longhorn-system` | Longhorn storage manager |
+| `ingress-nginx` | Nginx Ingress Controller |
+
+## 🚀 Quick Start (Fresh Server)
 
 ### Prerequisites
-- Kubernetes Cluster (Minikube, Kind, or Cloud)
-- Istio installed on the cluster
-- `kubectl` configured
+- Ubuntu 22.04+ server with 8+ CPUs, 16+ GB RAM, 100+ GB disk
+- Sudo access
 
-### Deployment
+### 1. Install System Dependencies
+```bash
+# Java 21
+sudo apt install -y openjdk-21-jdk
 
-1.  **Deploy Infrastructure & Services**:
-    ```bash
-    ./deployment/deploy.sh
-    ```
-    This script builds the applications and applies Kubernetes manifests.
+# Maven
+sudo apt install -y maven
 
-2.  **Access the Application**:
-    -   **Frontend**: `http://localhost` (or your Ingress Gateway IP)
-    -   **Keycloak**: `http://localhost/auth`
-    -   **APIs**: `http://localhost/api/users`, `http://localhost/api/orders`
+# Node.js 24
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt install -y nodejs
 
-### Authentication
-The application uses Keycloak for SSO.
--   **Login**: Click "Login with SSO" on the frontend. You will be redirected to Keycloak.
--   **Credentials**:
-    -   Username: `user`
-    -   Password: `password`
-    -   (Admin) Username: `admin` / Password: `admin`
+# Docker
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
 
-## 🛡 Security
+# Longhorn prerequisites
+sudo apt install -y open-iscsi nfs-common
+sudo systemctl enable --now iscsid
+```
 
--   **OIDC**: Frontend uses Authorization Code Flow with PKCE.
--   **JWT Validation**:
-    -   **Istio**: Enforces valid tokens for `/api/*` endpoints at the gateway level (`RequestAuthentication` + `AuthorizationPolicy`).
-    -   **Backend**: Services validate tokens locally using Spring Security OAuth2 Resource Server (verifying signature against Keycloak JWKS).
--   **Traffic Rules**:
-    -   Public: `/`, `/auth`, `/assets`
-    -   Protected: `/api/*`
+### 2. Install K3s
+```bash
+curl -sfL https://get.k3s.io | sh -s - --disable traefik --write-kubeconfig-mode 644
+
+# Configure kubectl for your user
+mkdir -p ~/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+sudo chown $USER:$USER ~/.kube/config
+```
+
+### 3. Install Helm & Longhorn
+```bash
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+helm repo add longhorn https://charts.longhorn.io
+helm repo update
+helm install longhorn longhorn/longhorn --namespace longhorn-system --create-namespace \
+    --set defaultSettings.defaultReplicaCount=1
+
+# Set Longhorn as default StorageClass
+kubectl patch storageclass longhorn -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+```
+
+### 4. Install Nginx Ingress
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace \
+    --set controller.service.type=NodePort \
+    --set controller.service.nodePorts.http=30090 \
+    --set controller.service.nodePorts.https=30443
+```
+
+### 5. Build the Application
+```bash
+cd /path/to/devapp
+
+# Fix Maven proxy issue (Ubuntu 24.04)
+export MAVEN_OPTS="-Dhttp.proxyHost= -Dhttps.proxyHost="
+
+# Build backend
+mvn clean package -DskipTests
+
+# Build frontend
+cd devapp-web && npm install && npm run build-prod && cd ..
+
+# Build Docker images
+docker build -t devapp/user-app:latest user-app/
+docker build -t devapp/order-app:latest order-app/
+docker build -t devapp/devapp-web:latest devapp-web/
+
+# Import into K3s
+docker save devapp/user-app:latest | sudo k3s ctr images import -
+docker save devapp/order-app:latest | sudo k3s ctr images import -
+docker save devapp/devapp-web:latest | sudo k3s ctr images import -
+```
+
+### 6. Deploy Everything
+```bash
+# Create namespace
+kubectl create namespace devapp
+
+# Infrastructure
+kubectl apply -f deployment/k8s/postgres.yaml -n devapp
+kubectl apply -f deployment/k8s/kafka.yaml -n devapp
+kubectl apply -f deployment/k8s/redis.yaml -n devapp
+kubectl apply -f deployment/k8s/keycloak.yaml -n devapp
+
+# Wait for infra
+kubectl wait --for=condition=ready pod -l app=postgres -n devapp --timeout=120s
+kubectl wait --for=condition=ready pod -l app=kafka -n devapp --timeout=180s
+
+# Application
+kubectl apply -f deployment/k8s/app/ -n devapp
+
+# CI/CD & Monitoring
+kubectl apply -f deployment/k8s/jenkins.yaml
+kubectl apply -f deployment/k8s/jenkins-config.yaml
+kubectl apply -f deployment/k8s/sonarqube.yaml
+kubectl apply -f deployment/k8s/nexus.yaml
+kubectl apply -f deployment/k8s/monitoring.yaml -n devapp
+
+# Verify all pods
+kubectl get pods -n devapp
+kubectl get pods -n jenkins
+kubectl get pods -n sonarqube
+kubectl get pods -n nexus
+```
+
+## 🔧 Manual Setup Required After Deployment
+
+### 1. Keycloak Configuration (Required for Authentication)
+```bash
+# Access Keycloak admin console
+# Default credentials: admin / admin (set via KEYCLOAK_ADMIN env in keycloak.yaml)
+# URL: http://<SERVER_IP>:30090/auth (via ingress)
+
+# You need to:
+# 1. Create realm "devapp"
+# 2. Create a client "devapp-web" with:
+#    - Client Protocol: openid-connect
+#    - Access Type: public
+#    - Valid Redirect URIs: http://<SERVER_IP>:30080/*, http://<SERVER_IP>:30090/*
+#    - Web Origins: *
+# 3. Create test users
+# 4. Update devapp-web/src/environments/environment.prod.ts if the Keycloak URL differs
+```
+
+### 2. Jenkins Setup (Required for CI/CD)
+```bash
+# Get initial admin password
+kubectl exec -n jenkins deployment/jenkins -- cat /var/jenkins_home/secrets/initialAdminPassword
+
+# Access Jenkins at http://<SERVER_IP>:30000
+# 1. Install suggested plugins + "Kubernetes" plugin
+# 2. Configure Kubernetes cloud:
+#    - Manage Jenkins → Clouds → New Cloud → Kubernetes
+#    - Kubernetes URL: https://kubernetes.default.svc
+#    - Jenkins URL: http://jenkins.jenkins.svc.cluster.local:8080
+#    - Jenkins tunnel: jenkins.jenkins.svc.cluster.local:50000
+#    - Namespace: jenkins
+# 3. Create a Pipeline job pointing to this Git repo
+#    - SCM: Git → https://github.com/chefzaid/devapp.git
+#    - Script Path: Jenkinsfile
+```
+
+### 3. Change Default Passwords (Security)
+```bash
+# PostgreSQL: Update secret in deployment/k8s/postgres.yaml (base64 encoded)
+# Currently: devapp123 — change before production use!
+echo -n 'YOUR_NEW_PASSWORD' | base64
+
+# Keycloak admin password: Update KEYCLOAK_ADMIN_PASSWORD in keycloak.yaml
+# SonarQube: Change admin password on first login
+# Grafana: Change admin password on first login
+# Nexus: Retrieve and change on first login
+```
+
+### 4. TLS/HTTPS (Recommended for Production)
+```bash
+# Option 1: cert-manager with Let's Encrypt
+helm repo add jetstack https://charts.jetstack.io
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace \
+    --set installCRDs=true
+
+# Then create a ClusterIssuer and update the Ingress with TLS annotations
+
+# Option 2: Manual certificate
+# Create a K8s TLS secret and reference it in the Ingress resource
+kubectl create secret tls devapp-tls --cert=tls.crt --key=tls.key -n devapp
+```
+
+### 5. DNS Configuration
+```
+# Point your domain to the server IP:
+# devapp.yourdomain.com → <SERVER_IP>
+# Then update the Ingress host and Keycloak hostname accordingly
+```
+
+## 🔀 Adding More Nodes
+
+K3s makes it easy to scale horizontally:
+
+```bash
+# On the master node, get the join token:
+sudo cat /var/lib/rancher/k3s/server/node-token
+
+# On the new worker node:
+curl -sfL https://get.k3s.io | K3S_URL=https://<MASTER_IP>:6443 K3S_TOKEN=<TOKEN> sh -
+
+# Longhorn will automatically replicate data to new nodes.
+# Increase replica count:
+kubectl edit settings -n longhorn-system default-replica-count
+# Change from 1 to 2 (or 3 for 3+ nodes)
+```
 
 ## 💻 Development
 
 ### Project Structure
--   `user-app/`: Backend service (User domain)
--   `order-app/`: Backend service (Order domain)
--   `devapp-web/`: Frontend application (Angular)
--   `deployment/`: Kubernetes manifests, Istio config, and scripts
+-   `user-app/`: User microservice (Spring Boot, port 8080)
+-   `order-app/`: Order microservice (Spring Boot, port 8081)
+-   `devapp-web/`: Frontend (Angular 21, Nginx)
+-   `devapp-common/`: Shared library (domain models, JWT, base entities)
+-   `deployment/k8s/`: Kubernetes manifests
+-   `Jenkinsfile`: CI/CD pipeline definition
 
-### Running Locally (Hybrid)
-To run services locally while connecting to cluster infrastructure:
-1.  Port-forward Keycloak: `kubectl port-forward svc/keycloak 8080:8080 -n devapp`
-2.  Run Backend: `mvn spring-boot:run` (Ensure `application.yml` points to localhost for Keycloak).
-3.  Run Frontend: `ng serve` (Proxy API calls to Ingress or backend).
+### Running Locally
+```bash
+# Start infrastructure with Docker Compose (dev profile uses H2 by default)
+cd devapp-web && npm start    # Frontend on :4200
+cd user-app && mvn spring-boot:run   # User service on :8080
+cd order-app && mvn spring-boot:run  # Order service on :8081
+```
 
-## 🧪 Testing
-
+### Build & Test Commands
 ```bash
 # Backend
-mvn clean verify
+mvn clean verify                           # Build + test all
+mvn test -pl user-app -Dtest=UserServiceTest  # Single test
 
 # Frontend
 cd devapp-web
-npm test
+npm test           # Unit tests
+npm run lint       # Linting
+npm run build-prod # Production build
 ```
+
+### Spring Profiles
+
+| Profile | Database | Kafka | Redis |
+|---------|----------|-------|-------|
+| **dev** (default) | H2 in-memory | localhost:9092 | — |
+| **test** | H2 in-memory | — | — |
+| **prod** | PostgreSQL (env vars) | env: `KAFKA_BOOTSTRAP_SERVERS` | env: `REDIS_HOST` |
+
+## 🛡 Security Notes
+
+- **No secrets are committed to git**. All sensitive values (DB passwords, Keycloak admin credentials) are in K8s Secrets/ConfigMaps that must be created during deployment.
+- The PostgreSQL password in `postgres.yaml` is base64-encoded (`devapp123`) — **change it before production use**.
+- All API endpoints under `/api/*` require a valid JWT token.
+- Public endpoints: `/actuator/health`, `/swagger-ui/**`, `/v3/api-docs/**`.
+
+## 📊 Monitoring
+
+- **Prometheus** scrapes metrics from user-app (`:8080/actuator/prometheus`) and order-app (`:8081/actuator/prometheus`).
+- **Grafana** connects to Prometheus for dashboards. Import Spring Boot dashboard ID `12900` for JVM metrics.
+
+## 🧩 Key Configuration Changes Made During Deployment
+
+These changes were made to adapt the application for K3s + Longhorn:
+
+1. **`pom.xml`**: Added `repackage` execution goal to `spring-boot-maven-plugin` (required for fat JAR generation).
+2. **`logback-spring.xml`** (both services): Changed `TimeBasedRollingPolicy` to `SizeAndTimeBasedRollingPolicy` (fixes crash with `%i` pattern).
+3. **`RedisConfig.java`** (order-app): Removed custom `LettuceConnectionFactory` bean — was ignoring Spring properties and connecting to `localhost:6379`.
+4. **`application.yml`** (both services): Changed prod `ddl-auto` from `validate` to `update` (no Flyway migrations exist).
+5. **K8s manifests**: Added Longhorn `storageClassName`, `fsGroup` security contexts, `KAFKA_LOG_DIRS` subdirectory fix for Longhorn's `lost+found`.
+6. **`Jenkinsfile`**: Rewritten for K3s — local image builds, containerd import, kubectl-based deployment.
+7. **`nginx.conf`** (devapp-web): Added Keycloak reverse proxy configuration.
 
 ## License
 GPL 3.0

@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
       - name: user-app
-        image: your-registry/user-app:latest
+        image: devapp/user-app:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 8080
         env:
@@ -49,6 +50,10 @@ spec:
           value: "redis"
         - name: REDIS_PORT
           value: "6379"
+        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+          value: "http://keycloak:8080/realms/devapp"
+        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+          value: "http://keycloak:8080/realms/devapp/protocol/openid-connect/certs"
         livenessProbe:
           httpGet:
             path: /actuator/health

@@ -133,9 +133,9 @@ spec:
               name: postgres-secret
               key: POSTGRES_PASSWORD
         - name: KC_HOSTNAME_URL
-          value: "http://localhost/auth"
+          value: "http://51.68.232.240:30080/auth"
         - name: KC_HOSTNAME_ADMIN_URL
-          value: "http://localhost/auth"
+          value: "http://51.68.232.240:30080/auth"
         ports:
         - name: http
           containerPort: 8080

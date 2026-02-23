@@ -34,7 +34,7 @@ describe('authInterceptor', () => {
   });
 
   it('should not add Authorization header when token is missing', (done) => {
-    authServiceSpy.getToken.and.returnValue(null);
+    authServiceSpy.getToken.and.returnValue('');
 
     const next: HttpHandlerFn = (req: HttpRequest<unknown>): Observable<HttpEvent<unknown>> => {
       expect(req.headers.has('Authorization')).toBeFalse();

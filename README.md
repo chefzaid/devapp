@@ -369,7 +369,7 @@ The fastest way to get a complete development environment with all dependencies 
 **What's Included**:
 - Java 21, Maven 3.9.x, Node.js 24.x, Angular CLI 21
 - Pre-installed VS Code extensions for Java, Angular, Spring Boot, Docker, Git
-- Infrastructure services: PostgreSQL 16, Kafka (Confluent 7.4.0), Zookeeper, Redis 7, Keycloak 24
+- By default, only the dev container runs; Kafka/Redis/Keycloak/PostgreSQL can be started on-demand with Docker Compose profile `local-infra` (or point to shared infra via env vars such as `KAFKA_BOOTSTRAP_SERVERS`, `REDIS_HOST`, `JWT_ISSUER_URI`, `DB_HOST`)
 
 **Service URLs** (inside the dev container):
 
@@ -385,15 +385,20 @@ The fastest way to get a complete development environment with all dependencies 
 
 **Starting Services**:
 ```bash
-# Start Angular dev server
-cd devapp-web && npm start
-
-# Start backend services (each in a separate terminal)
-mvn spring-boot:run -pl user-app
-mvn spring-boot:run -pl order-app
+# Simplified commands
+mask run        # default: all (user-app + order-app + frontend)
+mask run front
+mask run user
+mask run order
 ```
 
-**Kafka Management**:
+**Optional local infrastructure**:
+```bash
+cd .devcontainer
+docker compose --profile local-infra up -d
+```
+
+**Kafka Management** (when running `local-infra`):
 ```bash
 bash .devcontainer/scripts/kafka-setup.sh setup      # Create topics
 bash .devcontainer/scripts/kafka-setup.sh check       # Check connectivity
@@ -431,21 +436,32 @@ cd order-app && mvn spring-boot:run  # Order service on :8081
 # Backend
 mvn clean verify                           # Build + test all
 mvn test -pl user-app -Dtest=UserServiceTest  # Single test
+# Ensure Java 21 is active (project target) when running Maven locally
 
 # Frontend
 cd devapp-web
 npm test           # Unit tests
 npm run lint       # Linting
+npm run build:uat  # UAT build (environment.uat.ts)
 npm run build-prod # Production build
+
+# Simplified top-level commands
+mask test back
+mask test front
+mask coverage back
+mask coverage front
+mask build back
+mask build front
 ```
 
 ### Spring Profiles
 
-| Profile | Database | Kafka | Redis |
-|---------|----------|-------|-------|
-| **dev** (default) | H2 in-memory | localhost:9092 | — |
-| **test** | H2 in-memory | — | — |
-| **prod** | PostgreSQL (env vars) | env: `KAFKA_BOOTSTRAP_SERVERS` | env: `REDIS_HOST` |
+| Profile | Database | Kafka | Redis | Keycloak realm |
+|---------|----------|-------|-------|---------------|
+| **dev** (default) | H2 in-memory | `KAFKA_BOOTSTRAP_SERVERS` (default localhost) | optional | `devapp` |
+| **uat** | PostgreSQL (env vars) | `kafka.infrastructure.svc.cluster.local:9092` (overrideable) | `redis.infrastructure.svc.cluster.local` (overrideable) | `devapp-uat` |
+| **test** | H2 in-memory | — | — | test config |
+| **prod** | PostgreSQL (env vars) | env: `KAFKA_BOOTSTRAP_SERVERS` | env: `REDIS_HOST` | env: `JWT_ISSUER_URI` |
 
 ## 🛡 Security Notes
 

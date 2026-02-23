@@ -7,25 +7,25 @@ spring:
   profiles:
     active: dev
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: order-group
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost/auth/realms/devapp
-          jwk-set-uri: http://keycloak:8080/realms/devapp/protocol/openid-connect/certs
+          issuer-uri: ${JWT_ISSUER_URI:http://keycloak:8080/realms/devapp}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://keycloak:8080/realms/devapp/protocol/openid-connect/certs}
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,env,configprops
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: always
@@ -83,6 +83,46 @@ spring:
       mode: always
       schema-locations: classpath:db/schema.sql
       data-locations: classpath:db/data.sql
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,configprops
+
+---
+# UAT Profile
+spring:
+  config:
+    activate:
+      on-profile: uat
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres.infrastructure.svc.cluster.local}:${DB_PORT:5432}/${DB_NAME:devdb}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:devuser}
+    password: ${DB_PASSWORD:devpass}
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  sql:
+    init:
+      mode: never
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka.infrastructure.svc.cluster.local:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:order-service-group-uat}
+  data:
+    redis:
+      host: ${REDIS_HOST:redis.infrastructure.svc.cluster.local}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:https://keycloak.uat.simpleit.io/realms/devapp-uat}
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://keycloak.uat.simpleit.io/realms/devapp-uat/protocol/openid-connect/certs}
 
 ---
 # Production Profile

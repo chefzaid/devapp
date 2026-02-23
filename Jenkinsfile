@@ -153,8 +153,7 @@ pipeline {
                     steps {
                         container('maven') {
                             sh '''
-                                mvn clean test -B \
-                                    -Dmaven.test.failure.ignore=true \
+                                mvn clean verify -B \
                                     -Dhttp.proxyHost= -Dhttps.proxyHost=
                             '''
                         }
@@ -171,9 +170,9 @@ pipeline {
                         container('node') {
                             dir('devapp-web') {
                                 sh '''
-                                    npm ci --cache /root/.npm
-                                    npm run lint || true
-                                    npm run test:ci || true
+                                    CYPRESS_INSTALL_BINARY=0 npm ci --cache /root/.npm
+                                    npm run lint
+                                    npm run test:ci
                                 '''
                             }
                         }

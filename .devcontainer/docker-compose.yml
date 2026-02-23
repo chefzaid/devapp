@@ -9,27 +9,27 @@ services:
       - devapp-maven-cache:/home/vscode/.m2
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: devdb
-      DB_USERNAME: devuser
-      DB_PASSWORD: devpass
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-devdb}
+      DB_USERNAME: ${DB_USERNAME:-devuser}
+      DB_PASSWORD: ${DB_PASSWORD:-devpass}
       NODE_ENV: development
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI:-http://keycloak:8080/realms/devapp}
+      JWT_JWK_SET_URI: ${JWT_JWK_SET_URI:-http://keycloak:8080/realms/devapp/protocol/openid-connect/certs}
     ports:
       - "4200:4200"
       - "8080:8080"
       - "8081:8081"
       - "8082:8082"
-    depends_on:
-      - postgres
-      - kafka
-      - redis
-      - keycloak
     command: sleep infinity
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
+    profiles: ["local-infra"]
     restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -40,6 +40,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
+    profiles: ["local-infra"]
     restart: unless-stopped
     depends_on:
       - zookeeper
@@ -60,6 +61,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    profiles: ["local-infra"]
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -68,11 +70,12 @@ services:
 
   postgres:
     image: postgres:16
+    profiles: ["local-infra"]
     restart: unless-stopped
     environment:
-      POSTGRES_DB: devdb
-      POSTGRES_USER: devuser
-      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: ${DB_NAME:-devdb}
+      POSTGRES_USER: ${DB_USERNAME:-devuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpass}
     ports:
       - "5432:5432"
     volumes:
@@ -80,6 +83,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
+    profiles: ["local-infra"]
     restart: unless-stopped
     command: start-dev
     environment:

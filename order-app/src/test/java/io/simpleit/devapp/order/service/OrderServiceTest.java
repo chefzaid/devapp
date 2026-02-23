@@ -9,6 +9,7 @@ import java.util.Optional;
 import io.simpleit.devapp.common.domain.Order;
 import io.simpleit.devapp.common.util.Constants;
 import io.simpleit.devapp.order.repository.OrderRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,5 +63,12 @@ class OrderServiceTest {
 
         assertEquals(order, result);
         verify(kafkaTemplate).send(Constants.ORDER_TOPIC, order);
+    }
+
+    @Test
+    void getOrderById_whenNotFound_throwsEntityNotFoundException() {
+        when(orderRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class, () -> orderService.getOrderById(99L));
     }
 }

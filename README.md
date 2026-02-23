@@ -386,9 +386,9 @@ The fastest way to get a complete development environment with all dependencies 
 **Starting Services**:
 ```bash
 # Simplified commands
-mask run-front
-mask run-user
-mask run-order
+mask run front
+mask run user
+mask run order
 ```
 
 **Optional local infrastructure**:
@@ -444,9 +444,12 @@ npm run build:uat  # UAT build (environment.uat.ts)
 npm run build-prod # Production build
 
 # Simplified top-level commands
-mask test
-mask coverage
-mask build
+mask test back
+mask test front
+mask coverage back
+mask coverage front
+mask build back
+mask build front
 ```
 
 ### Spring Profiles

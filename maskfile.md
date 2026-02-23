@@ -4,99 +4,75 @@
 
 ```bash
 echo "Common commands:"
-echo "  mask install         - install backend and frontend dependencies"
-echo "  mask test            - run backend and frontend tests"
-echo "  mask coverage        - run backend and frontend coverage commands"
-echo "  mask build           - build backend and frontend apps"
-echo "  mask run-user        - run user-app locally"
-echo "  mask run-order       - run order-app locally"
-echo "  mask run-front       - run frontend locally"
+echo "  mask install [back|front|all]  - install dependencies"
+echo "  mask test [back|front|all]     - run tests"
+echo "  mask coverage [back|front|all] - run coverage commands"
+echo "  mask build [back|front|all]    - build apps"
+echo "  mask run [user|order|front]    - run one app"
 ```
 
 ## install
 
 ```bash
-mask install-web
-mvn -q -DskipTests install
-```
-
-## install-web
-
-```bash
-cd devapp-web && CYPRESS_INSTALL_BINARY=0 npm install
+target="${1:-all}"
+if [ "$target" = "back" ]; then
+  mvn -q -DskipTests install
+elif [ "$target" = "front" ]; then
+  cd devapp-web && CYPRESS_INSTALL_BINARY=0 npm install
+else
+  cd devapp-web && CYPRESS_INSTALL_BINARY=0 npm install && cd ..
+  mvn -q -DskipTests install
+fi
 ```
 
 ## test
 
 ```bash
-mask test-back
-mask test-front
-```
-
-## test-back
-
-```bash
-mvn test
-```
-
-## test-front
-
-```bash
-cd devapp-web && npm test
+target="${1:-all}"
+if [ "$target" = "back" ]; then
+  mvn test
+elif [ "$target" = "front" ]; then
+  cd devapp-web && npm test
+else
+  mvn test && cd devapp-web && npm test
+fi
 ```
 
 ## coverage
 
 ```bash
-mask coverage-back
-mask coverage-front
-```
-
-## coverage-back
-
-```bash
-mvn clean verify
-```
-
-## coverage-front
-
-```bash
-cd devapp-web && npm run test:coverage
+target="${1:-all}"
+if [ "$target" = "back" ]; then
+  mvn clean verify
+elif [ "$target" = "front" ]; then
+  cd devapp-web && npm run test:coverage
+else
+  mvn clean verify && cd devapp-web && npm run test:coverage
+fi
 ```
 
 ## build
 
 ```bash
-mask build-back
-mask build-front
+target="${1:-all}"
+if [ "$target" = "back" ]; then
+  mvn clean package -DskipTests
+elif [ "$target" = "front" ]; then
+  cd devapp-web && npm run build-prod
+else
+  mvn clean package -DskipTests && cd devapp-web && npm run build-prod
+fi
 ```
 
-## build-back
+## run
 
 ```bash
-mvn clean package -DskipTests
-```
-
-## build-front
-
-```bash
-cd devapp-web && npm run build-prod
-```
-
-## run-user
-
-```bash
-mvn spring-boot:run -pl user-app
-```
-
-## run-order
-
-```bash
-mvn spring-boot:run -pl order-app
-```
-
-## run-front
-
-```bash
-cd devapp-web && npm start
+target="${1:-front}"
+if [ "$target" = "user" ]; then
+  mvn spring-boot:run -pl user-app
+elif [ "$target" = "order" ]; then
+  mvn spring-boot:run -pl order-app
+else
+  cd devapp-web && npm start
+fi
 ```

@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import io.simpleit.devapp.common.domain.User;
 import io.simpleit.devapp.user.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,5 +59,12 @@ class UserServiceTest {
         User result = userService.createUser(user);
 
         assertEquals(user, result);
+    }
+
+    @Test
+    void getUser_whenNotFound_throwsEntityNotFoundException() {
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class, () -> userService.getUser(99L));
     }
 }

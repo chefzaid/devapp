@@ -26,9 +26,8 @@ The event payload is the full `Order` object serialized as JSON (JsonSerializer/
 ### Authentication & Security
 
 - **Keycloak** provides OAuth2/OIDC. Realm: `devapp`.
-- **Frontend** uses `angular-oauth2-oidc` with Authorization Code Flow + PKCE. Token issuer URL is `/auth/realms/devapp` (proxied through Nginx/Istio).
+- **Frontend** uses `angular-oauth2-oidc` with Authorization Code Flow + PKCE. Token issuer URL is `/auth/realms/devapp` (proxied through Nginx).
 - **Backend services** are OAuth2 Resource Servers (`spring-boot-starter-oauth2-resource-server`). JWT issuer: `http://keycloak:8080/realms/devapp` (K8s DNS).
-- **Istio** enforces JWT validation at the gateway level via `RequestAuthentication` + `AuthorizationPolicy`.
 - **AuthInterceptor** (Angular) attaches Bearer token to all API requests.
 - **AuthGuard** (Angular) protects `/users` and `/orders` routes; redirects to `/login`.
 - `JwtAuthenticationFilter` in user-app exists but is currently disabled (commented-out `@Component`). Security relies on OAuth2 Resource Server config instead.
@@ -40,13 +39,13 @@ Nginx in devapp-web proxies API calls to backend K8s services:
 - `/api/users` → `http://user-app:8080/api/users`
 - `/api/orders` → `http://order-app:8081/api/orders`
 
-Istio Gateway routes:
+Nginx Ingress routes:
 - `/` → devapp-web:80
 - `/api/users` → user-app:8080
 - `/api/orders` → order-app:8081
 - `/auth` → keycloak:8080
 
-Frontend environment files use relative paths (`/api`, `/auth`) so routing works through both Nginx and Istio.
+Frontend environment files use relative paths (`/api`, `/auth`) so routing works through Nginx.
 
 ## Build & Test Commands
 
@@ -175,7 +174,6 @@ The `Jenkinsfile` defines a multi-stage pipeline running in Kubernetes (Jenkins 
 - **K8s manifests** in `deployment/k8s/`: infrastructure (postgres, kafka, redis, keycloak, monitoring) + app (01-user-app, 02-order-app, 03-devapp-web).
 - **Namespaces**: `devapp` (default), `devapp-staging`, `devapp-prod`.
 - **ArgoCD** monitors `deployment/k8s/` for GitOps reconciliation.
-- **Istio** provides service mesh (mTLS, traffic routing, JWT enforcement).
 
 ## Dev Container
 

@@ -15,7 +15,6 @@ DevApp is a modern microservice architecture demonstration/template project feat
 ### Infrastructure & DevOps
 *   **Orchestration**: K3s (Lightweight Kubernetes)
 *   **Storage**: Longhorn (distributed block storage)
-*   **Service Mesh**: Istio (mTLS, traffic routing)
 *   **Ingress**: Nginx Ingress Controller
 *   **Containerization**: Docker
 *   **CI/CD**: Jenkins (K8s-native build agents)
@@ -36,7 +35,7 @@ DevApp is a modern microservice architecture demonstration/template project feat
 
 ## 🏗 Architecture & Service Interaction
 
-The application adopts a cloud-native architecture on a K3s Kubernetes cluster with Nginx Ingress for traffic management and Istio service mesh for inter-service communication.
+The application adopts a cloud-native architecture on a K3s Kubernetes cluster with Nginx Ingress for traffic management.
 
 ### Traffic Flow
 1.  **Client/Browser** connects to the **Nginx Ingress Controller** (port 30090, or port 80 via iptables).
@@ -49,7 +48,6 @@ The application adopts a cloud-native architecture on a K3s Kubernetes cluster w
     *   The frontend authenticates with **Keycloak** using OIDC (Authorization Code Flow + PKCE).
     *   API requests include the JWT in the `Authorization` header.
     *   Backend services validate the JWT as OAuth2 Resource Servers.
-4.  **Service Mesh**: Istio provides mTLS between application pods in the `devapp` namespace.
 
 ### Inter-Service Communication (Saga Pattern)
 *   **Order Service** creates an order with status `PENDING` and publishes to Kafka topic `order_topic`.
@@ -147,8 +145,7 @@ Instead of pushing to a Docker registry, the pipeline:
 | Namespace | Contents |
 |-----------|----------|
 | `infrastructure` | PostgreSQL, Kafka, Zookeeper, Redis, Keycloak, Prometheus, Grafana, Jenkins, SonarQube, Nexus, ArgoCD, Nginx Ingress, ELK (Elasticsearch, Logstash, Kibana) |
-| `devapp` | Application services (user-app, order-app, devapp-web) with Istio sidecars |
-| `istio-system` | Istio control plane (istiod) |
+| `devapp` | Application services (user-app, order-app, devapp-web) |
 | `longhorn-system` | Longhorn storage manager |
 
 ## 🚀 Quick Start (Fresh Server)
@@ -211,20 +208,7 @@ helm install ingress-nginx ingress-nginx/ingress-nginx --namespace infrastructur
     --set controller.service.nodePorts.https=30443
 ```
 
-### 5. Install Istio
-```bash
-# Download and install istioctl
-curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.24.3 sh -
-sudo cp istio-1.24.3/bin/istioctl /usr/local/bin/
-
-# Install minimal profile (just istiod, no Istio ingress — using nginx)
-istioctl install --set profile=minimal -y
-
-# Enable sidecar injection for the devapp namespace
-kubectl label namespace devapp istio-injection=enabled
-```
-
-### 6. Build the Application
+### 5. Build the Application
 ```bash
 cd /path/to/devapp
 
@@ -248,7 +232,7 @@ docker save devapp/order-app:latest | sudo k3s ctr images import -
 docker save devapp/devapp-web:latest | sudo k3s ctr images import -
 ```
 
-### 7. Deploy Everything
+### 6. Deploy Everything
 ```bash
 # Create namespaces
 kubectl create namespace infrastructure
@@ -263,9 +247,6 @@ kubectl apply -f deployment/k8s/monitoring.yaml
 
 # ELK Stack
 kubectl apply -f deployment/k8s/elk.yaml
-
-# Istio resources (Gateway, VirtualService, mTLS)
-kubectl apply -f deployment/k8s/istio.yaml
 
 # Wait for infra
 kubectl wait --for=condition=ready pod -l app=postgres -n infrastructure --timeout=120s
@@ -472,7 +453,7 @@ These changes were made to adapt the application for K3s + Longhorn:
 9. **ArgoCD**: Installed via Helm, configured with two Application resources for GitOps sync of infrastructure and application manifests.
 10. **Ansible playbooks**: Updated for new namespace structure (`infrastructure` + `devapp`).
 11. **ELK Stack**: Elasticsearch with Longhorn PVC, Logstash with Kafka + TCP inputs, Kibana on NodePort 30009. All in `infrastructure` namespace.
-12. **Istio**: Minimal profile (just istiod). PERMISSIVE mTLS for devapp namespace. DestinationRule disables mTLS to infrastructure services (no sidecars).
+12. **Istio removed**: Removed as overkill for single-node deployment; Nginx Ingress handles all routing.
 13. **Kafka FQDN**: `KAFKA_ADVERTISED_LISTENERS` uses FQDN (`kafka.infrastructure.svc.cluster.local:9092`) for cross-namespace consumer compatibility.
 14. **Logback TCP appender**: Both services ship logs to Logstash via `LogstashTcpSocketAppender` (JSON format) in prod profile.
 15. **Grafana datasources**: Auto-provisioned with Prometheus and Elasticsearch datasources via ConfigMap.

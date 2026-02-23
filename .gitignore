@@ -59,4 +59,4 @@ k8s/tmp/
 # OS specific
 .DS_Store
 Thumbs.db
-istio-1.24.3/
+

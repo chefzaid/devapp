@@ -154,133 +154,103 @@ Instead of pushing to a Docker registry, the pipeline:
 - Ubuntu 22.04+ server with 8+ CPUs, 16+ GB RAM, 100+ GB disk
 - Sudo access
 
-### 1. Install System Dependencies
+### Automated Installation (Recommended)
+
+Three numbered scripts in `deployment/scripts/` handle the full bare-metal installation:
+
 ```bash
-# Java 21
-sudo apt install -y openjdk-21-jdk
+cd deployment/scripts
 
-# Maven
-sudo apt install -y maven
+# Step 1: System deps, K3s, Helm, Longhorn
+./01-install-prerequisites.sh
 
-# Node.js 24
+# Step 2: All infrastructure (Nginx Ingress, PostgreSQL, Kafka, Redis,
+#          Keycloak, Prometheus, Grafana, ELK, Jenkins, SonarQube, Nexus, ArgoCD)
+./02-install-infrastructure.sh
+
+# Step 3: Build and deploy the application
+./03-install-devapp.sh
+```
+
+Each script is interactive and asks for confirmation before proceeding. They are idempotent and can be re-run safely.
+
+### Manual Installation
+
+<details>
+<summary>Click to expand step-by-step manual instructions</summary>
+
+#### 1. Install System Dependencies
+```bash
+sudo apt install -y openjdk-21-jdk maven docker.io ansible open-iscsi nfs-common curl jq
 curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt install -y nodejs
-
-# Docker
-curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
-
-# Longhorn prerequisites
-sudo apt install -y open-iscsi nfs-common
 sudo systemctl enable --now iscsid
 ```
 
-### 2. Install K3s
+#### 2. Install K3s
 ```bash
 curl -sfL https://get.k3s.io | sh -s - --disable traefik --write-kubeconfig-mode 644
-
-# Configure kubectl for your user
 mkdir -p ~/.kube
 sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
 sudo chown $USER:$USER ~/.kube/config
 ```
 
-### 3. Install Helm & Longhorn
+#### 3. Install Helm & Longhorn
 ```bash
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-helm repo add longhorn https://charts.longhorn.io
-helm repo update
+helm repo add longhorn https://charts.longhorn.io && helm repo update
 helm install longhorn longhorn/longhorn --namespace longhorn-system --create-namespace \
     --set defaultSettings.defaultReplicaCount=1
-
-# Set Longhorn as default StorageClass
 kubectl patch storageclass longhorn -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
 ```
 
-### 4. Install Nginx Ingress
+#### 4. Install Nginx Ingress (Helm)
 ```bash
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm install ingress-nginx ingress-nginx/ingress-nginx --namespace infrastructure \
+helm install ingress-nginx ingress-nginx/ingress-nginx --namespace infrastructure --create-namespace \
     --set controller.service.type=NodePort \
     --set controller.service.nodePorts.http=30090 \
     --set controller.service.nodePorts.https=30443
 ```
 
-### 5. Build the Application
+#### 5. Deploy Infrastructure
 ```bash
-cd /path/to/devapp
-
-# Fix Maven proxy issue (Ubuntu 24.04)
-export MAVEN_OPTS="-Dhttp.proxyHost= -Dhttps.proxyHost="
-
-# Build backend
-mvn clean package -DskipTests
-
-# Build frontend
-cd devapp-web && npm install && npm run build-prod && cd ..
-
-# Build Docker images
-docker build -t devapp/user-app:latest user-app/
-docker build -t devapp/order-app:latest order-app/
-docker build -t devapp/devapp-web:latest devapp-web/
-
-# Import into K3s
-docker save devapp/user-app:latest | sudo k3s ctr images import -
-docker save devapp/order-app:latest | sudo k3s ctr images import -
-docker save devapp/devapp-web:latest | sudo k3s ctr images import -
+kubectl create namespace infrastructure
+for f in postgres kafka redis keycloak monitoring elk jenkins jenkins-config sonarqube nexus; do
+    kubectl apply -f deployment/k8s/${f}.yaml
+done
 ```
 
-### 6. Deploy Everything
+#### 6. Install ArgoCD (Helm)
 ```bash
-# Create namespaces
-kubectl create namespace infrastructure
-kubectl create namespace devapp
-
-# Infrastructure (manifests include namespace: infrastructure)
-kubectl apply -f deployment/k8s/postgres.yaml
-kubectl apply -f deployment/k8s/kafka.yaml
-kubectl apply -f deployment/k8s/redis.yaml
-kubectl apply -f deployment/k8s/keycloak.yaml
-kubectl apply -f deployment/k8s/monitoring.yaml
-
-# ELK Stack
-kubectl apply -f deployment/k8s/elk.yaml
-
-# Wait for infra
-kubectl wait --for=condition=ready pod -l app=postgres -n infrastructure --timeout=120s
-kubectl wait --for=condition=ready pod -l app=kafka -n infrastructure --timeout=180s
-
-# Application
-kubectl apply -f deployment/k8s/app/ -n devapp
-
-# CI/CD
-kubectl apply -f deployment/k8s/jenkins.yaml
-kubectl apply -f deployment/k8s/jenkins-config.yaml
-kubectl apply -f deployment/k8s/sonarqube.yaml
-kubectl apply -f deployment/k8s/nexus.yaml
-
-# ArgoCD (installed via Helm)
 helm repo add argo https://argoproj.github.io/argo-helm
 helm install argocd argo/argo-cd -n infrastructure \
     --set server.service.type=NodePort \
     --set server.service.nodePortHttp=30007 \
     --set server.service.nodePortHttps=30008 \
-    --set configs.params."server\.insecure"=true
-
-# ArgoCD applications (GitOps sync)
+    --set configs.params."server\.insecure"=true \
+    --set redis.enabled=true
 kubectl apply -f deployment/k8s/argocd-apps.yaml
-
-# Or use Ansible:
-cd deployment/ansible
-ansible-playbook deploy.yml
-ansible-playbook deploy-cicd.yml
-
-# Verify all pods
-kubectl get pods -n infrastructure
-kubectl get pods -n devapp
 ```
+
+#### 7. Build & Deploy Application
+```bash
+export MAVEN_OPTS="-Dhttp.proxyHost= -Dhttps.proxyHost="
+mvn clean package -DskipTests
+cd devapp-web && npm install && npm run build-prod && cd ..
+sudo docker build -t devapp/user-app:latest user-app/
+sudo docker build -t devapp/order-app:latest order-app/
+sudo docker build -t devapp/devapp-web:latest devapp-web/
+sudo docker save devapp/user-app:latest | sudo k3s ctr images import -
+sudo docker save devapp/order-app:latest | sudo k3s ctr images import -
+sudo docker save devapp/devapp-web:latest | sudo k3s ctr images import -
+kubectl create namespace devapp
+kubectl apply -f deployment/k8s/app/
+```
+
+</details>
 
 ## 🔧 Manual Setup Required After Deployment
 
@@ -389,6 +359,7 @@ kubectl edit settings -n longhorn-system default-replica-count
 -   `order-app/`: Order microservice (Spring Boot, port 8081)
 -   `devapp-web/`: Frontend (Angular 21, Nginx)
 -   `devapp-common/`: Shared library (domain models, JWT, base entities)
+-   `deployment/scripts/`: Bare-metal install scripts (01-prerequisites, 02-infrastructure, 03-devapp)
 -   `deployment/k8s/`: Kubernetes manifests (infrastructure in `infrastructure` ns, apps in `devapp` ns)
 -   `deployment/k8s/app/`: Application deployment manifests
 -   `deployment/k8s/argocd-apps.yaml`: ArgoCD Application definitions for GitOps

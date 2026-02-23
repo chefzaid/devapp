@@ -11,7 +11,7 @@ spec:
   rules:
   - http:
       paths:
-      # Keycloak auth
+      # Keycloak auth (via ExternalName service)
       - path: /auth
         pathType: Prefix
         backend:
@@ -51,3 +51,16 @@ spec:
             name: devapp-web
             port:
               number: 80
+
+---
+# ExternalName service to access Keycloak from devapp namespace
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: devapp
+spec:
+  type: ExternalName
+  externalName: keycloak.infrastructure.svc.cluster.local
+  ports:
+  - port: 8080

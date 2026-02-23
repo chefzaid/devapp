@@ -3,6 +3,8 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  vars:
+    infra_namespace: infrastructure
 
   tasks:
     - name: Deploy Jenkins
@@ -20,54 +22,31 @@
       register: sonarqube_deploy
       changed_when: "'created' in sonarqube_deploy.stdout or 'configured' in sonarqube_deploy.stdout"
 
-    - name: Deploy GitLab
-      command: kubectl apply -f ../k8s/gitlab.yaml
-      register: gitlab_deploy
-      changed_when: "'created' in gitlab_deploy.stdout or 'configured' in gitlab_deploy.stdout"
-
     - name: Deploy Nexus
       command: kubectl apply -f ../k8s/nexus.yaml
       register: nexus_deploy
       changed_when: "'created' in nexus_deploy.stdout or 'configured' in nexus_deploy.stdout"
 
-    - name: Ensure ArgoCD Namespace Exists
-      shell: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-      register: argocd_ns_create
-      changed_when: "'created' in argocd_ns_create.stdout"
-
-    - name: Deploy ArgoCD
-      command: kubectl apply -f ../k8s/argocd.yaml -n argocd
+    - name: Deploy ArgoCD Applications
+      command: kubectl apply -f ../k8s/argocd-apps.yaml
       register: argocd_deploy
       changed_when: "'created' in argocd_deploy.stdout or 'configured' in argocd_deploy.stdout"
 
     - name: Wait for Jenkins to be ready
-      command: kubectl wait --for=condition=ready pod -l app=jenkins -n jenkins --timeout=300s
+      command: kubectl wait --for=condition=ready pod -l app=jenkins -n {{ infra_namespace }} --timeout=300s
       ignore_errors: yes
 
     - name: Display Deployment Info
       debug:
         msg: |
-          CI/CD Tools Deployed Successfully!
+          CI/CD Tools Deployed in '{{ infra_namespace }}' namespace!
 
-          jenkins:
-            url: http://<node-ip>:30000
-            agent-port: 30001
-            initial-admin-password: kubectl exec -n jenkins -it deployment/jenkins -- cat /var/jenkins_home/secrets/initialAdminPassword
+          jenkins:       http://<node-ip>:30000 (agent: 30001)
+          sonarqube:     http://<node-ip>:30002 (admin/admin)
+          nexus:         http://<node-ip>:30005 (docker: 30006)
+          argocd:        http://<node-ip>:30007
+          grafana:       http://<node-ip>:30004 (admin/admin)
+          prometheus:    http://<node-ip>:30003
 
-          sonarqube:
-            url: http://<node-ip>:30002
-            default-creds: admin/admin
-
-          gitlab:
-            url: http://<node-ip>:30080
-            ssh-port: 30022
-            root-password: kubectl get secret -n gitlab gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode
-
-          nexus:
-            url: http://<node-ip>:30005
-            docker-registry: http://<node-ip>:30006
-            initial-creds: admin / (cat /nexus-data/admin.password in pod)
-
-          argocd:
-            instructions: Port-forward the service (kubectl port-forward svc/argocd-server -n argocd 8080:443) or patch to NodePort.
-            initial-admin-password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+          ArgoCD password: kubectl -n infrastructure get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+          Nexus password:  kubectl exec -n infrastructure deploy/nexus -- cat /nexus-data/admin.password

@@ -120,6 +120,7 @@ pipeline {
 
     environment {
         K8S_NAMESPACE = 'devapp'
+        INFRA_NAMESPACE = 'infrastructure'
         SONAR_PROJECT_KEY = 'devapp'
         APP_VERSION = "${env.BUILD_NUMBER}"
         GIT_COMMIT_SHORT = "${env.GIT_COMMIT?.take(7) ?: 'unknown'}"

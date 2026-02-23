@@ -3,6 +3,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: zookeeper
+  namespace: infrastructure
 spec:
   ports:
   - port: 2181
@@ -16,6 +17,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: zookeeper
+  namespace: infrastructure
   labels:
     app: zookeeper
 spec:
@@ -81,6 +83,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kafka
+  namespace: infrastructure
 spec:
   ports:
   - port: 9092
@@ -94,6 +97,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: kafka
+  namespace: infrastructure
   labels:
     app: kafka
 spec:

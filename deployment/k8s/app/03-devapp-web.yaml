@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: devapp-web
-        image: devapp/devapp-web:latest
+        image: devapp/devapp-web:v3
         imagePullPolicy: Never
         ports:
         - containerPort: 80

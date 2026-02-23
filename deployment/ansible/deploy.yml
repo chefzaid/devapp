@@ -4,103 +4,69 @@
   connection: local
   gather_facts: false
   vars:
-    k8s_namespace: "{{ namespace | default('devapp') }}"
+    infra_namespace: "{{ infra_ns | default('infrastructure') }}"
+    app_namespace: "{{ app_ns | default('devapp') }}"
     app_version: "{{ version | default('latest') }}"
-    registry: "{{ registry | default('local') }}"
-    deploy_monitoring: "{{ monitoring | default(false) }}"
+    registry: "{{ registry | default('devapp') }}"
+    deploy_monitoring: "{{ monitoring | default(true) }}"
 
   tasks:
-    - name: Ensure Kubernetes Namespace Exists
-      kubernetes.core.k8s:
-        name: "{{ k8s_namespace }}"
-        api_version: v1
-        kind: Namespace
-        state: present
+    - name: Ensure Infrastructure Namespace Exists
+      command: kubectl create namespace {{ infra_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Ensure App Namespace Exists
+      command: kubectl create namespace {{ app_namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Deploy Infrastructure (Postgres)
-      command: kubectl apply -f ../k8s/postgres.yaml -n {{ k8s_namespace }}
+      command: kubectl apply -f ../k8s/postgres.yaml
       register: deploy_postgres
       changed_when: "'created' in deploy_postgres.stdout or 'configured' in deploy_postgres.stdout"
 
-    - name: Deploy Infrastructure (Kafka)
-      command: kubectl apply -f ../k8s/kafka.yaml -n {{ k8s_namespace }}
+    - name: Deploy Infrastructure (Kafka + Zookeeper)
+      command: kubectl apply -f ../k8s/kafka.yaml
       register: deploy_kafka
       changed_when: "'created' in deploy_kafka.stdout or 'configured' in deploy_kafka.stdout"
 
     - name: Deploy Infrastructure (Redis)
-      command: kubectl apply -f ../k8s/redis.yaml -n {{ k8s_namespace }}
+      command: kubectl apply -f ../k8s/redis.yaml
       ignore_errors: yes
       register: deploy_redis
       changed_when: "'created' in deploy_redis.stdout or 'configured' in deploy_redis.stdout"
 
     - name: Deploy IAM (Keycloak)
-      command: kubectl apply -f ../k8s/keycloak.yaml -n {{ k8s_namespace }}
+      command: kubectl apply -f ../k8s/keycloak.yaml
       register: deploy_keycloak
       changed_when: "'created' in deploy_keycloak.stdout or 'configured' in deploy_keycloak.stdout"
 
-    - name: Deploy Monitoring (Optional)
-      block:
-        - name: Deploy ELK Stack
-          command: kubectl apply -f ../k8s/elk.yaml -n {{ k8s_namespace }}
-          ignore_errors: yes
-
-        - name: Deploy Grafana/Prometheus
-          command: kubectl apply -f ../k8s/monitoring.yaml -n {{ k8s_namespace }}
-          ignore_errors: yes
+    - name: Deploy Monitoring
+      command: kubectl apply -f ../k8s/monitoring.yaml
+      ignore_errors: yes
       when: deploy_monitoring | bool
 
     - name: Wait for Infrastructure Ready (Postgres)
-      command: kubectl wait --for=condition=ready pod -l app=postgres -n {{ k8s_namespace }} --timeout=120s
+      command: kubectl wait --for=condition=ready pod -l app=postgres -n {{ infra_namespace }} --timeout=120s
       ignore_errors: yes
 
     - name: Wait for Infrastructure Ready (Kafka)
-      command: kubectl wait --for=condition=ready pod -l app=kafka -n {{ k8s_namespace }} --timeout=120s
+      command: kubectl wait --for=condition=ready pod -l app=kafka -n {{ infra_namespace }} --timeout=120s
       ignore_errors: yes
 
-    - name: Deploy Istio Configuration
-      command: kubectl apply -f ../k8s/istio.yaml -n {{ k8s_namespace }}
-      register: deploy_istio
-      changed_when: "'created' in deploy_istio.stdout or 'configured' in deploy_istio.stdout"
-
-    - name: Create Temporary Deployment Manifests
-      file:
-        path: ../k8s/tmp
-        state: directory
-        mode: '0755'
-
-    - name: Copy Deployment Templates
-      shell: cp ../k8s/app/*.yaml ../k8s/tmp/
-      args:
-        warn: false
-
-    - name: Update Image Versions (User App)
-      replace:
-        path: ../k8s/tmp/01-user-app.yaml
-        regexp: 'image: (your-registry|local)/user-app:latest'
-        replace: 'image: {{ registry }}/user-app:{{ app_version }}'
-
-    - name: Update Image Versions (Order App)
-      replace:
-        path: ../k8s/tmp/02-order-app.yaml
-        regexp: 'image: (your-registry|local)/order-app:latest'
-        replace: 'image: {{ registry }}/order-app:{{ app_version }}'
-
-    - name: Update Image Versions (DevApp Web)
-      replace:
-        path: ../k8s/tmp/03-devapp-web.yaml
-        regexp: 'image: (your-registry|local)/devapp-web:latest'
-        replace: 'image: {{ registry }}/devapp-web:{{ app_version }}'
-
     - name: Deploy Applications
-      command: kubectl apply -f ../k8s/tmp/ -n {{ k8s_namespace }}
+      command: kubectl apply -f ../k8s/app/ -n {{ app_namespace }}
       register: deploy_apps
       changed_when: "'created' in deploy_apps.stdout or 'configured' in deploy_apps.stdout"
 
-    - name: Clean up Temporary Files
-      file:
-        path: ../k8s/tmp
-        state: absent
+    - name: Wait for Apps Ready
+      command: kubectl wait --for=condition=ready pod -l app={{ item }} -n {{ app_namespace }} --timeout=180s
+      loop:
+        - user-app
+        - order-app
+        - devapp-web
+      ignore_errors: yes
 
     - name: Display Deployment Status
       debug:
-        msg: "Deployment complete! Check status with: kubectl get pods -n {{ k8s_namespace }}"
+        msg: |
+          Deployment complete!
+          Infrastructure: kubectl get pods -n {{ infra_namespace }}
+          Applications:   kubectl get pods -n {{ app_namespace }}

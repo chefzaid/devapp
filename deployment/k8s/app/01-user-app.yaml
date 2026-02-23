@@ -24,36 +24,27 @@ spec:
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
         - name: DB_HOST
-          value: "postgres"
+          value: "postgres.infrastructure.svc.cluster.local"
         - name: DB_PORT
           value: "5432"
         - name: DB_NAME
-          valueFrom:
-            configMapKeyRef:
-              name: postgres-config
-              key: POSTGRES_DB
+          value: "devappdb"
         - name: DB_USERNAME
-          valueFrom:
-            configMapKeyRef:
-              name: postgres-config
-              key: POSTGRES_USER
+          value: "devappuser"
         - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: POSTGRES_PASSWORD
+          value: "mypassword"
         - name: KAFKA_BOOTSTRAP_SERVERS
-          value: "kafka:9092"
+          value: "kafka.infrastructure.svc.cluster.local:9092"
         - name: KAFKA_CONSUMER_GROUP
           value: "user-service-group"
         - name: REDIS_HOST
-          value: "redis"
+          value: "redis.infrastructure.svc.cluster.local"
         - name: REDIS_PORT
           value: "6379"
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
-          value: "http://keycloak:8080/realms/devapp"
+          value: "http://keycloak.infrastructure.svc.cluster.local:8080/realms/devapp"
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
-          value: "http://keycloak:8080/realms/devapp/protocol/openid-connect/certs"
+          value: "http://keycloak.infrastructure.svc.cluster.local:8080/realms/devapp/protocol/openid-connect/certs"
         livenessProbe:
           httpGet:
             path: /actuator/health

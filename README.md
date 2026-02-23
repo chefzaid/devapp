@@ -18,15 +18,17 @@ DevApp is a modern microservice architecture demonstration/template project feat
 *   **Ingress**: Nginx Ingress Controller
 *   **Containerization**: Docker
 *   **CI/CD**: Jenkins (K8s-native build agents)
+*   **GitOps**: ArgoCD
 *   **Code Quality**: SonarQube
 *   **Artifacts**: Nexus Repository Manager OSS
 *   **Monitoring**: Prometheus, Grafana
+*   **Automation**: Ansible
 
 > **Note on Nexus**: Nexus OSS supports Maven (JARs), NPM, and Docker repositories.
 >
 > *   ConfigMaps for `settings.xml` and `.npmrc` are deployed for Jenkins agents, but mirroring is disabled by default.
 > *   **Setup Required**:
->     1.  Login to Nexus (`http://<SERVER_IP>:30005`), retrieve admin password: `kubectl exec -n nexus deployment/nexus -- cat /nexus-data/admin.password`
+>     1.  Login to Nexus (`http://<SERVER_IP>:30005`), retrieve admin password: `kubectl exec -n infrastructure deployment/nexus -- cat /nexus-data/admin.password`
 >     2.  Create repositories: Maven `maven-public` (Group proxying Central), NPM `npm-group`, Docker hosted on port 5000.
 >     3.  Update `jenkins-maven-settings` and `jenkins-npm-config` ConfigMaps with credentials and uncomment the Nexus mirror configuration.
 
@@ -124,6 +126,7 @@ Instead of pushing to a Docker registry, the pipeline:
 | **Jenkins** | `http://<SERVER_IP>:30000` | See setup below |
 | **SonarQube** | `http://<SERVER_IP>:30002` | admin / admin |
 | **Nexus** | `http://<SERVER_IP>:30005` | admin / (see pod) |
+| **ArgoCD** | `http://<SERVER_IP>:30007` | admin / (see below) |
 | **Prometheus** | `http://<SERVER_IP>:30003` | — |
 | **Grafana** | `http://<SERVER_IP>:30004` | admin / admin |
 | **Longhorn UI** | `kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80` | — |
@@ -132,10 +135,8 @@ Instead of pushing to a Docker registry, the pipeline:
 
 | Namespace | Contents |
 |-----------|----------|
-| `devapp` | All application services + infrastructure (PostgreSQL, Kafka, Redis, Keycloak, Prometheus, Grafana) |
-| `jenkins` | Jenkins controller + build agent resources |
-| `sonarqube` | SonarQube + its PostgreSQL |
-| `nexus` | Nexus Repository Manager |
+| `infrastructure` | PostgreSQL, Kafka, Zookeeper, Redis, Keycloak, Prometheus, Grafana, Jenkins, SonarQube, Nexus, ArgoCD |
+| `devapp` | Application services (user-app, order-app, devapp-web) + Ingress |
 | `longhorn-system` | Longhorn storage manager |
 | `ingress-nginx` | Nginx Ingress Controller |
 
@@ -225,34 +226,49 @@ docker save devapp/devapp-web:latest | sudo k3s ctr images import -
 
 ### 6. Deploy Everything
 ```bash
-# Create namespace
+# Create namespaces
+kubectl create namespace infrastructure
 kubectl create namespace devapp
 
-# Infrastructure
-kubectl apply -f deployment/k8s/postgres.yaml -n devapp
-kubectl apply -f deployment/k8s/kafka.yaml -n devapp
-kubectl apply -f deployment/k8s/redis.yaml -n devapp
-kubectl apply -f deployment/k8s/keycloak.yaml -n devapp
+# Infrastructure (manifests include namespace: infrastructure)
+kubectl apply -f deployment/k8s/postgres.yaml
+kubectl apply -f deployment/k8s/kafka.yaml
+kubectl apply -f deployment/k8s/redis.yaml
+kubectl apply -f deployment/k8s/keycloak.yaml
+kubectl apply -f deployment/k8s/monitoring.yaml
 
 # Wait for infra
-kubectl wait --for=condition=ready pod -l app=postgres -n devapp --timeout=120s
-kubectl wait --for=condition=ready pod -l app=kafka -n devapp --timeout=180s
+kubectl wait --for=condition=ready pod -l app=postgres -n infrastructure --timeout=120s
+kubectl wait --for=condition=ready pod -l app=kafka -n infrastructure --timeout=180s
 
 # Application
 kubectl apply -f deployment/k8s/app/ -n devapp
 
-# CI/CD & Monitoring
+# CI/CD
 kubectl apply -f deployment/k8s/jenkins.yaml
 kubectl apply -f deployment/k8s/jenkins-config.yaml
 kubectl apply -f deployment/k8s/sonarqube.yaml
 kubectl apply -f deployment/k8s/nexus.yaml
-kubectl apply -f deployment/k8s/monitoring.yaml -n devapp
+
+# ArgoCD (installed via Helm)
+helm repo add argo https://argoproj.github.io/argo-helm
+helm install argocd argo/argo-cd -n infrastructure \
+    --set server.service.type=NodePort \
+    --set server.service.nodePortHttp=30007 \
+    --set server.service.nodePortHttps=30008 \
+    --set configs.params."server\.insecure"=true
+
+# ArgoCD applications (GitOps sync)
+kubectl apply -f deployment/k8s/argocd-apps.yaml
+
+# Or use Ansible:
+cd deployment/ansible
+ansible-playbook deploy.yml
+ansible-playbook deploy-cicd.yml
 
 # Verify all pods
+kubectl get pods -n infrastructure
 kubectl get pods -n devapp
-kubectl get pods -n jenkins
-kubectl get pods -n sonarqube
-kubectl get pods -n nexus
 ```
 
 ## 🔧 Manual Setup Required After Deployment
@@ -277,22 +293,35 @@ kubectl get pods -n nexus
 ### 2. Jenkins Setup (Required for CI/CD)
 ```bash
 # Get initial admin password
-kubectl exec -n jenkins deployment/jenkins -- cat /var/jenkins_home/secrets/initialAdminPassword
+kubectl exec -n infrastructure deployment/jenkins -- cat /var/jenkins_home/secrets/initialAdminPassword
 
 # Access Jenkins at http://<SERVER_IP>:30000
 # 1. Install suggested plugins + "Kubernetes" plugin
 # 2. Configure Kubernetes cloud:
 #    - Manage Jenkins → Clouds → New Cloud → Kubernetes
 #    - Kubernetes URL: https://kubernetes.default.svc
-#    - Jenkins URL: http://jenkins.jenkins.svc.cluster.local:8080
-#    - Jenkins tunnel: jenkins.jenkins.svc.cluster.local:50000
-#    - Namespace: jenkins
+#    - Jenkins URL: http://jenkins.infrastructure.svc.cluster.local:8080
+#    - Jenkins tunnel: jenkins.infrastructure.svc.cluster.local:50000
+#    - Namespace: infrastructure
 # 3. Create a Pipeline job pointing to this Git repo
 #    - SCM: Git → https://github.com/chefzaid/devapp.git
 #    - Script Path: Jenkinsfile
 ```
 
-### 3. Change Default Passwords (Security)
+### 3. ArgoCD Setup (GitOps)
+```bash
+# Get initial admin password
+kubectl -n infrastructure get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+# Access ArgoCD at http://<SERVER_IP>:30007
+# Login with admin / <password from above>
+# Two applications are pre-configured:
+#   - devapp-infra: watches deployment/k8s/ for infrastructure manifests
+#   - devapp-apps: watches deployment/k8s/app/ for application manifests
+# ArgoCD auto-syncs on git push (self-heal enabled)
+```
+
+### 4. Change Default Passwords (Security)
 ```bash
 # PostgreSQL: Update secret in deployment/k8s/postgres.yaml (base64 encoded)
 # Currently: devapp123 — change before production use!
@@ -304,7 +333,7 @@ echo -n 'YOUR_NEW_PASSWORD' | base64
 # Nexus: Retrieve and change on first login
 ```
 
-### 4. TLS/HTTPS (Recommended for Production)
+### 5. TLS/HTTPS (Recommended for Production)
 ```bash
 # Option 1: cert-manager with Let's Encrypt
 helm repo add jetstack https://charts.jetstack.io
@@ -318,7 +347,7 @@ helm install cert-manager jetstack/cert-manager --namespace cert-manager --creat
 kubectl create secret tls devapp-tls --cert=tls.crt --key=tls.key -n devapp
 ```
 
-### 5. DNS Configuration
+### 6. DNS Configuration
 ```
 # Point your domain to the server IP:
 # devapp.yourdomain.com → <SERVER_IP>
@@ -349,7 +378,10 @@ kubectl edit settings -n longhorn-system default-replica-count
 -   `order-app/`: Order microservice (Spring Boot, port 8081)
 -   `devapp-web/`: Frontend (Angular 21, Nginx)
 -   `devapp-common/`: Shared library (domain models, JWT, base entities)
--   `deployment/k8s/`: Kubernetes manifests
+-   `deployment/k8s/`: Kubernetes manifests (infrastructure in `infrastructure` ns, apps in `devapp` ns)
+-   `deployment/k8s/app/`: Application deployment manifests
+-   `deployment/k8s/argocd-apps.yaml`: ArgoCD Application definitions for GitOps
+-   `deployment/ansible/`: Ansible playbooks for deployment automation
 -   `Jenkinsfile`: CI/CD pipeline definition
 
 ### Running Locally
@@ -403,7 +435,10 @@ These changes were made to adapt the application for K3s + Longhorn:
 4. **`application.yml`** (both services): Changed prod `ddl-auto` from `validate` to `update` (no Flyway migrations exist).
 5. **K8s manifests**: Added Longhorn `storageClassName`, `fsGroup` security contexts, `KAFKA_LOG_DIRS` subdirectory fix for Longhorn's `lost+found`.
 6. **`Jenkinsfile`**: Rewritten for K3s — local image builds, containerd import, kubectl-based deployment.
-7. **`nginx.conf`** (devapp-web): Added Keycloak reverse proxy configuration.
+7. **`nginx.conf`** (devapp-web): Added Keycloak reverse proxy configuration with FQDN for cross-namespace access.
+8. **Namespace separation**: All infrastructure in `infrastructure` namespace, apps in `devapp` namespace. App manifests use FQDNs (e.g., `postgres.infrastructure.svc.cluster.local`) for cross-namespace service discovery.
+9. **ArgoCD**: Installed via Helm, configured with two Application resources for GitOps sync of infrastructure and application manifests.
+10. **Ansible playbooks**: Updated for new namespace structure (`infrastructure` + `devapp`).
 
 ## License
 GPL 3.0

@@ -1,15 +1,9 @@
 ---
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: sonarqube
-
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: sonarqube-data
-  namespace: sonarqube
+  namespace: infrastructure
 spec:
   accessModes:
     - ReadWriteOnce
@@ -21,7 +15,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: sonarqube-extensions
-  namespace: sonarqube
+  namespace: infrastructure
 spec:
   accessModes:
     - ReadWriteOnce
@@ -33,7 +27,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: sonarqube-logs
-  namespace: sonarqube
+  namespace: infrastructure
 spec:
   accessModes:
     - ReadWriteOnce
@@ -45,7 +39,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-data
-  namespace: sonarqube
+  namespace: infrastructure
 spec:
   accessModes:
     - ReadWriteOnce
@@ -58,7 +52,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: sonarqube-db-credentials
-  namespace: sonarqube
+  namespace: infrastructure
 type: Opaque
 stringData:
   # In a production environment, use a secure secret manager or external secrets.
@@ -71,7 +65,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sonarqube
-  namespace: sonarqube
+  namespace: infrastructure
 spec:
   replicas: 1
   selector:
@@ -174,7 +168,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: sonarqube
-  namespace: sonarqube
+  namespace: infrastructure
 spec:
   type: NodePort
   ports:

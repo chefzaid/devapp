@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: jenkins-maven-settings
-  namespace: jenkins
+  namespace: infrastructure
 data:
   settings.xml: |
     <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
@@ -43,7 +43,7 @@ data:
         <mirror>
           <id>nexus-maven-central</id>
           <mirrorOf>*</mirrorOf>
-          <url>http://nexus.nexus.svc.cluster.local:8081/repository/maven-public/</url>
+          <url>http://nexus.infrastructure.svc.cluster.local:8081/repository/maven-public/</url>
         </mirror>
       </mirrors>
       -->
@@ -58,13 +58,13 @@ data:
               </snapshots>
               <id>central</id>
               <name>nexus-releases</name>
-              <url>http://nexus.nexus.svc.cluster.local:8081/repository/maven-public/</url>
+              <url>http://nexus.infrastructure.svc.cluster.local:8081/repository/maven-public/</url>
             </repository>
             <repository>
               <snapshots />
               <id>snapshots</id>
               <name>nexus-snapshots</name>
-              <url>http://nexus.nexus.svc.cluster.local:8081/repository/maven-public/</url>
+              <url>http://nexus.infrastructure.svc.cluster.local:8081/repository/maven-public/</url>
             </repository>
           </repositories>
           <pluginRepositories>
@@ -74,13 +74,13 @@ data:
               </snapshots>
               <id>central</id>
               <name>nexus-releases</name>
-              <url>http://nexus.nexus.svc.cluster.local:8081/repository/maven-public/</url>
+              <url>http://nexus.infrastructure.svc.cluster.local:8081/repository/maven-public/</url>
             </pluginRepository>
             <pluginRepository>
               <snapshots />
               <id>snapshots</id>
               <name>nexus-snapshots</name>
-              <url>http://nexus.nexus.svc.cluster.local:8081/repository/maven-public/</url>
+              <url>http://nexus.infrastructure.svc.cluster.local:8081/repository/maven-public/</url>
             </pluginRepository>
           </pluginRepositories>
         </profile>
@@ -101,10 +101,10 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: jenkins-npm-config
-  namespace: jenkins
+  namespace: infrastructure
 data:
   .npmrc: |
     # Configure this after setting up an NPM Group repository in Nexus
-    # registry=http://nexus.nexus.svc.cluster.local:8081/repository/npm-group/
+    # registry=http://nexus.infrastructure.svc.cluster.local:8081/repository/npm-group/
     # _auth=YWRtaW46YWRtaW4xMjM=
     # always-auth=true

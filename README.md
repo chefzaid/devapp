@@ -386,6 +386,7 @@ The fastest way to get a complete development environment with all dependencies 
 **Starting Services**:
 ```bash
 # Simplified commands
+mask run        # default: all (user-app + order-app + frontend)
 mask run front
 mask run user
 mask run order
@@ -435,6 +436,7 @@ cd order-app && mvn spring-boot:run  # Order service on :8081
 # Backend
 mvn clean verify                           # Build + test all
 mvn test -pl user-app -Dtest=UserServiceTest  # Single test
+# Ensure Java 21 is active (project target) when running Maven locally
 
 # Frontend
 cd devapp-web

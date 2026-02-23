@@ -25,7 +25,7 @@ DevApp is a modern microservice architecture demonstration/template project feat
 *   **Logging**: ELK Stack (Elasticsearch, Logstash, Kibana)
 *   **Automation**: Ansible
 
-> **Note on Nexus**: Nexus OSS supports Maven (JARs), NPM, and Docker repositories.
+> **Note on Nexus**:
 >
 > *   ConfigMaps for `settings.xml` and `.npmrc` are deployed for Jenkins agents, but mirroring is disabled by default.
 > *   **Setup Required**:
@@ -397,7 +397,6 @@ npm run build-prod # Production build
 
 ## 🛡 Security Notes
 
-- **No secrets are committed to git**. All sensitive values (DB passwords, Keycloak admin credentials) are in K8s Secrets/ConfigMaps that must be created during deployment.
 - The PostgreSQL password in `postgres.yaml` is base64-encoded (`devapp123`) — **change it before production use**.
 - All API endpoints under `/api/*` require a valid JWT token.
 - Public endpoints: `/actuator/health`, `/swagger-ui/**`, `/v3/api-docs/**`.
@@ -438,26 +437,5 @@ Ansible excels when managing multiple servers (inventory-based), enforcing idemp
 
 > **Recommendation**: Use scripts for initial setup on a single server. Use Ansible for ongoing management, especially when adding nodes or automating deployments from CI/CD.
 
-## 🧩 Key Configuration Changes Made During Deployment
-
-These changes were made to adapt the application for K3s + Longhorn:
-
-1. **`pom.xml`**: Added `repackage` execution goal to `spring-boot-maven-plugin` (required for fat JAR generation).
-2. **`logback-spring.xml`** (both services): Changed `TimeBasedRollingPolicy` to `SizeAndTimeBasedRollingPolicy` (fixes crash with `%i` pattern).
-3. **`RedisConfig.java`** (order-app): Removed custom `LettuceConnectionFactory` bean — was ignoring Spring properties and connecting to `localhost:6379`.
-4. **`application.yml`** (both services): Changed prod `ddl-auto` from `validate` to `update` (no Flyway migrations exist).
-5. **K8s manifests**: Added Longhorn `storageClassName`, `fsGroup` security contexts, `KAFKA_LOG_DIRS` subdirectory fix for Longhorn's `lost+found`.
-6. **`Jenkinsfile`**: Rewritten for K3s — local image builds, containerd import, kubectl-based deployment.
-7. **`nginx.conf`** (devapp-web): Added Keycloak reverse proxy configuration with FQDN for cross-namespace access.
-8. **Namespace separation**: All infrastructure in `infrastructure` namespace, apps in `devapp` namespace. App manifests use FQDNs (e.g., `postgres.infrastructure.svc.cluster.local`) for cross-namespace service discovery.
-9. **ArgoCD**: Installed via Helm, configured with two Application resources for GitOps sync of infrastructure and application manifests.
-10. **Ansible playbooks**: Updated for new namespace structure (`infrastructure` + `devapp`).
-11. **ELK Stack**: Elasticsearch with Longhorn PVC, Logstash with Kafka + TCP inputs, Kibana on NodePort 30009. All in `infrastructure` namespace.
-12. **Istio removed**: Removed as overkill for single-node deployment; Nginx Ingress handles all routing.
-13. **Kafka FQDN**: `KAFKA_ADVERTISED_LISTENERS` uses FQDN (`kafka.infrastructure.svc.cluster.local:9092`) for cross-namespace consumer compatibility.
-14. **Logback TCP appender**: Both services ship logs to Logstash via `LogstashTcpSocketAppender` (JSON format) in prod profile.
-15. **Grafana datasources**: Auto-provisioned with Prometheus and Elasticsearch datasources via ConfigMap.
-
 ## License
 GPL 3.0
-

@@ -15,6 +15,7 @@ DevApp is a modern microservice architecture demonstration/template project feat
 ### Infrastructure & DevOps
 *   **Orchestration**: K3s (Lightweight Kubernetes)
 *   **Storage**: Longhorn (distributed block storage)
+*   **Service Mesh**: Istio (mTLS, traffic routing)
 *   **Ingress**: Nginx Ingress Controller
 *   **Containerization**: Docker
 *   **CI/CD**: Jenkins (K8s-native build agents)
@@ -22,6 +23,7 @@ DevApp is a modern microservice architecture demonstration/template project feat
 *   **Code Quality**: SonarQube
 *   **Artifacts**: Nexus Repository Manager OSS
 *   **Monitoring**: Prometheus, Grafana
+*   **Logging**: ELK Stack (Elasticsearch, Logstash, Kibana)
 *   **Automation**: Ansible
 
 > **Note on Nexus**: Nexus OSS supports Maven (JARs), NPM, and Docker repositories.
@@ -34,7 +36,7 @@ DevApp is a modern microservice architecture demonstration/template project feat
 
 ## 🏗 Architecture & Service Interaction
 
-The application adopts a cloud-native architecture on a K3s Kubernetes cluster with Nginx Ingress for traffic management.
+The application adopts a cloud-native architecture on a K3s Kubernetes cluster with Nginx Ingress for traffic management and Istio service mesh for inter-service communication.
 
 ### Traffic Flow
 1.  **Client/Browser** connects to the **Nginx Ingress Controller** (port 30090, or port 80 via iptables).
@@ -47,11 +49,19 @@ The application adopts a cloud-native architecture on a K3s Kubernetes cluster w
     *   The frontend authenticates with **Keycloak** using OIDC (Authorization Code Flow + PKCE).
     *   API requests include the JWT in the `Authorization` header.
     *   Backend services validate the JWT as OAuth2 Resource Servers.
+4.  **Service Mesh**: Istio provides mTLS between application pods in the `devapp` namespace.
 
 ### Inter-Service Communication (Saga Pattern)
 *   **Order Service** creates an order with status `PENDING` and publishes to Kafka topic `order_topic`.
 *   **User Service** consumes the event, validates the user, sets status to `APPROVED`/`REJECTED`, and publishes to `order_result_topic`.
 *   **Order Service** consumes the result and updates the order status in the database.
+
+### Centralized Logging (ELK Stack)
+*   **Logstash** collects logs from two sources:
+    *   **TCP input** (port 5000): Application logs from user-app and order-app via logback TCP appender (JSON format).
+    *   **Kafka input**: Order events from `order_topic` and `order_result_topic`.
+*   **Elasticsearch** stores all logs in `devapp-logs-*` indices.
+*   **Kibana** provides log visualization and search (port 30009).
 
 ```mermaid
 graph TD
@@ -129,16 +139,17 @@ Instead of pushing to a Docker registry, the pipeline:
 | **ArgoCD** | `http://<SERVER_IP>:30007` | admin / (see below) |
 | **Prometheus** | `http://<SERVER_IP>:30003` | — |
 | **Grafana** | `http://<SERVER_IP>:30004` | admin / admin |
+| **Kibana** | `http://<SERVER_IP>:30009` | — |
 | **Longhorn UI** | `kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80` | — |
 
 ### K8s Namespaces
 
 | Namespace | Contents |
 |-----------|----------|
-| `infrastructure` | PostgreSQL, Kafka, Zookeeper, Redis, Keycloak, Prometheus, Grafana, Jenkins, SonarQube, Nexus, ArgoCD |
-| `devapp` | Application services (user-app, order-app, devapp-web) + Ingress |
+| `infrastructure` | PostgreSQL, Kafka, Zookeeper, Redis, Keycloak, Prometheus, Grafana, Jenkins, SonarQube, Nexus, ArgoCD, Nginx Ingress, ELK (Elasticsearch, Logstash, Kibana) |
+| `devapp` | Application services (user-app, order-app, devapp-web) with Istio sidecars |
+| `istio-system` | Istio control plane (istiod) |
 | `longhorn-system` | Longhorn storage manager |
-| `ingress-nginx` | Nginx Ingress Controller |
 
 ## 🚀 Quick Start (Fresh Server)
 
@@ -194,13 +205,26 @@ kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storagecl
 ### 4. Install Nginx Ingress
 ```bash
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace \
+helm install ingress-nginx ingress-nginx/ingress-nginx --namespace infrastructure \
     --set controller.service.type=NodePort \
     --set controller.service.nodePorts.http=30090 \
     --set controller.service.nodePorts.https=30443
 ```
 
-### 5. Build the Application
+### 5. Install Istio
+```bash
+# Download and install istioctl
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.24.3 sh -
+sudo cp istio-1.24.3/bin/istioctl /usr/local/bin/
+
+# Install minimal profile (just istiod, no Istio ingress — using nginx)
+istioctl install --set profile=minimal -y
+
+# Enable sidecar injection for the devapp namespace
+kubectl label namespace devapp istio-injection=enabled
+```
+
+### 6. Build the Application
 ```bash
 cd /path/to/devapp
 
@@ -224,7 +248,7 @@ docker save devapp/order-app:latest | sudo k3s ctr images import -
 docker save devapp/devapp-web:latest | sudo k3s ctr images import -
 ```
 
-### 6. Deploy Everything
+### 7. Deploy Everything
 ```bash
 # Create namespaces
 kubectl create namespace infrastructure
@@ -236,6 +260,12 @@ kubectl apply -f deployment/k8s/kafka.yaml
 kubectl apply -f deployment/k8s/redis.yaml
 kubectl apply -f deployment/k8s/keycloak.yaml
 kubectl apply -f deployment/k8s/monitoring.yaml
+
+# ELK Stack
+kubectl apply -f deployment/k8s/elk.yaml
+
+# Istio resources (Gateway, VirtualService, mTLS)
+kubectl apply -f deployment/k8s/istio.yaml
 
 # Wait for infra
 kubectl wait --for=condition=ready pod -l app=postgres -n infrastructure --timeout=120s
@@ -420,10 +450,12 @@ npm run build-prod # Production build
 - All API endpoints under `/api/*` require a valid JWT token.
 - Public endpoints: `/actuator/health`, `/swagger-ui/**`, `/v3/api-docs/**`.
 
-## 📊 Monitoring
+## 📊 Monitoring & Logging
 
-- **Prometheus** scrapes metrics from user-app (`:8080/actuator/prometheus`) and order-app (`:8081/actuator/prometheus`).
-- **Grafana** connects to Prometheus for dashboards. Import Spring Boot dashboard ID `12900` for JVM metrics.
+- **Prometheus** scrapes metrics from user-app (`:8080/actuator/prometheus`), order-app (`:8081/actuator/prometheus`), Elasticsearch, and Kafka.
+- **Grafana** connects to Prometheus and Elasticsearch datasources (auto-provisioned). Import Spring Boot dashboard ID `12900` for JVM metrics.
+- **ELK Stack**: Application logs are shipped to Logstash (TCP appender in logback), stored in Elasticsearch, and searchable via Kibana.
+- **Kibana**: Access at `http://<SERVER_IP>:30009`. Create an index pattern `devapp-logs-*` to browse application logs.
 
 ## 🧩 Key Configuration Changes Made During Deployment
 
@@ -439,6 +471,11 @@ These changes were made to adapt the application for K3s + Longhorn:
 8. **Namespace separation**: All infrastructure in `infrastructure` namespace, apps in `devapp` namespace. App manifests use FQDNs (e.g., `postgres.infrastructure.svc.cluster.local`) for cross-namespace service discovery.
 9. **ArgoCD**: Installed via Helm, configured with two Application resources for GitOps sync of infrastructure and application manifests.
 10. **Ansible playbooks**: Updated for new namespace structure (`infrastructure` + `devapp`).
+11. **ELK Stack**: Elasticsearch with Longhorn PVC, Logstash with Kafka + TCP inputs, Kibana on NodePort 30009. All in `infrastructure` namespace.
+12. **Istio**: Minimal profile (just istiod). PERMISSIVE mTLS for devapp namespace. DestinationRule disables mTLS to infrastructure services (no sidecars).
+13. **Kafka FQDN**: `KAFKA_ADVERTISED_LISTENERS` uses FQDN (`kafka.infrastructure.svc.cluster.local:9092`) for cross-namespace consumer compatibility.
+14. **Logback TCP appender**: Both services ship logs to Logstash via `LogstashTcpSocketAppender` (JSON format) in prod profile.
+15. **Grafana datasources**: Auto-provisioned with Prometheus and Elasticsearch datasources via ConfigMap.
 
 ## License
 GPL 3.0

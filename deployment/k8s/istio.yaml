@@ -31,7 +31,7 @@ spec:
         prefix: /api/users
     route:
     - destination:
-        host: user-app
+        host: user-app.devapp.svc.cluster.local
         port:
           number: 8080
   - match:
@@ -39,7 +39,7 @@ spec:
         prefix: /api/orders
     route:
     - destination:
-        host: order-app
+        host: order-app.devapp.svc.cluster.local
         port:
           number: 8081
   - match:
@@ -47,7 +47,7 @@ spec:
         prefix: /auth
     route:
     - destination:
-        host: keycloak
+        host: keycloak.infrastructure.svc.cluster.local
         port:
           number: 8080
   - match:
@@ -55,7 +55,7 @@ spec:
         prefix: /
     route:
     - destination:
-        host: devapp-web
+        host: devapp-web.devapp.svc.cluster.local
         port:
           number: 80
 
@@ -68,10 +68,11 @@ metadata:
 spec:
   selector:
     matchLabels:
-      istio: ingressgateway # Apply to the Ingress Gateway
+      istio: ingressgateway
   jwtRules:
-  - issuer: "http://localhost/auth/realms/devapp"
-    jwksUri: "http://keycloak.devapp.svc.cluster.local:8080/realms/devapp/protocol/openid-connect/certs"
+  - issuer: "http://keycloak.infrastructure.svc.cluster.local:8080/realms/devapp"
+    jwksUri: "http://keycloak.infrastructure.svc.cluster.local:8080/realms/devapp/protocol/openid-connect/certs"
+    forwardOriginalToken: true
 ---
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
@@ -95,3 +96,25 @@ spec:
     to:
     - operation:
         paths: ["/api/*"]
+---
+# PeerAuthentication: enforce mTLS between services in devapp namespace
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: devapp
+spec:
+  mtls:
+    mode: PERMISSIVE
+---
+# DestinationRule: enable mTLS for outbound traffic to infrastructure services
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: infrastructure-mtls
+  namespace: devapp
+spec:
+  host: "*.infrastructure.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: DISABLE

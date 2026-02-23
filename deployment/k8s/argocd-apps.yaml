@@ -13,7 +13,7 @@ spec:
     path: deployment/k8s
     directory:
       recurse: false
-      include: '{postgres.yaml,kafka.yaml,redis.yaml,keycloak.yaml,monitoring.yaml,sonarqube.yaml,nexus.yaml}'
+      include: '{postgres.yaml,kafka.yaml,redis.yaml,keycloak.yaml,monitoring.yaml,sonarqube.yaml,nexus.yaml,elk.yaml}'
   destination:
     server: https://kubernetes.default.svc
     namespace: infrastructure

@@ -45,6 +45,31 @@
         </encoder>
     </appender>
 
+    <!-- Logstash TCP appender for centralized logging -->
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>${LOGSTASH_HOST:-logstash.infrastructure.svc.cluster.local}:${LOGSTASH_PORT:-5000}</destination>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <logLevel/>
+                <loggerName/>
+                <threadName/>
+                <message/>
+                <mdc/>
+                <arguments/>
+                <stackTrace/>
+                <pattern>
+                    <pattern>{"app":"user-app"}</pattern>
+                </pattern>
+            </providers>
+        </encoder>
+        <connectionStrategy>
+            <roundRobin>
+                <connectionTTL>5 minutes</connectionTTL>
+            </roundRobin>
+        </connectionStrategy>
+    </appender>
+
     <!-- Development profile -->
     <springProfile name="dev">
         <root level="INFO">
@@ -58,8 +83,8 @@
     <!-- Production profile -->
     <springProfile name="prod">
         <root level="WARN">
-            <appender-ref ref="FILE"/>
-            <appender-ref ref="JSON"/>
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="LOGSTASH"/>
         </root>
         <logger name="io.simpleit.devapp" level="INFO"/>
         <logger name="org.springframework.security" level="WARN"/>

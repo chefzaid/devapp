@@ -1,0 +1,33 @@
+---
+- name: Deploy DevApp Application to Kubernetes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    app_namespace: "{{ app_ns | default('devapp') }}"
+    k8s_dir: "{{ playbook_dir }}/../k8s"
+
+  tasks:
+    - name: Ensure app namespace exists
+      command: kubectl create namespace {{ app_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy application manifests
+      command: kubectl apply -f {{ k8s_dir }}/app/
+      register: result
+      changed_when: "'created' in result.stdout or 'configured' in result.stdout"
+
+    - name: Deploy ArgoCD GitOps applications
+      command: kubectl apply -f {{ k8s_dir }}/argocd-apps.yaml
+      register: result
+      changed_when: "'created' in result.stdout or 'configured' in result.stdout"
+
+    - name: Wait for applications
+      command: kubectl wait --for=condition=ready pod -l app={{ item }} -n {{ app_namespace }} --timeout=180s
+      loop: [user-app, order-app, devapp-web]
+      ignore_errors: yes
+
+    - name: Display status
+      command: kubectl get pods -n {{ app_namespace }} --no-headers
+      register: pods
+    - debug:
+        msg: "{{ pods.stdout_lines }}"

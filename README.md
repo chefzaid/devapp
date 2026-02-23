@@ -218,7 +218,7 @@ helm install ingress-nginx ingress-nginx/ingress-nginx --namespace infrastructur
 #### 5. Deploy Infrastructure
 ```bash
 kubectl create namespace infrastructure
-for f in postgres kafka redis keycloak monitoring elk jenkins jenkins-config sonarqube nexus; do
+for f in postgres kafka redis keycloak monitoring elk jenkins sonarqube nexus; do
     kubectl apply -f deployment/k8s/${f}.yaml
 done
 ```
@@ -404,10 +404,39 @@ npm run build-prod # Production build
 
 ## 📊 Monitoring & Logging
 
-- **Prometheus** scrapes metrics from user-app (`:8080/actuator/prometheus`), order-app (`:8081/actuator/prometheus`), Elasticsearch, and Kafka.
+- **Prometheus** scrapes metrics from user-app (`:8080/actuator/prometheus`) and order-app (`:8081/actuator/prometheus`).
 - **Grafana** connects to Prometheus and Elasticsearch datasources (auto-provisioned). Import Spring Boot dashboard ID `12900` for JVM metrics.
 - **ELK Stack**: Application logs are shipped to Logstash (TCP appender in logback), stored in Elasticsearch, and searchable via Kibana.
 - **Kibana**: Access at `http://<SERVER_IP>:30009`. Create an index pattern `devapp-logs-*` to browse application logs.
+
+## 🔄 Deployment Methods: Scripts vs Ansible
+
+Two deployment methods are provided. Choose based on your workflow:
+
+### Shell Scripts (`deployment/scripts/`)
+**Best for**: Fresh bare-metal installs, single-server setups, quick bootstrapping.
+
+- `01-install-prerequisites.sh` — System deps, K3s, Helm, Longhorn
+- `02-install-infrastructure.sh` — All infra namespace components
+- `03-install-devapp.sh` — Build, deploy, and verify the application
+
+Scripts are interactive (prompt before each step), idempotent, and self-contained. Run them sequentially on a clean server for a full deployment.
+
+### Ansible Playbooks (`deployment/ansible/`)
+**Best for**: Multi-node deployments, repeatable provisioning, team environments.
+
+- `deploy.yml` — Deploys all infrastructure manifests
+- `deploy-app.yml` — Builds and deploys the application + ArgoCD apps
+
+```bash
+cd deployment/ansible
+ansible-playbook deploy.yml       # Infrastructure
+ansible-playbook deploy-app.yml   # Application
+```
+
+Ansible excels when managing multiple servers (inventory-based), enforcing idempotent state, and integrating with existing automation. The playbooks assume K3s and Helm are already installed (use `01-install-prerequisites.sh` first).
+
+> **Recommendation**: Use scripts for initial setup on a single server. Use Ansible for ongoing management, especially when adding nodes or automating deployments from CI/CD.
 
 ## 🧩 Key Configuration Changes Made During Deployment
 

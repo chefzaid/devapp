@@ -119,6 +119,10 @@ fi
 
 kubectl apply -f "$K8S_DIR/app/"
 
+# ---------- ArgoCD GitOps applications ----------------------------------------
+step "Configuring ArgoCD GitOps applications..."
+kubectl apply -f "$K8S_DIR/argocd-apps.yaml"
+
 info "Waiting for application pods to start..."
 kubectl wait --for=condition=ready pod -l app=user-app   -n devapp --timeout=180s 2>/dev/null || warn "user-app still starting..."
 kubectl wait --for=condition=ready pod -l app=order-app  -n devapp --timeout=180s 2>/dev/null || warn "order-app still starting..."

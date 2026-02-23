@@ -105,7 +105,6 @@ kubectl apply -f "$K8S_DIR/elk.yaml"
 # ---------- CI/CD: Jenkins ----------------------------------------------------
 step "Deploying Jenkins..."
 kubectl apply -f "$K8S_DIR/jenkins.yaml"
-kubectl apply -f "$K8S_DIR/jenkins-config.yaml"
 
 # ---------- Code Quality: SonarQube -------------------------------------------
 step "Deploying SonarQube..."
@@ -132,10 +131,6 @@ else
         --wait --timeout 300s
     info "ArgoCD installed."
 fi
-
-# ---------- ArgoCD Applications -----------------------------------------------
-step "Creating ArgoCD Application definitions..."
-kubectl apply -f "$K8S_DIR/argocd-apps.yaml"
 
 # ---------- Wait for everything -----------------------------------------------
 info "Waiting for remaining pods to become ready (up to 5 min)..."

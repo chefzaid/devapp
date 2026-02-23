@@ -22,7 +22,7 @@ mvn clean install -DskipTests -q
 # Install Node.js dependencies for Angular app
 echo "📦 Installing Node.js dependencies..."
 cd devapp-web
-npm install
+CYPRESS_INSTALL_BINARY=0 npm install
 
 # Build Angular application
 echo "🔨 Building Angular application..."

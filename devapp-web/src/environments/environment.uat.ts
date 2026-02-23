@@ -3,5 +3,5 @@ export const environment = {
   apiUrl: '/api',
   orderApiUrl: '/api',
   keycloakUrl: '/auth',
-  keycloakRealm: 'devapp-prod'
+  keycloakRealm: 'devapp-uat'
 };

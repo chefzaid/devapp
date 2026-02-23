@@ -16,7 +16,7 @@ export class AuthService {
 
   private configure() {
     const authConfig: AuthConfig = {
-      issuer: window.location.origin + environment.keycloakUrl + '/realms/devapp',
+      issuer: window.location.origin + environment.keycloakUrl + `/realms/${environment.keycloakRealm}`,
       redirectUri: window.location.origin + '/',
       clientId: 'devapp-web',
       responseType: 'code',

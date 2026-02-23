@@ -6,6 +6,7 @@ module.exports = function (config) {
       require('karma-jasmine'),
       require('karma-chrome-launcher'),
       require('karma-jasmine-html-reporter'),
+      require('karma-coverage'),
       require('karma-coverage-istanbul-reporter'),
       require('@angular-devkit/build-angular/plugins/karma')
     ],
@@ -22,6 +23,19 @@ module.exports = function (config) {
       ChromeHeadless: {
         base: 'Chrome',
         flags: ['--headless', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--remote-debugging-port=9222']
+      }
+    },
+    coverageIstanbulReporter: {
+      dir: require('path').join(__dirname, './coverage/devapp-web'),
+      reports: ['html', 'lcovonly', 'text-summary'],
+      fixWebpackSourcePaths: true,
+      thresholds: {
+        global: {
+          statements: 80,
+          lines: 80,
+          branches: 80,
+          functions: 80
+        }
       }
     },
     singleRun: true,

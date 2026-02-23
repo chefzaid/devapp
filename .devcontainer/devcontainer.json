@@ -2,6 +2,7 @@
     "name": "DevApp",
     "dockerComposeFile": "docker-compose.yml",
     "service": "devapp",
+    "runServices": ["devapp"],
     "workspaceFolder": "/workspace/devapp",
     "remoteUser": "vscode",
 

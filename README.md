@@ -369,7 +369,7 @@ The fastest way to get a complete development environment with all dependencies 
 **What's Included**:
 - Java 21, Maven 3.9.x, Node.js 24.x, Angular CLI 21
 - Pre-installed VS Code extensions for Java, Angular, Spring Boot, Docker, Git
-- By default, only the dev container runs; Kafka/Redis/Keycloak/PostgreSQL can be started on-demand with Docker Compose profile `local-infra`
+- By default, only the dev container runs; Kafka/Redis/Keycloak/PostgreSQL can be started on-demand with Docker Compose profile `local-infra` (or point to shared infra via env vars such as `KAFKA_BOOTSTRAP_SERVERS`, `REDIS_HOST`, `JWT_ISSUER_URI`, `DB_HOST`)
 
 **Service URLs** (inside the dev container):
 

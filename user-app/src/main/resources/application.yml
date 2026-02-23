@@ -76,6 +76,11 @@ spring:
       mode: always
       schema-locations: classpath:db/schema.sql
       data-locations: classpath:db/data.sql
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env,configprops
 
 ---
 # UAT Profile
@@ -109,8 +114,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${JWT_ISSUER_URI:http://keycloak.infrastructure.svc.cluster.local:8080/realms/devapp-uat}
-          jwk-set-uri: ${JWT_JWK_SET_URI:http://keycloak.infrastructure.svc.cluster.local:8080/realms/devapp-uat/protocol/openid-connect/certs}
+          issuer-uri: ${JWT_ISSUER_URI:https://keycloak.uat.simpleit.io/realms/devapp-uat}
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://keycloak.uat.simpleit.io/realms/devapp-uat/protocol/openid-connect/certs}
 
 ---
 # Production Profile

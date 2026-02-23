@@ -1,13 +1,13 @@
 <div class="container">
     <h1>User Management</h1>
 
-    <!-- Error Message -->
-    <div *ngIf="error" class="error-message">
-        {{ error }}
-        <button (click)="error = null" class="close-btn">×</button>
-    </div>
+    @if (error) {
+        <div class="error-message">
+            {{ error }}
+            <button (click)="error = null" class="close-btn">×</button>
+        </div>
+    }
 
-    <!-- Create User Form -->
     <div class="form-section">
         <h3>Create New User</h3>
         <div class="form-group">
@@ -25,17 +25,24 @@
         </div>
     </div>
 
-    <!-- Users List -->
     <div class="users-section">
         <h2>Users</h2>
-        <div *ngIf="loading" class="loading">Loading users...</div>
-        <div *ngIf="!loading && users.length === 0" class="no-data">No users found.</div>
-        <ul *ngIf="!loading && users.length > 0" class="users-list">
-            <li *ngFor="let user of users" class="user-item">
-                <span class="user-id">#{{ user.id }}</span>
-                <span class="user-name">{{ user.name }}</span>
-            </li>
-        </ul>
-        <button *ngIf="!loading" (click)="loadUsers()" class="btn btn-secondary">Refresh</button>
+        @if (loading) {
+            <div class="loading">Loading users...</div>
+        } @else if (users.length === 0) {
+            <div class="no-data">No users found.</div>
+        } @else {
+            <ul class="users-list">
+                @for (user of users; track user.id) {
+                    <li class="user-item">
+                        <span class="user-id">#{{ user.id }}</span>
+                        <span class="user-name">{{ user.name }}</span>
+                    </li>
+                }
+            </ul>
+        }
+        @if (!loading) {
+            <button (click)="loadUsers()" class="btn btn-secondary">Refresh</button>
+        }
     </div>
 </div>

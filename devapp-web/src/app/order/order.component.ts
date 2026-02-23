@@ -1,5 +1,4 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OrderService } from '../services/order.service';
 import { UserService } from '../services/user.service';
@@ -10,8 +9,7 @@ import { User } from '../models/user.model';
   selector: 'app-order',
   templateUrl: './order.component.html',
   styleUrls: ['./order.component.css'],
-  standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [FormsModule]
 })
 export class OrderComponent implements OnInit {
   orders: Order[] = [];

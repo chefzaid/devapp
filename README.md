@@ -354,6 +354,66 @@ kubectl edit settings -n longhorn-system default-replica-count
 
 ## 💻 Development
 
+### Dev Container (Recommended)
+
+The fastest way to get a complete development environment with all dependencies pre-configured.
+
+**Prerequisites**: [Docker](https://www.docker.com/) and [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
+
+**Quick Start**:
+1. Open this project in VS Code
+2. Click "Reopen in Container" when prompted (or `Ctrl+Shift+P` → "Dev Containers: Reopen in Container")
+3. Wait for the container to build and install dependencies
+4. Start developing — all tools and services are ready
+
+**What's Included**:
+- Java 21, Maven 3.9.x, Node.js 24.x, Angular CLI 21
+- Pre-installed VS Code extensions for Java, Angular, Spring Boot, Docker, Git
+- Infrastructure services: PostgreSQL 16, Kafka (Confluent 7.4.0), Zookeeper, Redis 7, Keycloak 24
+
+**Service URLs** (inside the dev container):
+
+| Service | URL |
+|---------|-----|
+| Angular Dev Server | http://localhost:4200 |
+| User Service | http://localhost:8080 |
+| Order Service | http://localhost:8081 |
+| H2 Console | http://localhost:8080/h2-console |
+| Keycloak Admin | http://localhost:8180 (admin/admin) |
+| Swagger (User) | http://localhost:8080/swagger-ui.html |
+| Swagger (Order) | http://localhost:8081/swagger-ui.html |
+
+**Starting Services**:
+```bash
+# Start Angular dev server
+cd devapp-web && npm start
+
+# Start backend services (each in a separate terminal)
+mvn spring-boot:run -pl user-app
+mvn spring-boot:run -pl order-app
+```
+
+**Kafka Management**:
+```bash
+bash .devcontainer/scripts/kafka-setup.sh setup      # Create topics
+bash .devcontainer/scripts/kafka-setup.sh check       # Check connectivity
+bash .devcontainer/scripts/kafka-setup.sh test-order  # Send test message
+```
+
+**Troubleshooting**:
+- Container won't start: Ensure Docker has 4GB+ memory; try "Dev Containers: Rebuild Container"
+- Services won't start: Use `./stop-all.sh` to stop any existing processes, check terminal logs
+- Database issues: H2 Console at http://localhost:8080/h2-console, JDBC URL `jdbc:h2:mem:userdb` or `jdbc:h2:mem:orderdb`, username `sa`, empty password
+
+### Running Without Dev Container
+
+```bash
+# Start infrastructure with Docker Compose (dev profile uses H2 by default)
+cd devapp-web && npm start    # Frontend on :4200
+cd user-app && mvn spring-boot:run   # User service on :8080
+cd order-app && mvn spring-boot:run  # Order service on :8081
+```
+
 ### Project Structure
 -   `user-app/`: User microservice (Spring Boot, port 8080)
 -   `order-app/`: Order microservice (Spring Boot, port 8081)
@@ -365,14 +425,6 @@ kubectl edit settings -n longhorn-system default-replica-count
 -   `deployment/k8s/argocd-apps.yaml`: ArgoCD Application definitions for GitOps
 -   `deployment/ansible/`: Ansible playbooks for deployment automation
 -   `Jenkinsfile`: CI/CD pipeline definition
-
-### Running Locally
-```bash
-# Start infrastructure with Docker Compose (dev profile uses H2 by default)
-cd devapp-web && npm start    # Frontend on :4200
-cd user-app && mvn spring-boot:run   # User service on :8080
-cd order-app && mvn spring-boot:run  # Order service on :8081
-```
 
 ### Build & Test Commands
 ```bash

@@ -6,11 +6,8 @@ import { AppComponent } from './app/app.component';
 import { UserComponent } from './app/user/user.component';
 import { OrderComponent } from './app/order/order.component';
 import { LoginComponent } from './app/components/login/login.component';
-import { UserService } from './app/services/user.service';
-import { OrderService } from './app/services/order.service';
 import { authGuard } from './app/guards/auth.guard';
 import { authInterceptor } from './app/interceptors/auth.interceptor';
-import { environment } from './environments/environment';
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -23,8 +20,6 @@ bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
     provideHttpClient(withInterceptors([authInterceptor])),
-    provideOAuthClient(),
-    UserService,
-    OrderService
+    provideOAuthClient()
   ]
 }).catch(err => console.error(err));

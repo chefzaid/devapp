@@ -1,13 +1,13 @@
 <div class="container">
     <h1>Order Management</h1>
 
-    <!-- Error Message -->
-    <div *ngIf="error" class="error-message">
-        {{ error }}
-        <button (click)="error = null" class="close-btn">×</button>
-    </div>
+    @if (error) {
+        <div class="error-message">
+            {{ error }}
+            <button (click)="error = null" class="close-btn">×</button>
+        </div>
+    }
 
-    <!-- Create Order Form -->
     <div class="form-section">
         <h3>Create New Order</h3>
         <div class="form-group">
@@ -20,9 +20,9 @@
                     [disabled]="creating || loadingUsers"
                     class="form-select">
                     <option value="0">Select a user</option>
-                    <option *ngFor="let user of users" [value]="user.id">
-                        {{ user.name }}
-                    </option>
+                    @for (user of users; track user.id) {
+                        <option [value]="user.id">{{ user.name }}</option>
+                    }
                 </select>
             </div>
             <div class="form-field">
@@ -44,29 +44,36 @@
         </div>
     </div>
 
-    <!-- Orders List -->
     <div class="orders-section">
         <h2>Orders</h2>
-        <div *ngIf="loading" class="loading">Loading orders...</div>
-        <div *ngIf="!loading && orders.length === 0" class="no-data">No orders found.</div>
-        <div *ngIf="!loading && orders.length > 0" class="orders-grid">
-            <div *ngFor="let order of orders" class="order-card">
-                <div class="order-header">
-                    <span class="order-id">Order #{{ order.id }}</span>
-                    <span class="order-status" [class]="'status-' + order.status?.toLowerCase()">
-                        {{ order.status }}
-                    </span>
-                </div>
-                <div class="order-details">
-                    <div class="detail-item">
-                        <strong>User:</strong> {{ order.user.name }}
+        @if (loading) {
+            <div class="loading">Loading orders...</div>
+        } @else if (orders.length === 0) {
+            <div class="no-data">No orders found.</div>
+        } @else {
+            <div class="orders-grid">
+                @for (order of orders; track order.id) {
+                    <div class="order-card">
+                        <div class="order-header">
+                            <span class="order-id">Order #{{ order.id }}</span>
+                            <span class="order-status" [class]="'status-' + order.status?.toLowerCase()">
+                                {{ order.status }}
+                            </span>
+                        </div>
+                        <div class="order-details">
+                            <div class="detail-item">
+                                <strong>User:</strong> {{ order.user.name }}
+                            </div>
+                            <div class="detail-item">
+                                <strong>Product ID:</strong> {{ order.productId }}
+                            </div>
+                        </div>
                     </div>
-                    <div class="detail-item">
-                        <strong>Product ID:</strong> {{ order.productId }}
-                    </div>
-                </div>
+                }
             </div>
-        </div>
-        <button *ngIf="!loading" (click)="loadOrders()" class="btn btn-secondary">Refresh</button>
+        }
+        @if (!loading) {
+            <button (click)="loadOrders()" class="btn btn-secondary">Refresh</button>
+        }
     </div>
 </div>

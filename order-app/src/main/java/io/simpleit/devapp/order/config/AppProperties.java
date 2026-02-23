@@ -1,40 +1,19 @@
 package io.simpleit.devapp.order.config;
 
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+@Data
 @Component
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
-    
+
     private Security security = new Security();
-    
-    public Security getSecurity() {
-        return security;
-    }
-    
-    public void setSecurity(Security security) {
-        this.security = security;
-    }
-    
+
+    @Data
     public static class Security {
         private String user = "admin";
         private String password = "password";
-        
-        public String getUser() {
-            return user;
-        }
-        
-        public void setUser(String user) {
-            this.user = user;
-        }
-        
-        public String getPassword() {
-            return password;
-        }
-        
-        public void setPassword(String password) {
-            this.password = password;
-        }
     }
 }

@@ -1,20 +1,22 @@
 <div class="app-container">
   <header class="app-header">
     <h1 class="app-title">DevApp</h1>
-    <nav class="app-nav" *ngIf="isLoggedIn$ | async">
-      <a routerLink="/users" routerLinkActive="active" class="nav-link">
-        <span class="nav-icon">👥</span>
-        Users
-      </a>
-      <a routerLink="/orders" routerLinkActive="active" class="nav-link">
-        <span class="nav-icon">📦</span>
-        Orders
-      </a>
-      <a (click)="logout()" class="nav-link" style="cursor: pointer;">
-        <span class="nav-icon">🚪</span>
-        Logout
-      </a>
-    </nav>
+    @if (isLoggedIn$ | async) {
+      <nav class="app-nav">
+        <a routerLink="/users" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">👥</span>
+          Users
+        </a>
+        <a routerLink="/orders" routerLinkActive="active" class="nav-link">
+          <span class="nav-icon">📦</span>
+          Orders
+        </a>
+        <a (click)="logout()" class="nav-link" style="cursor: pointer;">
+          <span class="nav-icon">🚪</span>
+          Logout
+        </a>
+      </nav>
+    }
   </header>
 
   <main class="app-main">
@@ -22,9 +24,8 @@
   </main>
 
   <footer class="app-footer">
-    <p>&copy; 2024 DevApp - Microservices Demo</p>
+    <p>&copy; 2025 DevApp - Microservices Demo</p>
   </footer>
 
-  <!-- Notification component -->
   <app-notification></app-notification>
 </div>

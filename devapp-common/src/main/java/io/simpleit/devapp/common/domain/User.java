@@ -36,10 +36,10 @@ public class User extends BaseEntity {
 	@NotBlank
 	@JsonIgnore
 	private String password;
-	
+
 	@OneToMany(mappedBy = "user")
-        @JsonIgnore
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
+	@JsonIgnore
+	@ToString.Exclude
+	@EqualsAndHashCode.Exclude
 	List<Order> orders;
 }

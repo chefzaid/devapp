@@ -1,5 +1,5 @@
-# Multi-stage Dockerfile for DevApp Development Environment
-# Supports Angular 20 + Spring Boot 3.4.1 development
+# Dockerfile for DevApp Development Environment
+# Supports Angular 21 + Spring Boot 3.5.3 development
 
 FROM mcr.microsoft.com/devcontainers/java:21-bookworm
 
@@ -32,7 +32,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y nodejs
 
 # Install Angular CLI globally
-RUN npm install -g @angular/cli@20
+RUN npm install -g @angular/cli@21
 
 # Install useful development tools
 RUN npm install -g \

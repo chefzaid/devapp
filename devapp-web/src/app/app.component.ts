@@ -1,15 +1,14 @@
 import { Component } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { AsyncPipe } from '@angular/common';
 import { NotificationComponent } from './components/notification/notification.component';
 import { AuthService } from './services/auth.service';
-import { CommonModule } from '@angular/common';
 import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  standalone: true,
-  imports: [RouterOutlet, RouterLink, NotificationComponent, CommonModule]
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AsyncPipe, NotificationComponent]
 })
 export class AppComponent {
   title = 'DevApp Web';
@@ -19,7 +18,7 @@ export class AppComponent {
     this.isLoggedIn$ = this.authService.isLoggedIn$;
   }
 
-  logout() {
+  logout(): void {
     this.authService.logout();
   }
 }

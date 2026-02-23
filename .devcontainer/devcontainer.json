@@ -11,8 +11,7 @@
         8080,  // User app (Spring Boot)
         8081,  // Order app (Spring Boot)
         8082,  // H2 console
-        9092,  // Kafka
-        2181,  // Zookeeper
+        8180,  // Keycloak
         6379,  // Redis
         5432   // PostgreSQL
     ],
@@ -35,13 +34,9 @@
             "label": "H2 Database Console",
             "onAutoForward": "silent"
         },
-        "9092": {
-            "label": "Kafka Broker",
-            "onAutoForward": "silent"
-        },
-        "2181": {
-            "label": "Zookeeper",
-            "onAutoForward": "silent"
+        "8180": {
+            "label": "Keycloak Admin Console",
+            "onAutoForward": "notify"
         },
         "6379": {
             "label": "Redis Cache",
@@ -75,7 +70,7 @@
                 "formulahendry.auto-rename-tag",
 
                 // Database
-                "ms-mssql.mssql",
+                "cweijan.vscode-database-client2",
 
                 // Docker
                 "ms-azuretools.vscode-docker",

@@ -34,7 +34,7 @@ public class UserController {
         }
 
         @PostMapping
-        public User createUser(@Valid @RequestBody User u) {
-                return userService.createUser(u);
+        public User createUser(@Valid @RequestBody User user) {
+                return userService.createUser(user);
         }
 }

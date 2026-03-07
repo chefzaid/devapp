@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devapp-web
+  namespace: devapp
+  labels:
+    app: devapp-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: devapp-web
+  template:
+    metadata:
+      labels:
+        app: devapp-web
+    spec:
+      containers:
+      - name: devapp-web
+        image: devapp/devapp-web:v3
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 5
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: devapp-web
+  namespace: devapp
+  labels:
+    app: devapp-web
+spec:
+  selector:
+    app: devapp-web
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80

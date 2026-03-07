@@ -1,0 +1,2 @@
+
+devcontainer should be lightweight, it shouldnt include DB, Kafka, Redis, Keycloak and all. Make it for running the app only and in dev env we should point/use existing infra (but under separate namespaces by env)

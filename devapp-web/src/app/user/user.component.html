@@ -1,0 +1,48 @@
+<div class="container">
+    <h1>User Management</h1>
+
+    @if (error) {
+        <div class="error-message">
+            {{ error }}
+            <button (click)="error = null" class="close-btn">×</button>
+        </div>
+    }
+
+    <div class="form-section">
+        <h3>Create New User</h3>
+        <div class="form-group">
+            <input
+                [(ngModel)]="newUser.name"
+                placeholder="Enter user name"
+                [disabled]="creating"
+                class="form-input">
+            <button
+                (click)="createUser()"
+                [disabled]="creating || !newUser.name.trim()"
+                class="btn btn-primary">
+                {{ creating ? 'Creating...' : 'Create User' }}
+            </button>
+        </div>
+    </div>
+
+    <div class="users-section">
+        <h2>Users</h2>
+        @if (loading) {
+            <div class="loading">Loading users...</div>
+        } @else if (users.length === 0) {
+            <div class="no-data">No users found.</div>
+        } @else {
+            <ul class="users-list">
+                @for (user of users; track user.id) {
+                    <li class="user-item">
+                        <span class="user-id">#{{ user.id }}</span>
+                        <span class="user-name">{{ user.name }}</span>
+                    </li>
+                }
+            </ul>
+        }
+        @if (!loading) {
+            <button (click)="loadUsers()" class="btn btn-secondary">Refresh</button>
+        }
+    </div>
+</div>

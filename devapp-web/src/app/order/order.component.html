@@ -1,0 +1,79 @@
+<div class="container">
+    <h1>Order Management</h1>
+
+    @if (error) {
+        <div class="error-message">
+            {{ error }}
+            <button (click)="error = null" class="close-btn">×</button>
+        </div>
+    }
+
+    <div class="form-section">
+        <h3>Create New Order</h3>
+        <div class="form-group">
+            <div class="form-field">
+                <label for="userSelect">User:</label>
+                <select
+                    id="userSelect"
+                    [(ngModel)]="newOrder.user.id"
+                    (ngModelChange)="onUserChange($event)"
+                    [disabled]="creating || loadingUsers"
+                    class="form-select">
+                    <option value="0">Select a user</option>
+                    @for (user of users; track user.id) {
+                        <option [value]="user.id">{{ user.name }}</option>
+                    }
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="productInput">Product ID:</label>
+                <input
+                    id="productInput"
+                    [(ngModel)]="newOrder.productId"
+                    placeholder="Enter product ID"
+                    type="number"
+                    [disabled]="creating"
+                    class="form-input">
+            </div>
+            <button
+                (click)="createOrder()"
+                [disabled]="creating || !newOrder.user.id || !newOrder.productId"
+                class="btn btn-primary">
+                {{ creating ? 'Creating...' : 'Create Order' }}
+            </button>
+        </div>
+    </div>
+
+    <div class="orders-section">
+        <h2>Orders</h2>
+        @if (loading) {
+            <div class="loading">Loading orders...</div>
+        } @else if (orders.length === 0) {
+            <div class="no-data">No orders found.</div>
+        } @else {
+            <div class="orders-grid">
+                @for (order of orders; track order.id) {
+                    <div class="order-card">
+                        <div class="order-header">
+                            <span class="order-id">Order #{{ order.id }}</span>
+                            <span class="order-status" [class]="'status-' + order.status?.toLowerCase()">
+                                {{ order.status }}
+                            </span>
+                        </div>
+                        <div class="order-details">
+                            <div class="detail-item">
+                                <strong>User:</strong> {{ order.user.name }}
+                            </div>
+                            <div class="detail-item">
+                                <strong>Product ID:</strong> {{ order.productId }}
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        @if (!loading) {
+            <button (click)="loadOrders()" class="btn btn-secondary">Refresh</button>
+        }
+    </div>
+</div>

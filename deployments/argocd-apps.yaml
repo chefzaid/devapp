@@ -1,0 +1,50 @@
+---
+# ArgoCD Application for infrastructure services
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devapp-infra
+  namespace: infrastructure
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/chefzaid/ds-cluster.git
+    targetRevision: main
+    path: deployments
+    directory:
+      recurse: false
+      include: '{postgres.yaml,kafka.yaml,redis.yaml,keycloak.yaml,monitoring.yaml,sonarqube.yaml,nexus.yaml,elk.yaml,jenkins.yaml,gitlab.yaml,ingress.yaml}'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: infrastructure
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+# ArgoCD Application for devapp services
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devapp-apps
+  namespace: infrastructure
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/chefzaid/devapp.git
+    targetRevision: main
+    path: deployments
+    directory:
+      recurse: false
+      include: '{user-app.yaml,order-app.yaml,devapp-web.yaml,ingress.yaml}'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: devapp
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

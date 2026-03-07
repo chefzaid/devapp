@@ -1,0 +1,73 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devapp-ingress
+  namespace: devapp
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - devapp.swirlit.dev
+    secretName: swirlit-dev-tls
+  rules:
+  - host: devapp.swirlit.dev
+    http:
+      paths:
+      # Keycloak auth (via ExternalName service)
+      - path: /auth
+        pathType: Prefix
+        backend:
+          service:
+            name: keycloak
+            port:
+              number: 8080
+      # User API
+      - path: /api/users
+        pathType: Prefix
+        backend:
+          service:
+            name: user-app
+            port:
+              number: 8080
+      # Order API
+      - path: /api/orders
+        pathType: Prefix
+        backend:
+          service:
+            name: order-app
+            port:
+              number: 8081
+      # Actuator endpoints (user-app)
+      - path: /actuator
+        pathType: Prefix
+        backend:
+          service:
+            name: user-app
+            port:
+              number: 8080
+      # Frontend (catch-all)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: devapp-web
+            port:
+              number: 80
+
+---
+# ExternalName service to access Keycloak from devapp namespace
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: devapp
+spec:
+  type: ExternalName
+  externalName: keycloak.infrastructure.svc.cluster.local
+  ports:
+  - port: 8080

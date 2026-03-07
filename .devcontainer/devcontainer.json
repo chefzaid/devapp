@@ -1,0 +1,103 @@
+{
+    "name": "DevApp",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "devapp",
+    "runServices": ["devapp"],
+    "workspaceFolder": "/workspace/devapp",
+    "remoteUser": "vscode",
+
+    // Port forwarding for all services
+    "forwardPorts": [
+        4200,  // Angular dev server
+        8080,  // User app (Spring Boot)
+        8081,  // Order app (Spring Boot)
+        8082,  // H2 console
+        8180,  // Keycloak
+        6379,  // Redis
+        5432   // PostgreSQL
+    ],
+
+    // Port attributes
+    "portsAttributes": {
+        "4200": {
+            "label": "Angular Dev Server",
+            "onAutoForward": "notify"
+        },
+        "8080": {
+            "label": "User App (Spring Boot)",
+            "onAutoForward": "notify"
+        },
+        "8081": {
+            "label": "Order App (Spring Boot)",
+            "onAutoForward": "notify"
+        },
+        "8082": {
+            "label": "H2 Database Console",
+            "onAutoForward": "silent"
+        },
+        "8180": {
+            "label": "Keycloak Admin Console",
+            "onAutoForward": "notify"
+        },
+        "6379": {
+            "label": "Redis Cache",
+            "onAutoForward": "silent"
+        },
+        "5432": {
+            "label": "PostgreSQL Database",
+            "onAutoForward": "silent"
+        }
+    },
+
+    // VS Code extensions
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                // Java development
+                "vscjava.vscode-java-pack",
+                "vscjava.vscode-spring-boot-dashboard",
+                "vmware.vscode-spring-boot",
+
+                // Angular/TypeScript development
+                "angular.ng-template",
+                "ms-vscode.vscode-typescript-next",
+                "bradlc.vscode-tailwindcss",
+                "esbenp.prettier-vscode",
+
+                // General development
+                "ms-vscode.vscode-json",
+                "redhat.vscode-yaml",
+                "ms-vscode.vscode-eslint",
+                "formulahendry.auto-rename-tag",
+
+                // Database
+                "cweijan.vscode-database-client2",
+
+                // Docker
+                "ms-azuretools.vscode-docker",
+
+                // Git
+                "eamodio.gitlens"
+            ],
+            "settings": {
+                "java.jdt.ls.java.home": "${env:JAVA_HOME}",
+                "java.configuration.runtimes": [
+                    {
+                        "name": "JavaSE-21",
+                        "path": "${env:JAVA_HOME}"
+                    }
+                ],
+                "spring-boot.ls.java.home": "${env:JAVA_HOME}",
+                "typescript.preferences.includePackageJsonAutoImports": "auto",
+                "editor.formatOnSave": true,
+                "editor.codeActionsOnSave": {
+                    "source.organizeImports": "explicit"
+                }
+            }
+        }
+    },
+
+    // Lifecycle commands
+    "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
+    "postStartCommand": "bash .devcontainer/scripts/post-start.sh"
+}

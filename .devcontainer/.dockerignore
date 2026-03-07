@@ -1,0 +1,30 @@
+# DevContainer Docker ignore file
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Build outputs
+target/
+dist/
+build/
+
+# Dependencies
+node_modules/
+.m2/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

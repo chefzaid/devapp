@@ -31,9 +31,15 @@ spec:
         - name: DB_NAME
           value: "devappdb"
         - name: DB_USERNAME
-          value: "devappuser"
+          valueFrom:
+            secretKeyRef:
+              name: devapp-db-credentials
+              key: DB_USERNAME
         - name: DB_PASSWORD
-          value: "mypassword"
+          valueFrom:
+            secretKeyRef:
+              name: devapp-db-credentials
+              key: DB_PASSWORD
         - name: KAFKA_BOOTSTRAP_SERVERS
           value: "kafka.infrastructure.svc.cluster.local:9092"
         - name: REDIS_HOST

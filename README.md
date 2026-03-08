@@ -134,6 +134,7 @@ kubectl create namespace devapp
 # Create TLS secret for app ingress
 kubectl create secret tls swirlit-dev-tls --cert=tls.crt --key=tls.key -n devapp --dry-run=client -o yaml | kubectl apply -f -
 
+kubectl apply -f deployments/devapp-secrets.yaml
 kubectl apply -f deployments/user-app.yaml
 kubectl apply -f deployments/order-app.yaml
 kubectl apply -f deployments/devapp-web.yaml
@@ -151,12 +152,17 @@ Create DNS record for app traffic:
 | A | `devapp` | `51.68.232.240` | Proxied (orange cloud) |
 
 ### 2. Keycloak Verification
-The `devapp` realm and `devapp-web` client are imported by infrastructure setup. Verify login and create additional users at:
+The `application` realm and `application-web` client are imported by infrastructure setup. Verify login and create additional users at:
 
 ```bash
 # URL: https://keycloak.swirlit.dev
-# Default credentials: admin / admin
+# Retrieve bootstrap admin credentials from Vault-backed Kubernetes secret:
+kubectl get secret -n infrastructure keycloak-admin-secret -o jsonpath='{.data.KC_BOOTSTRAP_ADMIN_USERNAME}' | base64 -d && echo
+kubectl get secret -n infrastructure keycloak-admin-secret -o jsonpath='{.data.KC_BOOTSTRAP_ADMIN_PASSWORD}' | base64 -d && echo
 ```
+
+### 3. Stateless Deployment Guarantee
+Application workloads (`user-app`, `order-app`, `devapp-web`) are deployed as stateless Deployments with no PersistentVolumeClaims; only external infrastructure services (PostgreSQL/Redis/Kafka) hold state.
 
 ## 💻 Development
 

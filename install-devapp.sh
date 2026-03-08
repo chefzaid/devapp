@@ -213,9 +213,11 @@ if [[ "$VERSION" != "latest" ]]; then
     done
 fi
 
-for manifest in user-app.yaml order-app.yaml devapp-web.yaml ingress.yaml; do
+for manifest in devapp-secrets.yaml user-app.yaml order-app.yaml devapp-web.yaml ingress.yaml; do
     kubectl apply -n devapp -f "$DEPLOY_DIR/$manifest"
 done
+
+kubectl wait --for=condition=Ready externalsecret/devapp-db-credentials -n devapp --timeout=180s 2>/dev/null || warn "devapp-db-credentials ExternalSecret still reconciling..."
 
 info "Waiting for application pods to start..."
 kubectl wait --for=condition=ready pod -l app=user-app   -n devapp --timeout=180s 2>/dev/null || warn "user-app still starting..."

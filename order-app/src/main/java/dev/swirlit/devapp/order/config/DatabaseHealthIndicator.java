@@ -3,8 +3,8 @@ package dev.swirlit.devapp.order.config;
 import dev.swirlit.devapp.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 @Component("database")

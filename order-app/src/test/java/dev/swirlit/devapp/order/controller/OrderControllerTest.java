@@ -8,9 +8,8 @@ import dev.swirlit.devapp.order.config.DatabaseHealthIndicator;
 import dev.swirlit.devapp.order.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
@@ -22,17 +21,17 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = OrderController.class,
     excludeAutoConfiguration = {
-        org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration.class,
-        org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration.class,
-        org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration.class
+        org.springframework.boot.security.oauth2.server.resource.autoconfigure.OAuth2ResourceServerAutoConfiguration.class,
+        org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration.class,
+        org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration.class
     })
 @ActiveProfiles("test")
-@WithMockUser
 @TestPropertySource(properties = {
     "spring.kafka.bootstrap-servers=localhost:9092",
     "spring.data.redis.host=localhost",
@@ -52,8 +51,8 @@ class OrderControllerTest {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    // Boot 4 auto-configures a Jackson 3 mapper; use a local Jackson 2 mapper for request-body serialization.
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void getAllOrders_ShouldReturnOrderList() throws Exception {
@@ -78,7 +77,7 @@ class OrderControllerTest {
         when(orderService.getAllOrders()).thenReturn(orders);
 
         // When & Then
-        mockMvc.perform(get("/api/orders"))
+        mockMvc.perform(get("/api/orders").with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$").isArray())
@@ -107,7 +106,7 @@ class OrderControllerTest {
         when(orderService.getOrderById(1L)).thenReturn(order);
 
         // When & Then
-        mockMvc.perform(get("/api/orders/1"))
+        mockMvc.perform(get("/api/orders/1").with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(1))
@@ -137,7 +136,8 @@ class OrderControllerTest {
         // When & Then
         mockMvc.perform(post("/api/orders")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(inputOrder)))
+                .content(objectMapper.writeValueAsString(inputOrder))
+                .with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(1))

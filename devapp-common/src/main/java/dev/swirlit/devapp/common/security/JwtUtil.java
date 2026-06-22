@@ -11,19 +11,19 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    private final SecretKey key = Jwts.SIG.HS256.key().build();
-    private final long expiration = 1000 * 60 * 60 * 10; // 10 hours
+    private static final SecretKey KEY = Jwts.SIG.HS256.key().build();
+    private static final long EXPIRATION = 1000 * 60 * 60 * 10L; // 10 hours
 
     public String generateToken(String username) {
         return Jwts.builder()
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(key)
+                .expiration(new Date(System.currentTimeMillis() + EXPIRATION))
+                .signWith(KEY)
                 .compact();
     }
 
-    public Boolean validateToken(String token, String username) {
+    public boolean validateToken(String token, String username) {
         final String extractedUsername = extractUsername(token);
         return (extractedUsername.equals(username) && !isTokenExpired(token));
     }
@@ -42,10 +42,10 @@ public class JwtUtil {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+        return Jwts.parser().verifyWith(KEY).build().parseSignedClaims(token).getPayload();
     }
 
-    private Boolean isTokenExpired(String token) {
+    private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 }

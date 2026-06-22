@@ -1,15 +1,13 @@
 package dev.swirlit.devapp.user.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.swirlit.devapp.common.domain.User;
 import dev.swirlit.devapp.user.config.DatabaseHealthIndicator;
 import dev.swirlit.devapp.user.security.UserDetailsServiceImpl;
 import dev.swirlit.devapp.user.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
@@ -21,17 +19,17 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = UserController.class,
     excludeAutoConfiguration = {
-        org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration.class,
-        org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration.class,
-        org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration.class
+        org.springframework.boot.security.oauth2.server.resource.autoconfigure.OAuth2ResourceServerAutoConfiguration.class,
+        org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration.class,
+        org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration.class
     })
 @ActiveProfiles("test")
-@WithMockUser
 @TestPropertySource(properties = {
     "spring.kafka.bootstrap-servers=localhost:9092",
     "spring.data.redis.host=localhost",
@@ -54,9 +52,6 @@ class UserControllerTest {
     @MockitoBean
     private UserDetailsServiceImpl userDetailsServiceImpl;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Test
     void getAllUsers_ShouldReturnUserList() throws Exception {
         User user1 = new User();
@@ -74,7 +69,7 @@ class UserControllerTest {
         List<User> users = Arrays.asList(user1, user2);
         when(userService.getAllUsers()).thenReturn(users);
 
-        mockMvc.perform(get("/api/users"))
+        mockMvc.perform(get("/api/users").with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$").isArray())
@@ -95,7 +90,7 @@ class UserControllerTest {
 
         when(userService.getUser(1L)).thenReturn(user);
 
-        mockMvc.perform(get("/api/users/1"))
+        mockMvc.perform(get("/api/users/1").with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(1))
@@ -116,7 +111,8 @@ class UserControllerTest {
 
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
+                .content(requestBody)
+                .with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(3))

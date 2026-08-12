@@ -75,8 +75,8 @@ command -v openssl &>/dev/null || error "openssl not found."
 kubectl cluster-info &>/dev/null || error "Cannot reach K8s cluster."
 
 # Check infrastructure is running
-INFRA_PODS=$(kubectl get pods -n infrastructure --no-headers 2>/dev/null | grep -c Running || true)
-[[ "$INFRA_PODS" -lt 5 ]] && error "Infrastructure not ready ($INFRA_PODS running pods). Deploy infrastructure first from https://github.com/chefzaid/ds-cluster."
+INFRA_PODS=$(kubectl get pods -n infra --no-headers 2>/dev/null | grep -c Running || true)
+[[ "$INFRA_PODS" -lt 5 ]] && error "Infrastructure not ready ($INFRA_PODS running pods). Deploy the bm-cluster repository first."
 
 info "============================================="
 info " DevApp Application Installer"
@@ -205,17 +205,12 @@ ensure_tls_secret devapp swirlit-dev-tls \
 
 step "Deploying application manifests..."
 
-# Update image tags in manifests if version != latest
-if [[ "$VERSION" != "latest" ]]; then
-    info "Patching manifests with image tag: $VERSION"
-    for f in "$DEPLOY_DIR"/user-app.yaml "$DEPLOY_DIR"/order-app.yaml "$DEPLOY_DIR"/devapp-web.yaml; do
-        sed -i "s|image: devapp/.*:.*|image: devapp/$(basename "$f" .yaml | sed 's/^[0-9]*-//'):"$VERSION"|" "$f" 2>/dev/null || true
-    done
-fi
+info "Setting the Kustomize image tag to: $VERSION"
+"$ROOT_DIR/scripts/set-image-tags.sh" "$VERSION"
 
-for manifest in devapp-secrets.yaml user-app.yaml order-app.yaml devapp-web.yaml ingress.yaml; do
-    kubectl apply -n devapp -f "$DEPLOY_DIR/$manifest"
-done
+kubectl delete job devapp-kibana-bootstrap-v1 -n devapp --ignore-not-found >/dev/null
+
+kubectl apply -k "$DEPLOY_DIR"
 
 kubectl wait --for=condition=Ready externalsecret/devapp-db-credentials -n devapp --timeout=180s 2>/dev/null || warn "devapp-db-credentials ExternalSecret still reconciling..."
 
@@ -223,6 +218,7 @@ info "Waiting for application pods to start..."
 kubectl wait --for=condition=ready pod -l app=user-app   -n devapp --timeout=180s 2>/dev/null || warn "user-app still starting..."
 kubectl wait --for=condition=ready pod -l app=order-app  -n devapp --timeout=180s 2>/dev/null || warn "order-app still starting..."
 kubectl wait --for=condition=ready pod -l app=devapp-web -n devapp --timeout=120s 2>/dev/null || warn "devapp-web still starting..."
+kubectl wait --for=condition=complete job/devapp-kibana-bootstrap-v1 -n devapp --timeout=180s 2>/dev/null || warn "Kibana saved-object bootstrap is still running..."
 
 # ---------- Smoke tests -------------------------------------------------------
 step "Running smoke tests..."
@@ -273,6 +269,8 @@ echo "  Frontend:        https://devapp.swirlit.dev"
 echo "  User API:        https://devapp.swirlit.dev/api/users  (JWT required)"
 echo "  Order API:       https://devapp.swirlit.dev/api/orders (JWT required)"
 echo "  Swagger (user):  https://devapp.swirlit.dev/actuator/swagger-ui/index.html"
+echo "  Metrics:         https://grafana.swirlit.dev/d/devapp-overview"
+echo "  Logs:            https://kibana.swirlit.dev/app/dashboards#/view/devapp-logs"
 echo "  Ingress IP:      $SERVER_IP"
 echo ""
 check_dns_record "devapp.swirlit.dev"

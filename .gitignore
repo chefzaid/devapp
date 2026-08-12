@@ -50,6 +50,8 @@ bin/
 # Node
 node_modules/
 dist/
+coverage/
+test-results.xml
 npm-debug.log
 yarn-error.log
 
@@ -59,4 +61,3 @@ k8s/tmp/
 # OS specific
 .DS_Store
 Thumbs.db
-

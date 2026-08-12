@@ -6,6 +6,7 @@ module.exports = function (config) {
       require('karma-jasmine'),
       require('karma-chrome-launcher'),
       require('karma-jasmine-html-reporter'),
+      require('karma-junit-reporter'),
       require('karma-coverage'),
       require('karma-coverage-istanbul-reporter'),
       require('@angular-devkit/build-angular/plugins/karma')
@@ -37,6 +38,11 @@ module.exports = function (config) {
           functions: 60
         }
       }
+    },
+    junitReporter: {
+      outputDir: '',
+      outputFile: 'test-results.xml',
+      useBrowserName: false
     },
     singleRun: true,
     restartOnFileChange: false

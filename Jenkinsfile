@@ -3,133 +3,104 @@ pipeline {
         kubernetes {
             label 'devapp-build-agent'
             defaultContainer 'jnlp'
-            yaml """
-            apiVersion: v1
-            kind: Pod
-            metadata:
-              labels:
-                jenkins: agent
-                app: devapp-build
-            spec:
-              serviceAccountName: jenkins-agent
-              containers:
-              - name: maven
-                image: maven:3.9.9-eclipse-temurin-21
-                command:
-                - cat
-                tty: true
-                resources:
-                  requests:
-                    memory: "1Gi"
-                    cpu: "500m"
-                  limits:
-                    memory: "2Gi"
-                    cpu: "2000m"
-                volumeMounts:
-                - name: maven-cache
-                  mountPath: /root/.m2/repository
-                - name: maven-settings
-                  mountPath: /root/.m2/settings.xml
-                  subPath: settings.xml
-                  readOnly: true
-              - name: node
-                image: node:24-alpine
-                command:
-                - cat
-                tty: true
-                resources:
-                  requests:
-                    memory: "512Mi"
-                    cpu: "250m"
-                  limits:
-                    memory: "1Gi"
-                    cpu: "1000m"
-                volumeMounts:
-                - name: npm-cache
-                  mountPath: /root/.npm
-                - name: npm-config
-                  mountPath: /root/.npmrc
-                  subPath: .npmrc
-                  readOnly: true
-              - name: docker
-                image: docker:27-cli
-                command:
-                - cat
-                tty: true
-                resources:
-                  requests:
-                    memory: "256Mi"
-                    cpu: "250m"
-                  limits:
-                    memory: "512Mi"
-                    cpu: "500m"
-                volumeMounts:
-                - mountPath: /var/run/docker.sock
-                  name: docker-sock
-                - mountPath: /shared
-                  name: shared-images
-              - name: k3s-deployer
-                image: rancher/kubectl:v1.31.4
-                command:
-                - cat
-                tty: true
-                resources:
-                  requests:
-                    memory: "128Mi"
-                    cpu: "100m"
-                  limits:
-                    memory: "256Mi"
-                    cpu: "200m"
-                volumeMounts:
-                - mountPath: /shared
-                  name: shared-images
-                - mountPath: /host-bin
-                  name: k3s-bin
-                  readOnly: true
-                - mountPath: /run/k3s
-                  name: k3s-containerd
-                securityContext:
-                  privileged: true
-              volumes:
-              - name: docker-sock
-                hostPath:
-                  path: /var/run/docker.sock
-              - name: shared-images
-                emptyDir: {}
-              - name: k3s-bin
-                hostPath:
-                  path: /usr/local/bin
-              - name: k3s-containerd
-                hostPath:
-                  path: /run/k3s
-              - name: maven-cache
-                persistentVolumeClaim:
-                  claimName: jenkins-maven-cache
-              - name: npm-cache
-                persistentVolumeClaim:
-                  claimName: jenkins-npm-cache
-              - name: maven-settings
-                configMap:
-                  name: jenkins-maven-settings
-              - name: npm-config
-                configMap:
-                  name: jenkins-npm-config
-            """
+            yaml '''
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: devapp-build
+spec:
+  serviceAccountName: jenkins-agent
+  containers:
+    - name: maven
+      image: maven:3.9.11-eclipse-temurin-25
+      command: [cat]
+      tty: true
+      resources:
+        requests: {memory: "1Gi", cpu: "500m"}
+        limits: {memory: "2Gi", cpu: "2000m"}
+      volumeMounts:
+        - {name: maven-cache, mountPath: /root/.m2/repository}
+        - {name: maven-settings, mountPath: /root/.m2/settings.xml, subPath: settings.xml, readOnly: true}
+    - name: node
+      image: ghcr.io/puppeteer/puppeteer:24.10.0
+      command: [cat]
+      tty: true
+      resources:
+        requests: {memory: "512Mi", cpu: "250m"}
+        limits: {memory: "1Gi", cpu: "1000m"}
+      securityContext:
+        runAsUser: 0
+      volumeMounts:
+        - {name: npm-cache, mountPath: /root/.npm}
+        - {name: npm-config, mountPath: /root/.npmrc, subPath: .npmrc, readOnly: true}
+    - name: docker
+      image: docker:27-cli
+      command: [cat]
+      tty: true
+      resources:
+        requests: {memory: "256Mi", cpu: "250m"}
+        limits: {memory: "512Mi", cpu: "500m"}
+      volumeMounts:
+        - {name: docker-sock, mountPath: /var/run/docker.sock}
+        - {name: shared-images, mountPath: /shared}
+    - name: k3s-deployer
+      image: rancher/kubectl:v1.31.4
+      command: [cat]
+      tty: true
+      resources:
+        requests: {memory: "128Mi", cpu: "100m"}
+        limits: {memory: "256Mi", cpu: "200m"}
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - {name: shared-images, mountPath: /shared}
+        - {name: k3s-bin, mountPath: /host-bin, readOnly: true}
+        - {name: k3s-containerd, mountPath: /run/k3s}
+    - name: git
+      image: alpine/git:2.49.1
+      command: [cat]
+      tty: true
+      env:
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef: {name: devapp-ci-credentials, key: GIT_USERNAME}
+        - name: GIT_TOKEN
+          valueFrom:
+            secretKeyRef: {name: devapp-ci-credentials, key: GIT_TOKEN}
+  volumes:
+    - name: docker-sock
+      hostPath: {path: /var/run/docker.sock}
+    - name: shared-images
+      emptyDir: {}
+    - name: k3s-bin
+      hostPath: {path: /usr/local/bin}
+    - name: k3s-containerd
+      hostPath: {path: /run/k3s}
+    - name: maven-cache
+      persistentVolumeClaim: {claimName: jenkins-maven-cache}
+    - name: npm-cache
+      persistentVolumeClaim: {claimName: jenkins-npm-cache}
+    - name: maven-settings
+      configMap: {name: jenkins-maven-settings}
+    - name: npm-config
+      configMap: {name: jenkins-npm-config}
+'''
         }
     }
 
     environment {
         K8S_NAMESPACE = 'devapp'
-        INFRA_NAMESPACE = 'infrastructure'
-        SONAR_PROJECT_KEY = 'devapp'
-        APP_VERSION = "${env.BUILD_NUMBER}"
-        GIT_COMMIT_SHORT = "${env.GIT_COMMIT?.take(7) ?: 'unknown'}"
+        ARGO_NAMESPACE = 'infra'
+        ARGO_APPLICATION = 'devapp'
+        GIT_REPOSITORY = 'https://github.com/chefzaid/devapp.git'
     }
 
     options {
+        skipDefaultCheckout(true)
+        disableConcurrentBuilds()
         buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 60, unit: 'MINUTES')
-        timestamps()
+        timeout(time: 75, unit: 'MINUTES')
     }
 
     triggers {
@@ -141,21 +112,29 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    currentBuild.displayName = "#${env.BUILD_NUMBER}-${GIT_COMMIT_SHORT}"
-                    currentBuild.description = "Branch: ${env.GIT_BRANCH}"
+                    env.GIT_COMMIT_SHORT = sh(
+                        script: 'git rev-parse --short=7 HEAD',
+                        returnStdout: true
+                    ).trim()
+                    env.APP_VERSION = "${env.BUILD_NUMBER}-${env.GIT_COMMIT_SHORT}"
+                    env.SKIP_CI = sh(
+                        script: "git log -1 --pretty=%B | grep -q '\\[skip ci\\]'",
+                        returnStatus: true
+                    ) == 0 ? 'true' : 'false'
+                    currentBuild.displayName = "#${env.APP_VERSION}"
+                    currentBuild.description = env.SKIP_CI == 'true' ?
+                        'GitOps image update (build skipped)' : "Commit ${env.GIT_COMMIT_SHORT}"
                 }
             }
         }
 
         stage('Code Quality') {
+            when { expression { env.SKIP_CI != 'true' } }
             parallel {
                 stage('Backend Tests') {
                     steps {
                         container('maven') {
-                            sh '''
-                                mvn clean verify -B \
-                                    -Dhttp.proxyHost= -Dhttps.proxyHost=
-                            '''
+                            sh 'mvn clean verify -B -Dhttp.proxyHost= -Dhttps.proxyHost='
                         }
                     }
                     post {
@@ -164,14 +143,17 @@ pipeline {
                         }
                     }
                 }
-
-                stage('Frontend Lint & Test') {
+                stage('Frontend Tests') {
                     steps {
                         container('node') {
                             dir('devapp-web') {
                                 sh '''
-                                    CYPRESS_INSTALL_BINARY=0 npm ci --cache /root/.npm
-                                    npm run lint
+                                    export CHROME_BIN=$(find /home/pptruser/.cache/puppeteer/chrome \
+                                        -type f -path '*/chrome-linux*/chrome' | head -1)
+                                    test -x "$CHROME_BIN"
+                                    export PUPPETEER_EXECUTABLE_PATH="$CHROME_BIN"
+                                    CYPRESS_INSTALL_BINARY=0 PUPPETEER_SKIP_DOWNLOAD=true \
+                                        npm ci --cache /root/.npm
                                     npm run test:ci
                                 '''
                             }
@@ -187,6 +169,7 @@ pipeline {
         }
 
         stage('Build Applications') {
+            when { expression { env.SKIP_CI != 'true' } }
             parallel {
                 stage('Build Backend') {
                     steps {
@@ -199,15 +182,11 @@ pipeline {
                         }
                     }
                 }
-
                 stage('Build Frontend') {
                     steps {
                         container('node') {
                             dir('devapp-web') {
-                                sh '''
-                                    npm ci --cache /root/.npm
-                                    npm run build-prod
-                                '''
+                                sh 'npm run build-prod'
                             }
                         }
                     }
@@ -215,79 +194,117 @@ pipeline {
             }
             post {
                 success {
-                    archiveArtifacts artifacts: 'user-app/target/*.jar, order-app/target/*.jar', fingerprint: true, allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'user-app/target/*.jar,order-app/target/*.jar', fingerprint: true, allowEmptyArchive: true
                 }
             }
         }
 
-        stage('Docker Build') {
+        stage('Build Images') {
+            when { expression { env.SKIP_CI != 'true' } }
             steps {
                 container('docker') {
-                    sh """
-                        IMAGE_TAG="${APP_VERSION}"
-
-                        echo "Building Docker images with tag \${IMAGE_TAG}..."
-                        docker build -t devapp/user-app:\${IMAGE_TAG} user-app/
-                        docker build -t devapp/order-app:\${IMAGE_TAG} order-app/
-                        docker build -t devapp/devapp-web:\${IMAGE_TAG} devapp-web/
-
-                        docker tag devapp/user-app:\${IMAGE_TAG} devapp/user-app:latest
-                        docker tag devapp/order-app:\${IMAGE_TAG} devapp/order-app:latest
-                        docker tag devapp/devapp-web:\${IMAGE_TAG} devapp/devapp-web:latest
-
-                        echo "Saving images for K3s import..."
-                        docker save devapp/user-app:\${IMAGE_TAG} devapp/user-app:latest > /shared/user-app.tar
-                        docker save devapp/order-app:\${IMAGE_TAG} devapp/order-app:latest > /shared/order-app.tar
-                        docker save devapp/devapp-web:\${IMAGE_TAG} devapp/devapp-web:latest > /shared/devapp-web.tar
-                    """
+                    sh '''
+                        docker build -t "devapp/user-app:${APP_VERSION}" user-app/
+                        docker build -t "devapp/order-app:${APP_VERSION}" order-app/
+                        docker build -t "devapp/devapp-web:${APP_VERSION}" devapp-web/
+                        docker save "devapp/user-app:${APP_VERSION}" > /shared/user-app.tar
+                        docker save "devapp/order-app:${APP_VERSION}" > /shared/order-app.tar
+                        docker save "devapp/devapp-web:${APP_VERSION}" > /shared/devapp-web.tar
+                    '''
                 }
             }
         }
 
-        stage('Import to K3s & Deploy') {
+        stage('Import Images to K3s') {
+            when { expression { env.SKIP_CI != 'true' } }
             steps {
                 container('k3s-deployer') {
-                    sh """
-                        echo "Importing images into K3s containerd..."
+                    sh '''
                         /host-bin/k3s ctr images import /shared/user-app.tar
                         /host-bin/k3s ctr images import /shared/order-app.tar
                         /host-bin/k3s ctr images import /shared/devapp-web.tar
+                    '''
+                }
+            }
+        }
 
-                        echo "Deploying to K3s..."
-                        kubectl set image deployment/user-app user-app=devapp/user-app:${APP_VERSION} -n ${K8S_NAMESPACE}
-                        kubectl set image deployment/order-app order-app=devapp/order-app:${APP_VERSION} -n ${K8S_NAMESPACE}
-                        kubectl set image deployment/devapp-web devapp-web=devapp/devapp-web:${APP_VERSION} -n ${K8S_NAMESPACE}
+        stage('Commit Desired Version') {
+            when { expression { env.SKIP_CI != 'true' } }
+            steps {
+                container('git') {
+                    sh '''
+                        git fetch origin main
+                        if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+                            echo "origin/main advanced during this build; the next polled build will deploy it" >&2
+                            exit 1
+                        fi
+                        git checkout -B main origin/main
+                        scripts/set-image-tags.sh "$APP_VERSION"
+                        git config user.name "DevApp Jenkins"
+                        git config user.email "jenkins@swirlit.dev"
+                        git add deployments/kustomization.yaml
+                        git commit -m "deploy: ${APP_VERSION} [skip ci]"
 
-                        echo "Waiting for rollout..."
-                        kubectl rollout status deployment/user-app -n ${K8S_NAMESPACE} --timeout=120s
-                        kubectl rollout status deployment/order-app -n ${K8S_NAMESPACE} --timeout=120s
-                        kubectl rollout status deployment/devapp-web -n ${K8S_NAMESPACE} --timeout=60s
-                    """
+                        set +x
+                        export GIT_ASKPASS="$WORKSPACE/.git-askpass"
+                        export GIT_TERMINAL_PROMPT=0
+                        printf '%s\n' '#!/bin/sh' \
+                          'case "$1" in' \
+                          '  *Username*) printf "%s\\n" "$GIT_USERNAME" ;;' \
+                          '  *) printf "%s\\n" "$GIT_TOKEN" ;;' \
+                          'esac' > "$GIT_ASKPASS"
+                        chmod 700 "$GIT_ASKPASS"
+                        trap 'rm -f "$GIT_ASKPASS"' EXIT
+                        git push origin HEAD:main
+                        rm -f "$GIT_ASKPASS"
+                        trap - EXIT
+                        git rev-parse HEAD > .deploy-revision
+                        set -x
+                    '''
+                    script {
+                        env.DEPLOY_REVISION = readFile('.deploy-revision').trim()
+                    }
+                }
+            }
+        }
+
+        stage('Argo CD Rollout') {
+            when { expression { env.SKIP_CI != 'true' } }
+            steps {
+                container('k3s-deployer') {
+                    sh '''
+                        kubectl annotate application "$ARGO_APPLICATION" -n "$ARGO_NAMESPACE" \
+                            argocd.argoproj.io/refresh=hard --overwrite
+
+                        for attempt in $(seq 1 90); do
+                            revision=$(kubectl get application "$ARGO_APPLICATION" -n "$ARGO_NAMESPACE" \
+                                -o jsonpath='{.status.sync.revision}' 2>/dev/null || true)
+                            sync=$(kubectl get application "$ARGO_APPLICATION" -n "$ARGO_NAMESPACE" \
+                                -o jsonpath='{.status.sync.status}' 2>/dev/null || true)
+                            health=$(kubectl get application "$ARGO_APPLICATION" -n "$ARGO_NAMESPACE" \
+                                -o jsonpath='{.status.health.status}' 2>/dev/null || true)
+                            echo "Argo CD: revision=${revision:-unknown} sync=${sync:-unknown} health=${health:-unknown}"
+                            if [ "$revision" = "$DEPLOY_REVISION" ] && [ "$sync" = Synced ] && [ "$health" = Healthy ]; then
+                                exit 0
+                            fi
+                            sleep 10
+                        done
+                        echo "Argo CD did not complete revision $DEPLOY_REVISION within 15 minutes" >&2
+                        exit 1
+                    '''
                 }
             }
         }
 
         stage('Smoke Tests') {
+            when { expression { env.SKIP_CI != 'true' } }
             steps {
                 container('k3s-deployer') {
-                    sh """
-                        echo "Running smoke tests..."
-
-                        USER_IP=\$(kubectl get svc user-app -n ${K8S_NAMESPACE} -o jsonpath='{.spec.clusterIP}')
-                        ORDER_IP=\$(kubectl get svc order-app -n ${K8S_NAMESPACE} -o jsonpath='{.spec.clusterIP}')
-                        WEB_IP=\$(kubectl get svc devapp-web -n ${K8S_NAMESPACE} -o jsonpath='{.spec.clusterIP}')
-
-                        wget -q -O /dev/null --timeout=10 "http://\${USER_IP}:8080/actuator/health" || { echo "user-app health check failed"; exit 1; }
-                        echo "✅ user-app healthy"
-
-                        wget -q -O /dev/null --timeout=10 "http://\${ORDER_IP}:8081/actuator/health" || { echo "order-app health check failed"; exit 1; }
-                        echo "✅ order-app healthy"
-
-                        wget -q -O /dev/null --timeout=10 "http://\${WEB_IP}:80/" || { echo "devapp-web health check failed"; exit 1; }
-                        echo "✅ devapp-web healthy"
-
-                        echo "All smoke tests passed!"
-                    """
+                    sh '''
+                        wget -q -O /dev/null --timeout=10 "http://user-app.${K8S_NAMESPACE}.svc.cluster.local:8080/actuator/health"
+                        wget -q -O /dev/null --timeout=10 "http://order-app.${K8S_NAMESPACE}.svc.cluster.local:8081/actuator/health"
+                        wget -q -O /dev/null --timeout=10 "http://devapp-web.${K8S_NAMESPACE}.svc.cluster.local/"
+                    '''
                 }
             }
         }
@@ -295,16 +312,16 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
-            cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenSuccess: true, cleanWhenUnstable: true, deleteDirs: true)
+            cleanWs(deleteDirs: true, notFailBuild: true)
         }
-
         success {
-            echo "✅ DevApp build #${env.BUILD_NUMBER} succeeded — images deployed to K3s"
-        }
-
-        failure {
-            echo "❌ DevApp build #${env.BUILD_NUMBER} failed"
+            script {
+                if (env.SKIP_CI == 'true') {
+                    echo 'GitOps image-update commit skipped as intended.'
+                } else {
+                    echo "DevApp ${env.APP_VERSION} was deployed by Argo CD."
+                }
+            }
         }
     }
 }

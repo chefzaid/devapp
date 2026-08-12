@@ -96,7 +96,7 @@ spring:
     activate:
       on-profile: uat
   datasource:
-    url: jdbc:postgresql://${DB_HOST:postgres.infrastructure.svc.cluster.local}:${DB_PORT:5432}/${DB_NAME:devdb}
+    url: jdbc:postgresql://${DB_HOST:postgres.infra.svc.cluster.local}:${DB_PORT:5432}/${DB_NAME:devdb}
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:devuser}
     password: ${DB_PASSWORD:devpass}
@@ -109,12 +109,12 @@ spring:
     init:
       mode: never
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka.infrastructure.svc.cluster.local:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka.infra.svc.cluster.local:9092}
     consumer:
       group-id: ${KAFKA_CONSUMER_GROUP:order-service-group-uat}
   data:
     redis:
-      host: ${REDIS_HOST:redis.infrastructure.svc.cluster.local}
+      host: ${REDIS_HOST:redis.infra.svc.cluster.local}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
   security:

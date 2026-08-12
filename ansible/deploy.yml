@@ -11,6 +11,10 @@
     - name: Ensure app namespace exists
       command: kubectl create namespace {{ app_namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
+    - name: Remove the previous Kibana saved-object bootstrap job
+      command: kubectl delete job devapp-kibana-bootstrap-v1 -n {{ app_namespace }} --ignore-not-found
+      changed_when: false
+
     - name: Deploy application manifests
       command: kubectl apply -n {{ app_namespace }} -f {{ deploy_dir }}/{{ item }}
       loop:
@@ -19,6 +23,7 @@
         - order-app.yaml
         - devapp-web.yaml
         - ingress.yaml
+        - observability.yaml
       register: result
       changed_when: "'created' in result.stdout or 'configured' in result.stdout"
 
@@ -29,6 +34,10 @@
 
     - name: Wait for devapp database ExternalSecret
       command: kubectl wait --for=condition=Ready externalsecret/devapp-db-credentials -n {{ app_namespace }} --timeout=180s
+      ignore_errors: yes
+
+    - name: Wait for Kibana saved-object bootstrap
+      command: kubectl wait --for=condition=complete job/devapp-kibana-bootstrap-v1 -n {{ app_namespace }} --timeout=180s
       ignore_errors: yes
 
     - name: Display status

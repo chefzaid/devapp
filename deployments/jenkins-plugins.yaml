@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: devapp-jenkins-plugins
+  namespace: infra
+data:
+  plugins.txt: |
+    git
+    junit
+    kubernetes
+    workflow-aggregator
+    ws-cleanup
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: devapp-jenkins-plugin-install
+  namespace: infra
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: devapp-jenkins-bootstrap
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: plugin-install
+          image: jenkins/jenkins:2.541.2-jdk21
+          command: ["/bin/bash", "-ceu"]
+          args:
+            - |
+              jenkins-plugin-cli \
+                --jenkins-version 2.541.2 \
+                --plugin-file /config/plugins.txt \
+                --plugin-download-directory /var/jenkins_home/plugins
+          volumeMounts:
+            - name: plugins
+              mountPath: /config
+              readOnly: true
+            - name: jenkins-home
+              mountPath: /var/jenkins_home
+      volumes:
+        - name: plugins
+          configMap:
+            name: devapp-jenkins-plugins
+        - name: jenkins-home
+          persistentVolumeClaim:
+            claimName: jenkins-home

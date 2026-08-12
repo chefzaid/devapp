@@ -45,9 +45,9 @@
         </encoder>
     </appender>
 
-    <!-- Logstash TCP appender for centralized logging -->
-    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-        <destination>${LOGSTASH_HOST:-logstash.infrastructure.svc.cluster.local}:${LOGSTASH_PORT:-5000}</destination>
+    <!-- Kubernetes production logs are JSON on stdout; the cluster log agent
+         enriches them with pod metadata and ships them to Elasticsearch. -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
             <providers>
                 <timestamp/>
@@ -63,11 +63,6 @@
                 </pattern>
             </providers>
         </encoder>
-        <connectionStrategy>
-            <roundRobin>
-                <connectionTTL>5 minutes</connectionTTL>
-            </roundRobin>
-        </connectionStrategy>
     </appender>
 
     <!-- Development profile -->
@@ -83,8 +78,7 @@
     <!-- Production profile -->
     <springProfile name="prod">
         <root level="WARN">
-            <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="LOGSTASH"/>
+            <appender-ref ref="CONSOLE_JSON"/>
         </root>
         <logger name="dev.swirlit.devapp" level="INFO"/>
         <logger name="org.springframework.security" level="WARN"/>

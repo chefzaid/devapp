@@ -14,6 +14,10 @@ spec:
     metadata:
       labels:
         app: order-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8081"
     spec:
       containers:
       - name: order-app
@@ -25,7 +29,7 @@ spec:
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
         - name: DB_HOST
-          value: "postgres.infrastructure.svc.cluster.local"
+          value: "postgres.infra.svc.cluster.local"
         - name: DB_PORT
           value: "5432"
         - name: DB_NAME
@@ -41,13 +45,13 @@ spec:
               name: devapp-db-credentials
               key: DB_PASSWORD
         - name: KAFKA_BOOTSTRAP_SERVERS
-          value: "kafka.infrastructure.svc.cluster.local:9092"
+          value: "kafka.infra.svc.cluster.local:9092"
         - name: REDIS_HOST
-          value: "redis.infrastructure.svc.cluster.local"
+          value: "redis.infra.svc.cluster.local"
         - name: REDIS_PORT
           value: "6379"
         - name: SPRING_DATA_REDIS_HOST
-          value: "redis.infrastructure.svc.cluster.local"
+          value: "redis.infra.svc.cluster.local"
         - name: SPRING_DATA_REDIS_PORT
           value: "6379"
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI

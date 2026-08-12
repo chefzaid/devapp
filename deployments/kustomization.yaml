@@ -13,4 +13,4 @@ images:
   - name: devapp/order-app
     newTag: observability-v1
   - name: devapp/devapp-web
-    newTag: v3
+    newTag: bootstrap-ec4d28f

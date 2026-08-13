@@ -17,7 +17,7 @@ spec:
     seccompProfile: {type: RuntimeDefault}
   containers:
     - name: maven
-      image: maven:3.9.11-eclipse-temurin-25
+      image: docker.io/library/maven@sha256:407c4423cec0cf2981055bc2c6c0dc211d9605b6669279b95997f2d1c7e91e2c
       command: [cat]
       tty: true
       resources:
@@ -27,7 +27,7 @@ spec:
         - {name: maven-cache, mountPath: /root/.m2/repository}
         - {name: maven-settings, mountPath: /root/.m2/settings.xml, subPath: settings.xml, readOnly: true}
     - name: node
-      image: ghcr.io/puppeteer/puppeteer:24.10.0
+      image: ghcr.io/puppeteer/puppeteer@sha256:bc20e7cbe2eca9c38e78d2f4a5ee7202aa489c2ebe9f3e7315e8b0322e3bc555
       command: [cat]
       tty: true
       env:
@@ -41,7 +41,7 @@ spec:
         - {name: npm-cache, mountPath: /root/.npm}
         - {name: npm-config, mountPath: /root/.npmrc, subPath: .npmrc, readOnly: true}
     - name: kaniko
-      image: gcr.io/kaniko-project/executor:v1.23.2-debug
+      image: gcr.io/kaniko-project/executor@sha256:c3109d5926a997b100c4343944e06c6b30a6804b2f9abe0994d3de6ef92b028e
       command: [/busybox/cat]
       tty: true
       resources:
@@ -65,7 +65,8 @@ spec:
         limits: {memory: "256Mi", cpu: "200m"}
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1001
+        runAsUser: 1000
+        runAsGroup: 1000
         allowPrivilegeEscalation: false
         capabilities: {drop: ["ALL"]}
     - name: smoke
@@ -77,21 +78,28 @@ spec:
         limits: {memory: "64Mi", cpu: "100m"}
       securityContext:
         runAsNonRoot: true
-        runAsUser: 100
-        runAsGroup: 101
+        runAsUser: 1000
+        runAsGroup: 1000
         allowPrivilegeEscalation: false
         capabilities: {drop: ["ALL"]}
     - name: git
-      image: alpine/git:2.49.1
+      image: docker.io/alpine/git@sha256:c0280cf9572316299b08544065d3bf35db65043d5e3963982ec50647d2746e26
       command: [cat]
       tty: true
       env:
+        - {name: HOME, value: /tmp}
         - name: GIT_USERNAME
           valueFrom:
             secretKeyRef: {name: devapp-ci-credentials, key: GIT_USERNAME}
         - name: GIT_TOKEN
           valueFrom:
             secretKeyRef: {name: devapp-ci-credentials, key: GIT_TOKEN}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        allowPrivilegeEscalation: false
+        capabilities: {drop: ["ALL"]}
   volumes:
     - name: registry-auth
       secret: {secretName: jenkins-registry-auth, items: [{key: .dockerconfigjson, path: config.json}]}
@@ -248,7 +256,6 @@ spec:
             steps {
                 container('git') {
                     sh '''
-                        git config --global --add safe.directory "$WORKSPACE"
                         git fetch origin main
                         if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
                             echo "origin/main advanced during this build; the next polled build will deploy it" >&2

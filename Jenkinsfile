@@ -51,13 +51,29 @@ spec:
       volumeMounts:
         - {name: registry-auth, mountPath: /kaniko/.docker, readOnly: true}
     - name: kubectl
-      image: rancher/kubectl:v1.31.4
-      command: [cat]
+      image: docker.io/bitnami/kubectl@sha256:175d3e94e675f4d078c60fe097087a2d77dbc9f76d49d4185c83ca79489c2a46
+      command: [/bin/sh, -c]
+      args: [sleep infinity]
       tty: true
       resources:
         requests: {memory: "128Mi", cpu: "25m"}
         limits: {memory: "256Mi", cpu: "200m"}
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        allowPrivilegeEscalation: false
+        capabilities: {drop: ["ALL"]}
+    - name: smoke
+      image: docker.io/curlimages/curl@sha256:9a1ed35addb45476afa911696297f8e115993df459278ed036182dd2cd22b67b
+      command: [cat]
+      tty: true
+      resources:
+        requests: {memory: "16Mi", cpu: "10m"}
+        limits: {memory: "64Mi", cpu: "100m"}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
         allowPrivilegeEscalation: false
         capabilities: {drop: ["ALL"]}
     - name: git
@@ -288,11 +304,11 @@ spec:
         stage('Smoke Tests') {
             when { expression { env.SKIP_CI != 'true' } }
             steps {
-                container('kubectl') {
+                container('smoke') {
                     sh '''
-                        wget -q -O /dev/null --timeout=10 "http://user-app.${K8S_NAMESPACE}.svc.cluster.local:8080/actuator/health"
-                        wget -q -O /dev/null --timeout=10 "http://order-app.${K8S_NAMESPACE}.svc.cluster.local:8081/actuator/health"
-                        wget -q -O /dev/null --timeout=10 "http://devapp-web.${K8S_NAMESPACE}.svc.cluster.local/"
+                        curl -fsS --max-time 10 "http://user-app.${K8S_NAMESPACE}.svc.cluster.local:8080/actuator/health" >/dev/null
+                        curl -fsS --max-time 10 "http://order-app.${K8S_NAMESPACE}.svc.cluster.local:8081/actuator/health" >/dev/null
+                        curl -fsS --max-time 10 "http://devapp-web.${K8S_NAMESPACE}.svc.cluster.local/" >/dev/null
                     '''
                 }
             }

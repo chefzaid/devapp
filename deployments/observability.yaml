@@ -154,7 +154,7 @@ data:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: devapp-kibana-bootstrap-v2
+  name: devapp-kibana-bootstrap-v3
   namespace: devapp
   labels:
     app: devapp-kibana-bootstrap
@@ -170,6 +170,8 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
         seccompProfile:
           type: RuntimeDefault
       containers:

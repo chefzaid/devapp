@@ -19,13 +19,17 @@ module.exports = function (config) {
     colors: true,
     logLevel: config.LOG_INFO,
     autoWatch: false,
-    browsers: ['ChromeHeadless'],
+    browsers: ['ChromeHeadlessCI'],
     customLaunchers: {
-      ChromeHeadless: {
-        base: 'Chrome',
-        flags: ['--headless', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--remote-debugging-port=9222']
+      ChromeHeadlessCI: {
+        base: 'ChromeHeadless',
+        flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
       }
     },
+    captureTimeout: 60000,
+    browserDisconnectTimeout: 10000,
+    browserDisconnectTolerance: 0,
+    browserNoActivityTimeout: 30000,
     coverageIstanbulReporter: {
       dir: require('path').join(__dirname, './coverage/devapp-web'),
       reports: ['html', 'lcovonly', 'text-summary'],

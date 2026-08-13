@@ -13,7 +13,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test --watch=false --browsers=ChromeHeadless",
     "test:coverage": "ng test --watch=false --browsers=ChromeHeadless --code-coverage",
-    "test:ci": "ng test --watch=false --browsers=ChromeHeadless --code-coverage --reporters=progress,junit",
+    "test:ci": "ng test --watch=false --browsers=ChromeHeadlessCI --code-coverage --reporters=progress,junit",
     "test:integration": "cypress run --config-file cypress.config.integration.ts",
     "test:e2e": "cypress run",
     "analyze": "ng build --stats-json && npx webpack-bundle-analyzer dist/devapp-web/stats.json",

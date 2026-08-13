@@ -30,9 +30,11 @@ spec:
       image: ghcr.io/puppeteer/puppeteer:24.10.0
       command: [cat]
       tty: true
+      env:
+        - {name: NODE_OPTIONS, value: "--max-old-space-size=1536"}
       resources:
-        requests: {memory: "512Mi", cpu: "100m"}
-        limits: {memory: "1Gi", cpu: "1000m"}
+        requests: {memory: "768Mi", cpu: "100m"}
+        limits: {memory: "2Gi", cpu: "1000m"}
       securityContext:
         runAsUser: 0
       volumeMounts:

@@ -75,13 +75,13 @@ spec:
     - name: registry-auth
       secret: {secretName: jenkins-registry-auth, items: [{key: .dockerconfigjson, path: config.json}]}
     - name: maven-cache
-      persistentVolumeClaim: {claimName: jenkins-maven-cache}
+      emptyDir: {sizeLimit: 2Gi}
     - name: npm-cache
-      persistentVolumeClaim: {claimName: jenkins-npm-cache}
+      emptyDir: {sizeLimit: 2Gi}
     - name: maven-settings
-      configMap: {name: jenkins-maven-settings}
+      secret: {secretName: jenkins-maven-settings}
     - name: npm-config
-      configMap: {name: jenkins-npm-config}
+      secret: {secretName: jenkins-npm-config}
 '''
         }
     }

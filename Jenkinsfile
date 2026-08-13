@@ -224,9 +224,14 @@ spec:
                 container('kaniko') {
                     sh '''
                         for image in user-app order-app devapp-web; do
+                            # The shared workspace is owned by the Jenkins agent UID.
+                            # Give Kaniko a root-owned staging copy so its startup
+                            # metadata reconciliation stays deterministic.
+                            rm -f "/kaniko/${image}.Dockerfile"
+                            cp "$WORKSPACE/$image/Dockerfile" "/kaniko/${image}.Dockerfile"
                             /kaniko/executor \
                                 --context "$WORKSPACE/$image" \
-                                --dockerfile "$WORKSPACE/$image/Dockerfile" \
+                                --dockerfile "/kaniko/${image}.Dockerfile" \
                                 --destination "$IMAGE_REGISTRY/$image:$APP_VERSION" \
                                 --insecure \
                                 --snapshot-mode=redo \

@@ -3,17 +3,20 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_NAMESPACE="${INFRA_NAMESPACE:-infra}"
+BUILD_NAMESPACE="${BUILD_NAMESPACE:-jenkins-builds}"
 GITHUB_USERNAME="${GITHUB_USERNAME:-chefzaid}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+VAULT_BOOTSTRAP_TOKEN_FILE="${VAULT_BOOTSTRAP_TOKEN_FILE:-/var/lib/bm-cluster/vault-bootstrap-token}"
 
 info() { printf '[INFO] %s\n' "$*"; }
 fail() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
 
-for command_name in kubectl git base64; do
+for command_name in kubectl git sudo; do
     command -v "$command_name" >/dev/null || fail "$command_name is required"
 done
 kubectl cluster-info >/dev/null 2>&1 || fail "Cannot reach the Kubernetes cluster"
 kubectl get namespace "$INFRA_NAMESPACE" >/dev/null 2>&1 || fail "Namespace '$INFRA_NAMESPACE' does not exist"
+kubectl get namespace "$BUILD_NAMESPACE" >/dev/null 2>&1 || fail "Namespace '$BUILD_NAMESPACE' does not exist; apply the bm-cluster Jenkins manifest first"
 kubectl get deploy jenkins -n "$INFRA_NAMESPACE" >/dev/null 2>&1 || fail "Jenkins is not installed"
 kubectl get crd applications.argoproj.io >/dev/null 2>&1 || fail "Argo CD is not installed"
 kubectl get pod vault-0 -n "$INFRA_NAMESPACE" >/dev/null 2>&1 || fail "Vault pod vault-0 is not installed"
@@ -37,7 +40,9 @@ fi
 [[ "$GITHUB_TOKEN" =~ ^github_pat_[A-Za-z0-9_]+$ ]] || fail "Invalid fine-grained GitHub token format"
 
 info "Storing the GitHub credential in Vault at secret/devapp/ci"
-vault_token=$(kubectl get secret vault-init -n "$INFRA_NAMESPACE" -o jsonpath='{.data.root_token}' | base64 -d)
+sudo test -s "$VAULT_BOOTSTRAP_TOKEN_FILE" ||
+    fail "Vault bootstrap token is missing from $VAULT_BOOTSTRAP_TOKEN_FILE"
+vault_token="$(sudo cat "$VAULT_BOOTSTRAP_TOKEN_FILE")"
 {
     printf '%s\n' "$vault_token"
     printf '%s\n' "$GITHUB_USERNAME"
@@ -55,7 +60,7 @@ unset vault_token GITHUB_TOKEN
 info "Creating the Vault-backed Jenkins agent credential"
 kubectl apply -f "$SCRIPT_DIR/deployments/jenkins-credentials.yaml"
 kubectl wait --for=condition=Ready externalsecret/devapp-ci-credentials \
-    -n "$INFRA_NAMESPACE" --timeout=180s
+    -n "$BUILD_NAMESPACE" --timeout=180s
 
 info "Installing the Jenkins Pipeline, Git, Kubernetes-agent, JUnit, and workspace-cleanup plugins"
 kubectl delete job devapp-jenkins-plugin-install -n "$INFRA_NAMESPACE" --ignore-not-found >/dev/null

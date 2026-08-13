@@ -1,4 +1,7 @@
 FROM eclipse-temurin:25-jre-alpine
+RUN addgroup -S -g 10001 app && adduser -S -D -H -u 10001 -G app app
+WORKDIR /app
 VOLUME /tmp
-COPY target/user-app.jar .
+COPY --chown=10001:10001 target/user-app.jar .
+USER 10001:10001
 ENTRYPOINT [ "java", "-jar", "user-app.jar" ]

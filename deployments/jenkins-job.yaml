@@ -24,7 +24,7 @@ data:
       jenkins.clouds.add(cloud)
     }
     cloud.setServerUrl('https://kubernetes.default.svc.cluster.local')
-    cloud.setNamespace('infra')
+    cloud.setNamespace('jenkins-builds')
     cloud.setJenkinsUrl('http://jenkins.infra.svc.cluster.local:8080')
     cloud.setJenkinsTunnel('jenkins.infra.svc.cluster.local:50000')
     cloud.setContainerCapStr('4')
@@ -50,7 +50,7 @@ data:
     def definition = new CpsScmFlowDefinition(scm, 'Jenkinsfile')
     definition.setLightweight(true)
     job.setDefinition(definition)
-    job.setDescription('DevApp CI; Jenkins builds/imports images and Argo CD owns the rollout.')
+    job.setDescription('DevApp CI; Jenkins builds and pushes immutable images to Nexus, while Argo CD owns rollout.')
     job.save()
     jenkins.save()
     println('DEVAPP_JENKINS_CONFIGURED')
@@ -68,8 +68,11 @@ spec:
         app: devapp-jenkins-bootstrap
     spec:
       restartPolicy: Never
+      automountServiceAccountToken: false
       securityContext:
         fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: configure
           image: curlimages/curl:8.12.1
@@ -99,6 +102,17 @@ spec:
             - name: jenkins-home
               mountPath: /var/jenkins_home
               readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
       volumes:
         - name: config
           configMap:

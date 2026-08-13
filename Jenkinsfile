@@ -11,6 +11,10 @@ metadata:
     app: devapp-build
 spec:
   serviceAccountName: jenkins-agent
+  automountServiceAccountToken: true
+  securityContext:
+    fsGroup: 1000
+    seccompProfile: {type: RuntimeDefault}
   containers:
     - name: maven
       image: maven:3.9.11-eclipse-temurin-25
@@ -34,17 +38,19 @@ spec:
       volumeMounts:
         - {name: npm-cache, mountPath: /root/.npm}
         - {name: npm-config, mountPath: /root/.npmrc, subPath: .npmrc, readOnly: true}
-    - name: docker
-      image: docker:27-cli
-      command: [cat]
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:v1.23.2-debug
+      command: [/busybox/cat]
       tty: true
       resources:
         requests: {memory: "256Mi", cpu: "250m"}
-        limits: {memory: "512Mi", cpu: "500m"}
+        limits: {memory: "1Gi", cpu: "1000m"}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: {drop: ["ALL"]}
       volumeMounts:
-        - {name: docker-sock, mountPath: /var/run/docker.sock}
-        - {name: shared-images, mountPath: /shared}
-    - name: k3s-deployer
+        - {name: registry-auth, mountPath: /kaniko/.docker, readOnly: true}
+    - name: kubectl
       image: rancher/kubectl:v1.31.4
       command: [cat]
       tty: true
@@ -52,11 +58,8 @@ spec:
         requests: {memory: "128Mi", cpu: "100m"}
         limits: {memory: "256Mi", cpu: "200m"}
       securityContext:
-        privileged: true
-      volumeMounts:
-        - {name: shared-images, mountPath: /shared}
-        - {name: k3s-bin, mountPath: /host-bin, readOnly: true}
-        - {name: k3s-containerd, mountPath: /run/k3s}
+        allowPrivilegeEscalation: false
+        capabilities: {drop: ["ALL"]}
     - name: git
       image: alpine/git:2.49.1
       command: [cat]
@@ -69,14 +72,8 @@ spec:
           valueFrom:
             secretKeyRef: {name: devapp-ci-credentials, key: GIT_TOKEN}
   volumes:
-    - name: docker-sock
-      hostPath: {path: /var/run/docker.sock}
-    - name: shared-images
-      emptyDir: {}
-    - name: k3s-bin
-      hostPath: {path: /usr/local/bin}
-    - name: k3s-containerd
-      hostPath: {path: /run/k3s}
+    - name: registry-auth
+      secret: {secretName: jenkins-registry-auth, items: [{key: .dockerconfigjson, path: config.json}]}
     - name: maven-cache
       persistentVolumeClaim: {claimName: jenkins-maven-cache}
     - name: npm-cache
@@ -94,6 +91,7 @@ spec:
         ARGO_NAMESPACE = 'infra'
         ARGO_APPLICATION = 'devapp'
         GIT_REPOSITORY = 'https://github.com/chefzaid/devapp.git'
+        IMAGE_REGISTRY = 'nexus-registry.infra.svc.cluster.local:5000/devapp'
     }
 
     options {
@@ -202,27 +200,18 @@ spec:
         stage('Build Images') {
             when { expression { env.SKIP_CI != 'true' } }
             steps {
-                container('docker') {
+                container('kaniko') {
                     sh '''
-                        docker build -t "devapp/user-app:${APP_VERSION}" user-app/
-                        docker build -t "devapp/order-app:${APP_VERSION}" order-app/
-                        docker build -t "devapp/devapp-web:${APP_VERSION}" devapp-web/
-                        docker save "devapp/user-app:${APP_VERSION}" > /shared/user-app.tar
-                        docker save "devapp/order-app:${APP_VERSION}" > /shared/order-app.tar
-                        docker save "devapp/devapp-web:${APP_VERSION}" > /shared/devapp-web.tar
-                    '''
-                }
-            }
-        }
-
-        stage('Import Images to K3s') {
-            when { expression { env.SKIP_CI != 'true' } }
-            steps {
-                container('k3s-deployer') {
-                    sh '''
-                        /host-bin/k3s ctr images import /shared/user-app.tar
-                        /host-bin/k3s ctr images import /shared/order-app.tar
-                        /host-bin/k3s ctr images import /shared/devapp-web.tar
+                        for image in user-app order-app devapp-web; do
+                            /kaniko/executor \
+                                --context "$WORKSPACE/$image" \
+                                --dockerfile "$WORKSPACE/$image/Dockerfile" \
+                                --destination "$IMAGE_REGISTRY/$image:$APP_VERSION" \
+                                --insecure \
+                                --snapshot-mode=redo \
+                                --use-new-run \
+                                --cleanup
+                        done
                     '''
                 }
             }
@@ -271,7 +260,7 @@ spec:
         stage('Argo CD Rollout') {
             when { expression { env.SKIP_CI != 'true' } }
             steps {
-                container('k3s-deployer') {
+                container('kubectl') {
                     sh '''
                         kubectl annotate application "$ARGO_APPLICATION" -n "$ARGO_NAMESPACE" \
                             argocd.argoproj.io/refresh=hard --overwrite
@@ -299,7 +288,7 @@ spec:
         stage('Smoke Tests') {
             when { expression { env.SKIP_CI != 'true' } }
             steps {
-                container('k3s-deployer') {
+                container('kubectl') {
                     sh '''
                         wget -q -O /dev/null --timeout=10 "http://user-app.${K8S_NAMESPACE}.svc.cluster.local:8080/actuator/health"
                         wget -q -O /dev/null --timeout=10 "http://order-app.${K8S_NAMESPACE}.svc.cluster.local:8081/actuator/health"

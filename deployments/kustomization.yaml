@@ -1,6 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
+  - namespace.yaml
   - devapp-secrets.yaml
   - user-app.yaml
   - order-app.yaml
@@ -8,9 +9,9 @@ resources:
   - ingress.yaml
   - observability.yaml
 images:
-  - name: devapp/user-app
+  - name: nexus-registry.infra.svc.cluster.local:5000/devapp/user-app
     newTag: observability-v1
-  - name: devapp/order-app
+  - name: nexus-registry.infra.svc.cluster.local:5000/devapp/order-app
     newTag: observability-v1
-  - name: devapp/devapp-web
+  - name: nexus-registry.infra.svc.cluster.local:5000/devapp/devapp-web
     newTag: bootstrap-ec4d28f

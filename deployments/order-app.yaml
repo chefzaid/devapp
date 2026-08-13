@@ -19,10 +19,24 @@ spec:
         prometheus.io/path: /actuator/prometheus
         prometheus.io/port: "8081"
     spec:
+      imagePullSecrets:
+        - name: devapp-registry-auth
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: order-app
-        image: devapp/order-app:v5
-        imagePullPolicy: Never
+        image: nexus-registry.infra.svc.cluster.local:5000/devapp/order-app:v5
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
         ports:
         - containerPort: 8081
         env:
@@ -70,6 +84,19 @@ spec:
             port: 8081
           initialDelaySeconds: 30
           periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 384Mi
+          limits:
+            cpu: "1"
+            memory: 768Mi
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

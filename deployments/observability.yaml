@@ -154,7 +154,7 @@ data:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: devapp-kibana-bootstrap-v1
+  name: devapp-kibana-bootstrap-v2
   namespace: devapp
   labels:
     app: devapp-kibana-bootstrap
@@ -167,6 +167,11 @@ spec:
         app: devapp-kibana-bootstrap
     spec:
       restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: import-saved-objects
           image: curlimages/curl:8.14.1
@@ -185,6 +190,17 @@ spec:
             - name: saved-objects
               mountPath: /saved-objects
               readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
       volumes:
         - name: saved-objects
           configMap:

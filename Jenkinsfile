@@ -248,6 +248,7 @@ spec:
             steps {
                 container('git') {
                     sh '''
+                        git config --global --add safe.directory "$WORKSPACE"
                         git fetch origin main
                         if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
                             echo "origin/main advanced during this build; the next polled build will deploy it" >&2

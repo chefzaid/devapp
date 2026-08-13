@@ -21,7 +21,7 @@ spec:
       command: [cat]
       tty: true
       resources:
-        requests: {memory: "1Gi", cpu: "500m"}
+        requests: {memory: "1Gi", cpu: "200m"}
         limits: {memory: "2Gi", cpu: "2000m"}
       volumeMounts:
         - {name: maven-cache, mountPath: /root/.m2/repository}
@@ -31,7 +31,7 @@ spec:
       command: [cat]
       tty: true
       resources:
-        requests: {memory: "512Mi", cpu: "250m"}
+        requests: {memory: "512Mi", cpu: "100m"}
         limits: {memory: "1Gi", cpu: "1000m"}
       securityContext:
         runAsUser: 0
@@ -43,7 +43,7 @@ spec:
       command: [/busybox/cat]
       tty: true
       resources:
-        requests: {memory: "256Mi", cpu: "250m"}
+        requests: {memory: "256Mi", cpu: "50m"}
         limits: {memory: "1Gi", cpu: "1000m"}
       securityContext:
         allowPrivilegeEscalation: false
@@ -55,7 +55,7 @@ spec:
       command: [cat]
       tty: true
       resources:
-        requests: {memory: "128Mi", cpu: "100m"}
+        requests: {memory: "128Mi", cpu: "25m"}
         limits: {memory: "256Mi", cpu: "200m"}
       securityContext:
         allowPrivilegeEscalation: false

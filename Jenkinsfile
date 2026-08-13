@@ -49,7 +49,10 @@ spec:
         limits: {memory: "1Gi", cpu: "1000m"}
       securityContext:
         allowPrivilegeEscalation: false
-        capabilities: {drop: ["ALL"]}
+        # Jenkins creates durable-task directories mode 2755. Kaniko remains
+        # otherwise capability-free but needs this one capability to write its
+        # wrapper into the shared workspace owned by the agent UID.
+        capabilities: {drop: ["ALL"], add: ["DAC_OVERRIDE"]}
       volumeMounts:
         - {name: registry-auth, mountPath: /kaniko/.docker, readOnly: true}
     - name: kubectl

@@ -15,6 +15,7 @@ spec:
       labels:
         app: devapp-web
     spec:
+      automountServiceAccountToken: false
       imagePullSecrets:
         - name: devapp-registry-auth
       securityContext:

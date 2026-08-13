@@ -6,6 +6,7 @@ resources:
   - user-app.yaml
   - order-app.yaml
   - devapp-web.yaml
+  - network-policy.yaml
   - ingress.yaml
   - observability.yaml
 images:

@@ -154,7 +154,7 @@ data:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: devapp-kibana-bootstrap-v3
+  name: devapp-kibana-bootstrap-v4
   namespace: devapp
   labels:
     app: devapp-kibana-bootstrap
@@ -176,7 +176,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: import-saved-objects
-          image: curlimages/curl:8.14.1
+          image: docker.io/curlimages/curl@sha256:9a1ed35addb45476afa911696297f8e115993df459278ed036182dd2cd22b67b
           command:
             - sh
             - -c

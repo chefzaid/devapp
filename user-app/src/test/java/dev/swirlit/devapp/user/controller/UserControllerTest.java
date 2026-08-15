@@ -1,40 +1,35 @@
 package dev.swirlit.devapp.user.controller;
 
-import dev.swirlit.devapp.common.domain.User;
-import dev.swirlit.devapp.user.config.DatabaseHealthIndicator;
-import dev.swirlit.devapp.user.security.UserDetailsServiceImpl;
+import java.util.List;
+
+import dev.swirlit.devapp.common.exception.GlobalExceptionHandler;
+import dev.swirlit.devapp.user.domain.User;
+import dev.swirlit.devapp.user.dto.CreateUserRequest;
 import dev.swirlit.devapp.user.service.UserService;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.cache.CacheManager;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.Arrays;
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = UserController.class,
-    excludeAutoConfiguration = {
-        org.springframework.boot.security.oauth2.server.resource.autoconfigure.OAuth2ResourceServerAutoConfiguration.class,
-        org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration.class,
-        org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration.class
-    })
-@ActiveProfiles("test")
-@TestPropertySource(properties = {
-    "spring.kafka.bootstrap-servers=localhost:9092",
-    "spring.data.redis.host=localhost",
-    "spring.data.redis.port=6379"
-})
+@WebMvcTest(UserController.class)
+@AutoConfigureMockMvc(addFilters = false)
+@Import(GlobalExceptionHandler.class)
+@TestPropertySource(properties = "app.security.enabled=false")
 class UserControllerTest {
 
     @Autowired
@@ -44,78 +39,58 @@ class UserControllerTest {
     private UserService userService;
 
     @MockitoBean
-    private DatabaseHealthIndicator databaseHealthIndicator;
-
-    @MockitoBean
-    private JwtDecoder jwtDecoder;
-
-    @MockitoBean
-    private UserDetailsServiceImpl userDetailsServiceImpl;
+    private CacheManager cacheManager;
 
     @Test
-    void getAllUsers_ShouldReturnUserList() throws Exception {
-        User user1 = new User();
-        user1.setId(1L);
-        user1.setName("Alice");
-        user1.setUsername("alice");
-        user1.setPassword("pass1");
+    void getAllUsersReturnsProfiles() throws Exception {
+        User ada = user(1L, "Ada Lovelace", "ada", "ada@example.test");
+        User grace = user(2L, "Grace Hopper", "grace", "grace@example.test");
+        when(userService.getAllUsers()).thenReturn(List.of(ada, grace));
 
-        User user2 = new User();
-        user2.setId(2L);
-        user2.setName("Bob");
-        user2.setUsername("bob");
-        user2.setPassword("pass2");
-
-        List<User> users = Arrays.asList(user1, user2);
-        when(userService.getAllUsers()).thenReturn(users);
-
-        mockMvc.perform(get("/api/users").with(jwt()))
+        mockMvc.perform(get("/api/users"))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].name").value("Alice"))
-                .andExpect(jsonPath("$[1].id").value(2))
-                .andExpect(jsonPath("$[1].name").value("Bob"));
+                .andExpect(jsonPath("$[0].username").value("ada"))
+                .andExpect(jsonPath("$[1].email").value("grace@example.test"));
     }
 
     @Test
-    void getUserById_ShouldReturnUser() throws Exception {
-        User user = new User();
-        user.setId(1L);
-        user.setName("Alice");
-        user.setUsername("alice");
-        user.setPassword("pass1");
+    void getUserReturnsProfile() throws Exception {
+        when(userService.getUser(1L)).thenReturn(user(1L, "Ada Lovelace", "ada", "ada@example.test"));
 
-        when(userService.getUser(1L)).thenReturn(user);
-
-        mockMvc.perform(get("/api/users/1").with(jwt()))
+        mockMvc.perform(get("/api/users/1"))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value("Alice"));
+                .andExpect(jsonPath("$.name").value("Ada Lovelace"));
     }
 
     @Test
-    void createUser_ShouldReturnCreatedUser() throws Exception {
-        User savedUser = new User();
-        savedUser.setId(3L);
-        savedUser.setName("Charlie");
-        savedUser.setUsername("charlie");
-        savedUser.setPassword("pass3");
-
-        when(userService.createUser(any(User.class))).thenReturn(savedUser);
-
-        String requestBody = "{\"name\":\"Charlie\",\"username\":\"charlie\",\"password\":\"pass3\"}";
+    void createUserValidatesAndReturnsLocation() throws Exception {
+        User created = user(4L, "Linus Torvalds", "linus", "linus@example.test");
+        when(userService.createUser(any(CreateUserRequest.class))).thenReturn(created);
 
         mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody)
-                .with(jwt()))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value(3))
-                .andExpect(jsonPath("$.name").value("Charlie"));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Linus Torvalds","username":"linus","email":"linus@example.test"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/api/users/4"))
+                .andExpect(jsonPath("$.username").value("linus"));
+    }
+
+    @Test
+    void createUserRejectsInvalidPayload() throws Exception {
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"\",\"username\":\"Not Valid\",\"email\":\"bad\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"));
+    }
+
+    private static User user(Long id, String name, String username, String email) {
+        User user = new User(name, username, email);
+        user.setId(id);
+        return user;
     }
 }

@@ -1,6 +1,6 @@
-describe('home page', () => {
-  it('loads', () => {
-    cy.visit('/');
-    cy.contains('Users');
+describe('authentication entry point', () => {
+  it('loads the SSO login screen', () => {
+    cy.visit('/login');
+    cy.contains('Login with SSO');
   });
 });

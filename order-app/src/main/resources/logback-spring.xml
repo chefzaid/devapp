@@ -2,71 +2,12 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     
-    <!-- Console appender for development -->
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}</pattern>
-        </encoder>
-    </appender>
-
-    <!-- File appender for production -->
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/order-app.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>logs/order-app.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>100MB</maxFileSize>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>3GB</totalSizeCap>
-        </rollingPolicy>
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-        </encoder>
-    </appender>
-
-    <!-- JSON appender for structured logging -->
-    <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/order-app.json</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>logs/order-app.%d{yyyy-MM-dd}.%i.json</fileNamePattern>
-            <maxFileSize>100MB</maxFileSize>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>3GB</totalSizeCap>
-        </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp/>
-                <logLevel/>
-                <loggerName/>
-                <message/>
-                <mdc/>
-                <arguments/>
-                <stackTrace/>
-            </providers>
-        </encoder>
-    </appender>
-
-    <!-- Kubernetes production logs are JSON on stdout; the cluster log agent
-         enriches them with pod metadata and ships them to Elasticsearch. -->
-    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp/>
-                <logLevel/>
-                <loggerName/>
-                <threadName/>
-                <message/>
-                <mdc/>
-                <arguments/>
-                <stackTrace/>
-                <pattern>
-                    <pattern>{"app":"order-app"}</pattern>
-                </pattern>
-            </providers>
-        </encoder>
-    </appender>
-
-    <!-- Development profile -->
-    <springProfile name="dev">
+    <springProfile name="dev | test">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}</pattern>
+            </encoder>
+        </appender>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
@@ -75,20 +16,29 @@
         <logger name="org.hibernate.SQL" level="DEBUG"/>
     </springProfile>
 
-    <!-- Production profile -->
-    <springProfile name="prod">
+    <!-- Structured stdout is collected by the cluster logging stack. -->
+    <springProfile name="uat | prod">
+        <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <loggerName/>
+                    <threadName/>
+                    <message/>
+                    <mdc/>
+                    <arguments/>
+                    <stackTrace/>
+                    <pattern>
+                        <pattern>{"app":"order-app"}</pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+        </appender>
         <root level="WARN">
             <appender-ref ref="CONSOLE_JSON"/>
         </root>
         <logger name="dev.swirlit.devapp" level="INFO"/>
         <logger name="org.springframework.security" level="WARN"/>
-    </springProfile>
-
-    <!-- Test profile -->
-    <springProfile name="test">
-        <root level="WARN">
-            <appender-ref ref="CONSOLE"/>
-        </root>
-        <logger name="dev.swirlit.devapp" level="DEBUG"/>
     </springProfile>
 </configuration>

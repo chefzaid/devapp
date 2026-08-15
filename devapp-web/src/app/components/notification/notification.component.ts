@@ -1,27 +1,16 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Subscription } from 'rxjs';
-import { NotificationService, Notification } from '../../services/notification.service';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-notification',
   templateUrl: './notification.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./notification.component.css']
 })
-export class NotificationComponent implements OnInit, OnDestroy {
-  notifications: Notification[] = [];
-  private subscription: Subscription = new Subscription();
-
-  constructor(private readonly notificationService: NotificationService) {}
-
-  ngOnInit(): void {
-    this.subscription = this.notificationService.getNotifications().subscribe(
-      notifications => this.notifications = notifications
-    );
-  }
-
-  ngOnDestroy(): void {
-    this.subscription.unsubscribe();
-  }
+export class NotificationComponent {
+  private readonly notificationService = inject(NotificationService);
+  readonly notifications = toSignal(this.notificationService.getNotifications(), { initialValue: [] });
 
   removeNotification(id: string): void {
     this.notificationService.remove(id);

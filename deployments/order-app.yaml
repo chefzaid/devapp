@@ -19,6 +19,7 @@ spec:
         prometheus.io/path: /actuator/prometheus
         prometheus.io/port: "8081"
     spec:
+      terminationGracePeriodSeconds: 30
       automountServiceAccountToken: false
       imagePullSecrets:
         - name: devapp-registry-auth
@@ -61,6 +62,10 @@ spec:
               key: DB_PASSWORD
         - name: KAFKA_BOOTSTRAP_SERVERS
           value: "kafka.infra.svc.cluster.local:9092"
+        - name: KAFKA_CONSUMER_GROUP
+          value: "order-service-group"
+        - name: KAFKA_ENABLED
+          value: "true"
         - name: REDIS_HOST
           value: "redis.infra.svc.cluster.local"
         - name: REDIS_PORT
@@ -72,18 +77,22 @@ spec:
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
           value: "https://devapp.swirlit.dev/auth/realms/devapp"
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
-          value: "https://devapp.swirlit.dev/auth/realms/devapp/protocol/openid-connect/certs"
+          value: "http://keycloak.infra.svc.cluster.local:8080/auth/realms/devapp/protocol/openid-connect/certs"
+        startupProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8081
+          periodSeconds: 5
+          failureThreshold: 24
         livenessProbe:
           httpGet:
-            path: /actuator/health
+            path: /actuator/health/liveness
             port: 8081
-          initialDelaySeconds: 60
           periodSeconds: 30
         readinessProbe:
           httpGet:
             path: /actuator/health/readiness
             port: 8081
-          initialDelaySeconds: 30
           periodSeconds: 10
         resources:
           requests:

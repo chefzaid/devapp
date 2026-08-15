@@ -1,5 +1,5 @@
 <div class="notification-container">
-  @for (notification of notifications; track notification.id) {
+  @for (notification of notifications(); track notification.id) {
     <div
       class="notification"
       [class]="'notification-' + notification.type">

@@ -1,49 +1,49 @@
 package dev.swirlit.devapp.user.service;
 
-import org.springframework.context.annotation.Profile;
+import dev.swirlit.devapp.common.domain.OrderStatus;
+import dev.swirlit.devapp.common.event.OrderEvent;
+import dev.swirlit.devapp.common.util.Constants;
+import dev.swirlit.devapp.user.domain.User;
+import jakarta.persistence.EntityNotFoundException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import dev.swirlit.devapp.common.domain.Order;
-import dev.swirlit.devapp.common.domain.OrderStatus;
-import dev.swirlit.devapp.common.domain.User;
-import dev.swirlit.devapp.common.util.Constants;
-import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
 @Service
-@Profile("!test")
-@Slf4j
-@RequiredArgsConstructor
 public class OrderListener {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderListener.class);
 
     private final UserService userService;
     private final NotificationService notificationService;
-    private final KafkaTemplate<String, Order> kafkaTemplate;
+    private final KafkaTemplate<Object, Object> kafkaTemplate;
 
-    @KafkaListener(topics = Constants.ORDER_TOPIC, groupId = "${spring.kafka.consumer.group-id}", containerFactory = "kafkaListenerContainerFactory")
-    public void consume(Order order) {
-        log.info("Processing order: {}", order);
+    public OrderListener(
+            UserService userService,
+            NotificationService notificationService,
+            KafkaTemplate<Object, Object> kafkaTemplate) {
+        this.userService = userService;
+        this.notificationService = notificationService;
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
+    @KafkaListener(topics = Constants.ORDER_TOPIC, groupId = "${spring.kafka.consumer.group-id}")
+    public void consume(OrderEvent event) {
+        OrderEvent result;
         try {
-            if (order.getUser() != null && order.getUser().getId() != null) {
-                 User user = userService.getUser(order.getUser().getId());
-                 // Perform further validation if needed (e.g. credit check)
-                 order.setStatus(OrderStatus.APPROVED);
-                 notificationService.notifyUser(user, order);
-            } else {
-                 log.warn("Order has no user information");
-                 order.setStatus(OrderStatus.REJECTED);
-            }
-        } catch (EntityNotFoundException e) {
-            log.warn("User not found for order: {}", order.getId());
-            order.setStatus(OrderStatus.REJECTED);
-        } catch (Exception e) {
-            log.error("Error processing order: {}", order.getId(), e);
-            order.setStatus(OrderStatus.REJECTED);
+            User user = userService.getUser(event.userId());
+            notificationService.notifyUser(user, event);
+            result = event.withResult(user.getName(), OrderStatus.APPROVED);
+        } catch (EntityNotFoundException exception) {
+            log.warn("Rejecting order {} because user {} does not exist", event.orderId(), event.userId());
+            result = event.withResult(null, OrderStatus.REJECTED);
+        } catch (RuntimeException exception) {
+            log.error("Rejecting order {} after processing failure", event.orderId(), exception);
+            result = event.withResult(null, OrderStatus.REJECTED);
         }
-
-        kafkaTemplate.send(Constants.ORDER_RESULT_TOPIC, order);
+        kafkaTemplate.send(Constants.ORDER_RESULT_TOPIC, event.orderId().toString(), result);
     }
 }

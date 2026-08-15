@@ -1,10 +1,10 @@
 <div class="container">
     <h1>Order Management</h1>
 
-    @if (error) {
+    @if (error(); as message) {
         <div class="error-message">
-            {{ error }}
-            <button (click)="error = null" class="close-btn">×</button>
+            {{ message }}
+            <button (click)="error.set(null)" class="close-btn" aria-label="Dismiss error">×</button>
         </div>
     }
 
@@ -15,13 +15,12 @@
                 <label for="userSelect">User:</label>
                 <select
                     id="userSelect"
-                    [(ngModel)]="newOrder.user.id"
-                    (ngModelChange)="onUserChange($event)"
-                    [disabled]="creating || loadingUsers"
+                    [(ngModel)]="newOrder.userId"
+                    [disabled]="creating() || loadingUsers()"
                     class="form-select">
-                    <option value="0">Select a user</option>
-                    @for (user of users; track user.id) {
-                        <option [value]="user.id">{{ user.name }}</option>
+                    <option [ngValue]="0">Select a user</option>
+                    @for (user of users(); track user.id) {
+                        <option [ngValue]="user.id">{{ user.name }}</option>
                     }
                 </select>
             </div>
@@ -32,27 +31,28 @@
                     [(ngModel)]="newOrder.productId"
                     placeholder="Enter product ID"
                     type="number"
-                    [disabled]="creating"
+                    min="1"
+                    [disabled]="creating()"
                     class="form-input">
             </div>
             <button
                 (click)="createOrder()"
-                [disabled]="creating || !newOrder.user.id || !newOrder.productId"
+                [disabled]="creating() || newOrder.userId <= 0 || newOrder.productId <= 0"
                 class="btn btn-primary">
-                {{ creating ? 'Creating...' : 'Create Order' }}
+                {{ creating() ? 'Creating...' : 'Create Order' }}
             </button>
         </div>
     </div>
 
     <div class="orders-section">
         <h2>Orders</h2>
-        @if (loading) {
+        @if (loading()) {
             <div class="loading">Loading orders...</div>
-        } @else if (orders.length === 0) {
+        } @else if (orders().length === 0) {
             <div class="no-data">No orders found.</div>
         } @else {
             <div class="orders-grid">
-                @for (order of orders; track order.id) {
+                @for (order of orders(); track order.id) {
                     <div class="order-card">
                         <div class="order-header">
                             <span class="order-id">Order #{{ order.id }}</span>
@@ -62,7 +62,7 @@
                         </div>
                         <div class="order-details">
                             <div class="detail-item">
-                                <strong>User:</strong> {{ order.user.name }}
+                                <strong>User:</strong> {{ order.userName || ('#' + order.userId) }}
                             </div>
                             <div class="detail-item">
                                 <strong>Product ID:</strong> {{ order.productId }}
@@ -72,7 +72,7 @@
                 }
             </div>
         }
-        @if (!loading) {
+        @if (!loading()) {
             <button (click)="loadOrders()" class="btn btn-secondary">Refresh</button>
         }
     </div>

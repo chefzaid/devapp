@@ -12,7 +12,7 @@
       command: kubectl create namespace {{ app_namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Remove the previous Kibana saved-object bootstrap job
-      command: kubectl delete job devapp-kibana-bootstrap-v1 -n {{ app_namespace }} --ignore-not-found
+      command: kubectl delete job devapp-kibana-bootstrap-v4 -n {{ app_namespace }} --ignore-not-found
       changed_when: false
 
     - name: Deploy application manifests
@@ -37,7 +37,7 @@
       ignore_errors: yes
 
     - name: Wait for Kibana saved-object bootstrap
-      command: kubectl wait --for=condition=complete job/devapp-kibana-bootstrap-v1 -n {{ app_namespace }} --timeout=180s
+      command: kubectl wait --for=condition=complete job/devapp-kibana-bootstrap-v4 -n {{ app_namespace }} --timeout=180s
       ignore_errors: yes
 
     - name: Display status

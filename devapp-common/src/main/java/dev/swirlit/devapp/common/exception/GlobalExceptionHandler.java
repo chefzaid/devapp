@@ -1,79 +1,60 @@
 package dev.swirlit.devapp.common.exception;
 
+import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import jakarta.persistence.EntityNotFoundException;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.ProblemDetail;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-
 @RestControllerAdvice
-@Slf4j
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException ex) {
-        log.error("Entity not found: {}", ex.getMessage());
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("Not Found")
-                .message(ex.getMessage())
-                .build();
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    ProblemDetail handleEntityNotFound(EntityNotFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, "Resource not found", exception.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        log.error("Validation error: {}", ex.getMessage());
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(objectError -> {
-            String fieldName = ((FieldError) objectError).getField();
-            String errorMessage = objectError.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
+    ProblemDetail handleValidation(MethodArgumentNotValidException exception) {
+        Map<String, String> violations = new LinkedHashMap<>();
+        for (var error : exception.getBindingResult().getAllErrors()) {
+            String field = error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName();
+            violations.put(field, error.getDefaultMessage());
+        }
 
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Validation Failed")
-                .message("Invalid input data")
-                .validationErrors(errors)
-                .build();
-        return ResponseEntity.badRequest().body(error);
+        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, "Validation failed", "The request is invalid");
+        detail.setProperty("violations", violations);
+        return detail;
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail handleConflict(DataIntegrityViolationException exception) {
+        log.warn("Database constraint violation", exception);
+        return problem(HttpStatus.CONFLICT, "Data conflict", "A record with the same unique value already exists");
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        log.error("Unexpected error: ", ex);
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("Internal Server Error")
-                .message("An unexpected error occurred")
-                .build();
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    ProblemDetail handleUnexpected(Exception exception) {
+        log.error("Unhandled request failure", exception);
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", "The request could not be completed");
     }
 
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ErrorResponse {
-        private LocalDateTime timestamp;
-        private int status;
-        private String error;
-        private String message;
-        private Map<String, String> validationErrors;
+    private static ProblemDetail problem(HttpStatus status, String title, String message) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(status, message);
+        detail.setTitle(title);
+        detail.setType(URI.create("https://devapp.swirlit.dev/problems/" + status.value()));
+        return detail;
     }
 }

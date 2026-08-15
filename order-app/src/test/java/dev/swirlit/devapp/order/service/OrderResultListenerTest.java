@@ -1,54 +1,53 @@
 package dev.swirlit.devapp.order.service;
 
-import dev.swirlit.devapp.common.domain.Order;
+import java.time.Instant;
+import java.util.Optional;
+
 import dev.swirlit.devapp.common.domain.OrderStatus;
+import dev.swirlit.devapp.common.event.OrderEvent;
+import dev.swirlit.devapp.order.domain.Order;
 import dev.swirlit.devapp.order.repository.OrderRepository;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Optional;
-
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OrderResultListenerTest {
 
     @Mock
     private OrderRepository orderRepository;
-
     @InjectMocks
     private OrderResultListener orderResultListener;
 
     @Test
-    void consume_shouldUpdateAndSave_whenOrderExists() {
-        Order incoming = new Order();
-        incoming.setId(1L);
-        incoming.setStatus(OrderStatus.APPROVED);
-
-        Order existing = new Order();
+    void consumeUpdatesExistingOrder() {
+        Order existing = new Order(1L, 1001L);
         existing.setId(1L);
-        existing.setStatus(OrderStatus.PENDING);
-
         when(orderRepository.findById(1L)).thenReturn(Optional.of(existing));
 
-        orderResultListener.consume(incoming);
+        orderResultListener.consume(event(1L, OrderStatus.APPROVED, "Ada Lovelace"));
 
-        verify(orderRepository).save(existing);
+        assertEquals(OrderStatus.APPROVED, existing.getStatus());
+        assertEquals("Ada Lovelace", existing.getUserName());
     }
 
     @Test
-    void consume_shouldNotSave_whenOrderDoesNotExist() {
-        Order incoming = new Order();
-        incoming.setId(404L);
-        incoming.setStatus(OrderStatus.REJECTED);
-
+    void consumeIgnoresUnknownOrder() {
         when(orderRepository.findById(404L)).thenReturn(Optional.empty());
 
-        orderResultListener.consume(incoming);
+        orderResultListener.consume(event(404L, OrderStatus.REJECTED, null));
 
-        verify(orderRepository, never()).save(any(Order.class));
+        verify(orderRepository).findById(404L);
+    }
+
+    private static OrderEvent event(Long orderId, OrderStatus status, String userName) {
+        return new OrderEvent(orderId, 1L, 1001L, userName, status, Instant.now());
     }
 }

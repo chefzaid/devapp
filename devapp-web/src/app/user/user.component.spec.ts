@@ -1,26 +1,40 @@
+import { beforeEach, describe, expect, it, type MockedObject, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 
 import { UserComponent } from './user.component';
 import { UserService } from '../services/user.service';
 import { NotificationService } from '../services/notification.service';
+import { User } from '../models/user.model';
 
 describe('UserComponent', () => {
   let component: UserComponent;
   let fixture: ComponentFixture<UserComponent>;
-  let userServiceSpy: jasmine.SpyObj<UserService>;
-  let notificationServiceSpy: jasmine.SpyObj<NotificationService>;
+  let userService: MockedObject<UserService>;
+  let notifications: MockedObject<NotificationService>;
+
+  const alice: User = {
+    id: 1,
+    name: 'Alice Example',
+    username: 'alice',
+    email: 'alice@example.com'
+  };
 
   beforeEach(() => {
-    userServiceSpy = jasmine.createSpyObj('UserService', ['getAllUsers', 'createUser']);
-    notificationServiceSpy = jasmine.createSpyObj('NotificationService', ['success', 'error']);
-    userServiceSpy.getAllUsers.and.returnValue(of([]));
+    userService = {
+      getAllUsers: vi.fn().mockReturnValue(of([])),
+      createUser: vi.fn()
+    } as unknown as MockedObject<UserService>;
+    notifications = {
+      success: vi.fn(),
+      error: vi.fn()
+    } as unknown as MockedObject<NotificationService>;
 
     TestBed.configureTestingModule({
       imports: [UserComponent],
       providers: [
-        { provide: UserService, useValue: userServiceSpy },
-        { provide: NotificationService, useValue: notificationServiceSpy }
+        { provide: UserService, useValue: userService },
+        { provide: NotificationService, useValue: notifications }
       ]
     });
     fixture = TestBed.createComponent(UserComponent);
@@ -28,62 +42,56 @@ describe('UserComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
-  it('should load users successfully', () => {
-    const users = [{ id: 1, name: 'Alice' }];
-    userServiceSpy.getAllUsers.and.returnValue(of(users));
+  it('creates and loads users', () => {
+    userService.getAllUsers.mockReturnValue(of([alice]));
 
     component.loadUsers();
 
-    expect(component.users).toEqual(users);
-    expect(component.loading).toBeFalse();
-    expect(component.error).toBeNull();
-    expect(notificationServiceSpy.success).toHaveBeenCalled();
+    expect(component.users()).toEqual([alice]);
+    expect(component.loading()).toBe(false);
+    expect(component.error()).toBeNull();
+    expect(notifications.success).toHaveBeenCalled();
   });
 
-  it('should handle load users failure', () => {
-    userServiceSpy.getAllUsers.and.returnValue(throwError(() => 'load failed'));
+  it('reports a load failure', () => {
+    userService.getAllUsers.mockReturnValue(throwError(() => 'load failed'));
 
     component.loadUsers();
 
-    expect(component.error).toBe('load failed');
-    expect(component.loading).toBeFalse();
-    expect(notificationServiceSpy.error).toHaveBeenCalled();
+    expect(component.error()).toBe('load failed');
+    expect(component.loading()).toBe(false);
+    expect(notifications.error).toHaveBeenCalled();
   });
 
-  it('should validate empty user name before create', () => {
-    component.newUser = { name: '   ' };
+  it('validates every required create field', () => {
+    component.newUser = { name: 'Alice', username: '', email: '' };
 
     component.createUser();
 
-    expect(component.error).toBe('Name is required');
-    expect(userServiceSpy.createUser).not.toHaveBeenCalled();
+    expect(component.error()).toContain('required');
+    expect(userService.createUser).not.toHaveBeenCalled();
   });
 
-  it('should create user successfully', () => {
-    component.newUser = { name: 'Bob' };
-    userServiceSpy.createUser.and.returnValue(of({ id: 2, name: 'Bob' }));
+  it('creates a user and resets the form', () => {
+    component.newUser = { name: alice.name, username: alice.username, email: alice.email };
+    userService.createUser.mockReturnValue(of(alice));
 
     component.createUser();
 
-    expect(component.users.length).toBe(1);
-    expect(component.users[0].name).toBe('Bob');
-    expect(component.newUser.name).toBe('');
-    expect(component.creating).toBeFalse();
-    expect(notificationServiceSpy.success).toHaveBeenCalled();
+    expect(component.users()).toEqual([alice]);
+    expect(component.newUser).toEqual({ name: '', username: '', email: '' });
+    expect(component.creating()).toBe(false);
+    expect(notifications.success).toHaveBeenCalled();
   });
 
-  it('should handle create user failure', () => {
-    component.newUser = { name: 'Bob' };
-    userServiceSpy.createUser.and.returnValue(throwError(() => 'create failed'));
+  it('reports a create failure', () => {
+    component.newUser = { name: alice.name, username: alice.username, email: alice.email };
+    userService.createUser.mockReturnValue(throwError(() => 'create failed'));
 
     component.createUser();
 
-    expect(component.error).toBe('create failed');
-    expect(component.creating).toBeFalse();
-    expect(notificationServiceSpy.error).toHaveBeenCalled();
+    expect(component.error()).toBe('create failed');
+    expect(component.creating()).toBe(false);
+    expect(notifications.error).toHaveBeenCalled();
   });
 });

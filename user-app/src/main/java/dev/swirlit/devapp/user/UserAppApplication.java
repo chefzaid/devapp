@@ -3,20 +3,14 @@ package dev.swirlit.devapp.user;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
-import dev.swirlit.devapp.common.exception.GlobalExceptionHandler;
+import org.springframework.cache.annotation.EnableCaching;
 
-@SpringBootApplication
-@EntityScan("dev.swirlit.devapp.common.domain")
-@ComponentScan(
-    basePackages = {"dev.swirlit.devapp.user", "dev.swirlit.devapp.common"},
-    excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = GlobalExceptionHandler.class)
-)
+@EnableCaching
+@SpringBootApplication(scanBasePackages = {"dev.swirlit.devapp.user", "dev.swirlit.devapp.common"})
+@EntityScan("dev.swirlit.devapp.user.domain")
 public class UserAppApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(UserAppApplication.class, args);
-	}
-
+    public static void main(String[] args) {
+        SpringApplication.run(UserAppApplication.class, args);
+    }
 }

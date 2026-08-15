@@ -15,6 +15,7 @@ spec:
       labels:
         app: devapp-web
     spec:
+      terminationGracePeriodSeconds: 15
       automountServiceAccountToken: false
       imagePullSecrets:
         - name: devapp-registry-auth
@@ -30,6 +31,7 @@ spec:
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop: ["ALL"]
         ports:
@@ -55,6 +57,12 @@ spec:
           limits:
             cpu: 250m
             memory: 128Mi
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

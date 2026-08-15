@@ -1,27 +1,47 @@
+import { beforeEach, describe, expect, it, type MockedObject, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 
 import { OrderComponent } from './order.component';
 import { OrderService } from '../services/order.service';
 import { UserService } from '../services/user.service';
+import { Order } from '../models/order.model';
+import { User } from '../models/user.model';
 
 describe('OrderComponent', () => {
   let component: OrderComponent;
   let fixture: ComponentFixture<OrderComponent>;
-  let orderServiceSpy: jasmine.SpyObj<OrderService>;
-  let userServiceSpy: jasmine.SpyObj<UserService>;
+  let orderService: MockedObject<OrderService>;
+  let userService: MockedObject<UserService>;
+
+  const alice: User = {
+    id: 1,
+    name: 'Alice Example',
+    username: 'alice',
+    email: 'alice@example.com'
+  };
+  const order: Order = {
+    id: 1,
+    userId: 1,
+    userName: 'Alice Example',
+    productId: 10,
+    status: 'PENDING'
+  };
 
   beforeEach(() => {
-    orderServiceSpy = jasmine.createSpyObj('OrderService', ['getAllOrders', 'createOrder']);
-    userServiceSpy = jasmine.createSpyObj('UserService', ['getAllUsers']);
-    orderServiceSpy.getAllOrders.and.returnValue(of([]));
-    userServiceSpy.getAllUsers.and.returnValue(of([]));
+    orderService = {
+      getAllOrders: vi.fn().mockReturnValue(of([])),
+      createOrder: vi.fn()
+    } as unknown as MockedObject<OrderService>;
+    userService = {
+      getAllUsers: vi.fn().mockReturnValue(of([]))
+    } as unknown as MockedObject<UserService>;
 
     TestBed.configureTestingModule({
       imports: [OrderComponent],
       providers: [
-        { provide: OrderService, useValue: orderServiceSpy },
-        { provide: UserService, useValue: userServiceSpy }
+        { provide: OrderService, useValue: orderService },
+        { provide: UserService, useValue: userService }
       ]
     });
     fixture = TestBed.createComponent(OrderComponent);
@@ -29,93 +49,69 @@ describe('OrderComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
-  it('should load orders successfully', () => {
-    const orders = [{ id: 1, user: { id: 1, name: 'u1' }, productId: 10, status: 'PENDING' as const }];
-    orderServiceSpy.getAllOrders.and.returnValue(of(orders));
+  it('creates and loads orders', () => {
+    orderService.getAllOrders.mockReturnValue(of([order]));
 
     component.loadOrders();
 
-    expect(component.orders).toEqual(orders);
-    expect(component.loading).toBeFalse();
-    expect(component.error).toBeNull();
+    expect(component.orders()).toEqual([order]);
+    expect(component.loading()).toBe(false);
+    expect(component.error()).toBeNull();
   });
 
-  it('should handle load orders failure', () => {
-    orderServiceSpy.getAllOrders.and.returnValue(throwError(() => 'order load failed'));
+  it('reports an order load failure', () => {
+    orderService.getAllOrders.mockReturnValue(throwError(() => 'order load failed'));
 
     component.loadOrders();
 
-    expect(component.error).toBe('order load failed');
-    expect(component.loading).toBeFalse();
+    expect(component.error()).toBe('order load failed');
+    expect(component.loading()).toBe(false);
   });
 
-  it('should load users successfully', () => {
-    const users = [{ id: 1, name: 'Alice' }];
-    userServiceSpy.getAllUsers.and.returnValue(of(users));
+  it('loads users', () => {
+    userService.getAllUsers.mockReturnValue(of([alice]));
 
     component.loadUsers();
 
-    expect(component.users).toEqual(users);
-    expect(component.loadingUsers).toBeFalse();
+    expect(component.users()).toEqual([alice]);
+    expect(component.loadingUsers()).toBe(false);
   });
 
-  it('should handle load users failure', () => {
-    userServiceSpy.getAllUsers.and.returnValue(throwError(() => 'user load failed'));
+  it('finishes loading users after a failure', () => {
+    userService.getAllUsers.mockReturnValue(throwError(() => 'user load failed'));
 
     component.loadUsers();
 
-    expect(component.loadingUsers).toBeFalse();
+    expect(component.loadingUsers()).toBe(false);
   });
 
-  it('should validate required fields before creating order', () => {
-    component.newOrder = { user: { id: 0, name: '' }, productId: 0, status: 'PENDING' };
+  it('validates positive IDs before creating an order', () => {
+    component.newOrder = { userId: 0, productId: 0 };
 
     component.createOrder();
 
-    expect(component.error).toBe('Please select a user and enter a product ID');
-    expect(orderServiceSpy.createOrder).not.toHaveBeenCalled();
+    expect(component.error()).toContain('positive product ID');
+    expect(orderService.createOrder).not.toHaveBeenCalled();
   });
 
-  it('should create order successfully', () => {
-    component.newOrder = { user: { id: 1, name: 'Alice' }, productId: 123, status: 'PENDING' };
-    orderServiceSpy.createOrder.and.returnValue(of({ id: 4, user: { id: 1, name: 'Alice' }, productId: 123, status: 'APPROVED' }));
+  it('creates an order and resets the form', () => {
+    component.newOrder = { userId: 1, productId: 10 };
+    orderService.createOrder.mockReturnValue(of(order));
 
     component.createOrder();
 
-    expect(component.orders.length).toBe(1);
-    expect(component.creating).toBeFalse();
-    expect(component.newOrder.user.id).toBe(0);
+    expect(component.orders()).toEqual([order]);
+    expect(component.newOrder).toEqual({ userId: 0, productId: 0 });
+    expect(component.creating()).toBe(false);
   });
 
-  it('should handle create order failure', () => {
-    component.newOrder = { user: { id: 1, name: 'Alice' }, productId: 123, status: 'PENDING' };
-    orderServiceSpy.createOrder.and.returnValue(throwError(() => 'create order failed'));
+  it('reports an order create failure', () => {
+    component.newOrder = { userId: 1, productId: 10 };
+    orderService.createOrder.mockReturnValue(throwError(() => 'create order failed'));
 
     component.createOrder();
 
-    expect(component.error).toBe('create order failed');
-    expect(component.creating).toBeFalse();
-  });
-
-  it('should update selected user when user exists', () => {
-    component.users = [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }];
-
-    component.onUserChange(2);
-
-    expect(component.newOrder.user.id).toBe(2);
-    expect(component.newOrder.user.name).toBe('Bob');
-  });
-
-  it('should keep current user when selected user does not exist', () => {
-    component.users = [{ id: 1, name: 'Alice' }];
-    component.newOrder.user = { id: 1, name: 'Alice' };
-
-    component.onUserChange(99);
-
-    expect(component.newOrder.user.id).toBe(1);
+    expect(component.error()).toBe('create order failed');
+    expect(component.creating()).toBe(false);
   });
 });

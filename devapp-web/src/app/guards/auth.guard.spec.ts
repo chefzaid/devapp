@@ -1,45 +1,52 @@
+import { beforeEach, describe, expect, it, type MockedObject, vi } from "vitest";
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { authGuard } from './auth.guard';
+import { firstValueFrom, of } from 'rxjs';
 
 describe('AuthGuard', () => {
-  let authServiceSpy: jasmine.SpyObj<AuthService>;
-  let routerSpy: jasmine.SpyObj<Router>;
+    let authServiceSpy: MockedObject<AuthService>;
+    let routerSpy: MockedObject<Router>;
 
-  beforeEach(() => {
-    const authSpy = jasmine.createSpyObj('AuthService', ['isLoggedIn']);
-    const rSpy = jasmine.createSpyObj('Router', ['parseUrl']);
+    beforeEach(() => {
+        const authSpy = {
+            isLoggedIn: vi.fn().mockName("AuthService.isLoggedIn"),
+            ready$: of(undefined)
+        };
+        const rSpy = {
+            parseUrl: vi.fn().mockName("Router.parseUrl")
+        };
 
-    TestBed.configureTestingModule({
-      providers: [
-        { provide: AuthService, useValue: authSpy },
-        { provide: Router, useValue: rSpy }
-      ]
+        TestBed.configureTestingModule({
+            providers: [
+                { provide: AuthService, useValue: authSpy },
+                { provide: Router, useValue: rSpy }
+            ]
+        });
+
+        authServiceSpy = TestBed.inject(AuthService) as MockedObject<AuthService>;
+        routerSpy = TestBed.inject(Router) as MockedObject<Router>;
     });
 
-    authServiceSpy = TestBed.inject(AuthService) as jasmine.SpyObj<AuthService>;
-    routerSpy = TestBed.inject(Router) as jasmine.SpyObj<Router>;
-  });
+    it('should return true if user is logged in', async () => {
+        authServiceSpy.isLoggedIn.mockReturnValue(true);
 
-  it('should return true if user is logged in', () => {
-    authServiceSpy.isLoggedIn.and.returnValue(true);
+        const result = await firstValueFrom(TestBed.runInInjectionContext(() => authGuard()));
 
-    const result = TestBed.runInInjectionContext(() => authGuard());
+        expect(result).toBe(true);
+        expect(authServiceSpy.isLoggedIn).toHaveBeenCalled();
+    });
 
-    expect(result).toBeTrue();
-    expect(authServiceSpy.isLoggedIn).toHaveBeenCalled();
-  });
+    it('should return UrlTree to login if user is not logged in', async () => {
+        authServiceSpy.isLoggedIn.mockReturnValue(false);
+        const urlTree = {} as any;
+        routerSpy.parseUrl.mockReturnValue(urlTree);
 
-  it('should return UrlTree to login if user is not logged in', () => {
-    authServiceSpy.isLoggedIn.and.returnValue(false);
-    const urlTree = {} as any;
-    routerSpy.parseUrl.and.returnValue(urlTree);
+        const result = await firstValueFrom(TestBed.runInInjectionContext(() => authGuard()));
 
-    const result = TestBed.runInInjectionContext(() => authGuard());
-
-    expect(result).toBe(urlTree);
-    expect(authServiceSpy.isLoggedIn).toHaveBeenCalled();
-    expect(routerSpy.parseUrl).toHaveBeenCalledWith('/login');
-  });
+        expect(result).toBe(urlTree);
+        expect(authServiceSpy.isLoggedIn).toHaveBeenCalled();
+        expect(routerSpy.parseUrl).toHaveBeenCalledWith('/login');
+    });
 });

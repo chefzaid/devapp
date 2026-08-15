@@ -1,17 +1,18 @@
 package dev.swirlit.devapp.user.config;
 
 import dev.swirlit.devapp.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 @Component("database")
-@RequiredArgsConstructor
 public class DatabaseHealthIndicator implements HealthIndicator {
 
     private final UserRepository userRepository;
+
+    public DatabaseHealthIndicator(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @Override
     public Health health() {

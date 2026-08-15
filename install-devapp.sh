@@ -180,8 +180,8 @@ if ! docker info &>/dev/null 2>&1; then
     warn "Using sudo for Docker commands."
 fi
 
-$DOCKER_CMD build -t "devapp/user-app:$VERSION"  -f user-app/Dockerfile  user-app/
-$DOCKER_CMD build -t "devapp/order-app:$VERSION"  -f order-app/Dockerfile  order-app/
+$DOCKER_CMD build -t "devapp/user-app:$VERSION"  -f user-app/Dockerfile  .
+$DOCKER_CMD build -t "devapp/order-app:$VERSION"  -f order-app/Dockerfile  .
 $DOCKER_CMD build -t "devapp/devapp-web:$VERSION" -f devapp-web/Dockerfile devapp-web/
 
 info "Docker images built."
@@ -208,7 +208,7 @@ step "Deploying application manifests..."
 info "Setting the Kustomize image tag to: $VERSION"
 "$ROOT_DIR/scripts/set-image-tags.sh" "$VERSION"
 
-kubectl delete job devapp-kibana-bootstrap-v1 -n devapp --ignore-not-found >/dev/null
+kubectl delete job devapp-kibana-bootstrap-v4 -n devapp --ignore-not-found >/dev/null
 
 kubectl apply -k "$DEPLOY_DIR"
 
@@ -218,7 +218,7 @@ info "Waiting for application pods to start..."
 kubectl wait --for=condition=ready pod -l app=user-app   -n devapp --timeout=180s 2>/dev/null || warn "user-app still starting..."
 kubectl wait --for=condition=ready pod -l app=order-app  -n devapp --timeout=180s 2>/dev/null || warn "order-app still starting..."
 kubectl wait --for=condition=ready pod -l app=devapp-web -n devapp --timeout=120s 2>/dev/null || warn "devapp-web still starting..."
-kubectl wait --for=condition=complete job/devapp-kibana-bootstrap-v1 -n devapp --timeout=180s 2>/dev/null || warn "Kibana saved-object bootstrap is still running..."
+kubectl wait --for=condition=complete job/devapp-kibana-bootstrap-v4 -n devapp --timeout=180s 2>/dev/null || warn "Kibana saved-object bootstrap is still running..."
 
 # ---------- Smoke tests -------------------------------------------------------
 step "Running smoke tests..."
@@ -248,7 +248,7 @@ check_endpoint "Frontend (HTTPS)"         "https://devapp.swirlit.dev" "200" --r
 check_endpoint "User API (health)"       "http://localhost:18080/actuator/health" "200"
 check_endpoint "Order API (health)"      "http://localhost:18081/actuator/health" "200"
 check_endpoint "User API (auth required)" "https://devapp.swirlit.dev/api/users" "401" --resolve devapp.swirlit.dev:443:127.0.0.1 -k
-check_endpoint "Swagger UI (user-app)"   "https://devapp.swirlit.dev/actuator/swagger-ui/index.html" "200" --resolve devapp.swirlit.dev:443:127.0.0.1 -k
+check_endpoint "Swagger UI (user-app)"   "https://devapp.swirlit.dev/api/docs" "200" --resolve devapp.swirlit.dev:443:127.0.0.1 -k -L
 
 kill $PF_PID1 $PF_PID2 2>/dev/null || true
 
@@ -268,7 +268,7 @@ echo "Access the application:"
 echo "  Frontend:        https://devapp.swirlit.dev"
 echo "  User API:        https://devapp.swirlit.dev/api/users  (JWT required)"
 echo "  Order API:       https://devapp.swirlit.dev/api/orders (JWT required)"
-echo "  Swagger (user):  https://devapp.swirlit.dev/actuator/swagger-ui/index.html"
+echo "  OpenAPI UI:      https://devapp.swirlit.dev/api/docs"
 echo "  Metrics:         https://grafana.swirlit.dev/d/devapp-overview"
 echo "  Logs:            https://kibana.swirlit.dev/app/dashboards#/view/devapp-logs"
 echo "  Ingress IP:      $SERVER_IP"

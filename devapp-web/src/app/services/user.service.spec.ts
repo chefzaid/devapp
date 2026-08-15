@@ -1,96 +1,98 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { UserService } from './user.service';
 import { User } from '../models/user.model';
 
 describe('UserService', () => {
-  let service: UserService;
-  let http: HttpTestingController;
+    let service: UserService;
+    let http: HttpTestingController;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule]
-    });
-    service = TestBed.inject(UserService);
-    http = TestBed.inject(HttpTestingController);
-  });
-
-  afterEach(() => {
-    http.verify();
-  });
-
-  it('should fetch users', () => {
-    const mockUsers: User[] = [{ id: 1, name: 'test' }];
-
-    service.getAllUsers().subscribe(data => {
-      expect(data).toEqual(mockUsers);
+    beforeEach(() => {
+        TestBed.configureTestingModule({
+            providers: [provideHttpClient(), provideHttpClientTesting()]
+        });
+        service = TestBed.inject(UserService);
+        http = TestBed.inject(HttpTestingController);
     });
 
-    const req = http.expectOne('/api/users');
-    expect(req.request.method).toBe('GET');
-    req.flush(mockUsers);
-  });
-
-  it('should create user', () => {
-    const user: User = { id: 1, name: 'test' };
-
-    service.createUser(user).subscribe(data => {
-      expect(data).toEqual(user);
+    afterEach(() => {
+        http.verify();
     });
 
-    const req = http.expectOne('/api/users');
-    expect(req.request.method).toBe('POST');
-    req.flush(user);
-  });
+    it('should fetch users', () => {
+        const mockUsers: User[] = [{ id: 1, name: 'Test User', username: 'test', email: 'test@example.com' }];
 
-  it('should fetch user by id', () => {
-    const user: User = { id: 2, name: 'alice' };
+        service.getAllUsers().subscribe(data => {
+            expect(data).toEqual(mockUsers);
+        });
 
-    service.getUserById(2).subscribe(data => {
-      expect(data).toEqual(user);
+        const req = http.expectOne('/api/users');
+        expect(req.request.method).toBe('GET');
+        req.flush(mockUsers);
     });
 
-    const req = http.expectOne('/api/users/2');
-    expect(req.request.method).toBe('GET');
-    req.flush(user);
-  });
+    it('should create user', () => {
+        const user: User = { id: 1, name: 'Test User', username: 'test', email: 'test@example.com' };
 
-  it('should return server message when available', (done) => {
-    service.getAllUsers().subscribe({
-      next: () => fail('expected error'),
-      error: (error) => {
-        expect(error).toBe('backend failure');
-        done();
-      }
+        service.createUser(user).subscribe(data => {
+            expect(data).toEqual(user);
+        });
+
+        const req = http.expectOne('/api/users');
+        expect(req.request.method).toBe('POST');
+        req.flush(user);
     });
 
-    const req = http.expectOne('/api/users');
-    req.flush({ message: 'backend failure' }, { status: 500, statusText: 'Server Error' });
-  });
+    it('should fetch user by id', () => {
+        const user: User = { id: 2, name: 'Alice', username: 'alice', email: 'alice@example.com' };
 
-  it('should return formatted error code message when server message is missing', (done) => {
-    service.getAllUsers().subscribe({
-      next: () => fail('expected error'),
-      error: (error) => {
-        expect(error).toContain('Error Code: 500');
-        done();
-      }
+        service.getUserById(2).subscribe(data => {
+            expect(data).toEqual(user);
+        });
+
+        const req = http.expectOne('/api/users/2');
+        expect(req.request.method).toBe('GET');
+        req.flush(user);
     });
 
-    const req = http.expectOne('/api/users');
-    req.flush({}, { status: 500, statusText: 'Server Error' });
-  });
+    it('should return server message when available', async () => {
+        service.getAllUsers().subscribe({
+            next: () => { throw new Error('expected error'); },
+            error: (error) => {
+                expect(error).toBe('backend failure');
+                ;
+            }
+        });
 
-  it('should return client-side error message', (done) => {
-    service.getAllUsers().subscribe({
-      next: () => fail('expected error'),
-      error: (error) => {
-        expect(error).toContain('client issue');
-        done();
-      }
+        const req = http.expectOne('/api/users');
+        req.flush({ message: 'backend failure' }, { status: 500, statusText: 'Server Error' });
     });
 
-    const req = http.expectOne('/api/users');
-    req.error(new ErrorEvent('NetworkError', { message: 'client issue' }));
-  });
+    it('should return a fallback title when problem details omit a message', async () => {
+        service.getAllUsers().subscribe({
+            next: () => { throw new Error('expected error'); },
+            error: (error) => {
+                expect(error).toBe('Request failed (500)');
+                ;
+            }
+        });
+
+        const req = http.expectOne('/api/users');
+        req.flush({}, { status: 500, statusText: 'Server Error' });
+    });
+
+    it('should return client-side error message', async () => {
+        service.getAllUsers().subscribe({
+            next: () => { throw new Error('expected error'); },
+            error: (error) => {
+                expect(error).toContain('client issue');
+                ;
+            }
+        });
+
+        const req = http.expectOne('/api/users');
+        req.error(new ErrorEvent('NetworkError', { message: 'client issue' }));
+    });
 });

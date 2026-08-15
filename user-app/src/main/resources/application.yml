@@ -1,18 +1,66 @@
+server:
+  port: 8080
+  shutdown: graceful
+  compression:
+    enabled: true
+
 spring:
   application:
     name: user-app
   profiles:
-    active: dev
+    default: dev
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    url: jdbc:h2:mem:userdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+  h2:
+    console:
+      enabled: true
+  cache:
+    type: simple
+    cache-names: users
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
-      group-id: group_id
+      group-id: ${KAFKA_CONSUMER_GROUP:user-service-group}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+      properties:
+        spring.json.trusted.packages: dev.swirlit.devapp.common.event
+        spring.json.value.default.type: dev.swirlit.devapp.common.event.OrderEvent
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+    listener:
+      auto-startup: ${KAFKA_ENABLED:false}
+
+app:
   security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${JWT_ISSUER_URI:http://keycloak:8080/realms/devapp}
-          jwk-set-uri: ${JWT_JWK_SET_URI:http://keycloak:8080/realms/devapp/protocol/openid-connect/certs}
+    enabled: false
+  messaging:
+    enabled: ${KAFKA_ENABLED:false}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
 
 management:
   endpoints:
@@ -21,136 +69,80 @@ management:
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: always
+      probes:
+        enabled: true
+      show-details: when-authorized
+  health:
+    redis:
+      enabled: false
   info:
     env:
       enabled: true
-  prometheus:
-    metrics:
-      export:
-        enabled: true
 
 info:
   app:
     name: ${spring.application.name}
-    description: User Management Service
+    description: User profile and Kafka order-validation service
     version: 1.0.0
-    java:
-      version: ${java.version}
+    java: ${java.version}
 
-app:
-  security:
-    user: admin
-    password: password
+springdoc:
+  api-docs:
+    path: /api/users/openapi
+  swagger-ui:
+    path: /api/docs
+    urls:
+      - name: Users
+        url: /api/users/openapi
+      - name: Orders
+        url: /api/orders/openapi
+
+logging:
+  level:
+    dev.swirlit.devapp: INFO
+    org.springframework.security: WARN
 
 ---
-# Development Profile
 spring:
   config:
     activate:
-      on-profile: dev
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
-      - org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration
+      on-profile: uat | prod
   datasource:
-    url: jdbc:h2:mem:userdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: 
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-  jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
-    defer-datasource-initialization: true
-    properties:
-      hibernate:
-        '[format_sql]': true
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:db/schema.sql
-      data-locations: classpath:db/data.sql
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus,env,configprops
-
----
-# UAT Profile
-spring:
-  config:
-    activate:
-      on-profile: uat
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:postgres.infra.svc.cluster.local}:${DB_PORT:5432}/${DB_NAME:devdb}
+    url: jdbc:postgresql://${DB_HOST:postgres.infra.svc.cluster.local}:${DB_PORT:5432}/${DB_NAME:devappdb}
     driver-class-name: org.postgresql.Driver
-    username: ${DB_USERNAME:devuser}
-    password: ${DB_PASSWORD:devpass}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: validate
-    show-sql: false
+      ddl-auto: update
   sql:
     init:
       mode: never
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka.infra.svc.cluster.local:9092}
-    consumer:
-      group-id: ${KAFKA_CONSUMER_GROUP:user-service-group-uat}
+  cache:
+    type: redis
   data:
     redis:
       host: ${REDIS_HOST:redis.infra.svc.cluster.local}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      timeout: 2s
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${JWT_ISSUER_URI:https://keycloak.uat.simpleit.io/realms/devapp-uat}
-          jwk-set-uri: ${JWT_JWK_SET_URI:https://keycloak.uat.simpleit.io/realms/devapp-uat/protocol/openid-connect/certs}
+          issuer-uri: ${JWT_ISSUER_URI:https://devapp.swirlit.dev/auth/realms/devapp}
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://devapp.swirlit.dev/auth/realms/devapp/protocol/openid-connect/certs}
 
----
-# Production Profile
-spring:
-  config:
-    activate:
-      on-profile: prod
-  datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:devdb}
-    driver-class-name: org.postgresql.Driver
-    username: ${DB_USERNAME:devuser}
-    password: ${DB_PASSWORD:devpass}
-  jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-    properties:
-      hibernate:
-        '[format_sql]': false
-  sql:
-    init:
-      mode: never
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    consumer:
-      group-id: ${KAFKA_CONSUMER_GROUP:user-service-group}
-  data:
+app:
+  security:
+    enabled: true
+  messaging:
+    enabled: true
+
+management:
+  health:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-
-logging:
-  level:
-    '[dev.swirlit.devapp]': INFO
-    '[org.springframework.security]': WARN
-    '[org.hibernate]': WARN
+      enabled: true

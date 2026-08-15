@@ -2,8 +2,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { Order } from '../models/order.model';
+import { CreateOrderRequest, Order } from '../models/order.model';
 import { environment } from '../../environments/environment';
+import { apiErrorMessage } from './api-error';
 
 @Injectable({
     providedIn: 'root'
@@ -25,24 +26,14 @@ export class OrderService {
         );
     }
 
-    createOrder(order: Order): Observable<Order> {
+    createOrder(order: CreateOrderRequest): Observable<Order> {
         return this.http.post<Order>(this.baseUrl, order).pipe(
             catchError(this.handleError)
         );
     }
 
     private handleError(error: HttpErrorResponse): Observable<never> {
-        let errorMessage = 'An unknown error occurred!';
-        if (error.error instanceof ErrorEvent) {
-            // Client-side error
-            errorMessage = `Error: ${error.error.message}`;
-        } else {
-            // Server-side error
-            errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
-            if (error.error?.message) {
-                errorMessage = error.error.message;
-            }
-        }
+        const errorMessage = apiErrorMessage(error);
         console.error(errorMessage);
         return throwError(() => errorMessage);
     }

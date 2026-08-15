@@ -1,0 +1,59 @@
+{
+  "realm": "devapp",
+  "displayName": "DevApp Demo",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "clients": [
+    {
+      "clientId": "devapp-web",
+      "name": "DevApp Angular client",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:4200/*",
+        "https://devapp.swirlit.dev/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200",
+        "https://devapp.swirlit.dev"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:4200/*##https://devapp.swirlit.dev/*"
+      }
+    },
+    {
+      "clientId": "devapp-smoke",
+      "name": "Local API smoke-test client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "devapp-smoke",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "username": "demo",
+      "firstName": "Demo",
+      "lastName": "User",
+      "email": "demo@example.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

@@ -17,7 +17,7 @@ spec:
     seccompProfile: {type: RuntimeDefault}
   containers:
     - name: maven
-      image: docker.io/library/maven@sha256:407c4423cec0cf2981055bc2c6c0dc211d9605b6669279b95997f2d1c7e91e2c
+      image: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
       command: [cat]
       tty: true
       resources:
@@ -27,7 +27,7 @@ spec:
         - {name: maven-cache, mountPath: /root/.m2/repository}
         - {name: maven-settings, mountPath: /root/.m2/settings.xml, subPath: settings.xml, readOnly: true}
     - name: node
-      image: ghcr.io/puppeteer/puppeteer@sha256:bc20e7cbe2eca9c38e78d2f4a5ee7202aa489c2ebe9f3e7315e8b0322e3bc555
+      image: docker.io/library/node@sha256:2a49bdf71e9fd965a58c1703fd9ddd205b34e5782b692a72dd1d248abb0beb43
       command: [cat]
       tty: true
       env:
@@ -175,12 +175,8 @@ spec:
                         container('node') {
                             dir('devapp-web') {
                                 sh '''
-                                    export CHROME_BIN=$(find /home/pptruser/.cache/puppeteer/chrome \
-                                        -type f -path '*/chrome-linux*/chrome' | head -1)
-                                    test -x "$CHROME_BIN"
-                                    export PUPPETEER_EXECUTABLE_PATH="$CHROME_BIN"
-                                    CYPRESS_INSTALL_BINARY=0 PUPPETEER_SKIP_DOWNLOAD=true \
-                                        npm ci --cache /root/.npm
+                                    npm install --global npm@12.0.2
+                                    CYPRESS_INSTALL_BINARY=0 npm ci --cache /root/.npm
                                     npm run test:ci
                                 '''
                             }
@@ -237,8 +233,13 @@ spec:
                             # metadata reconciliation stays deterministic.
                             rm -f "/kaniko/${image}.Dockerfile"
                             cp "$WORKSPACE/$image/Dockerfile" "/kaniko/${image}.Dockerfile"
+                            if [ "$image" = devapp-web ]; then
+                                context="$WORKSPACE/devapp-web"
+                            else
+                                context="$WORKSPACE"
+                            fi
                             /kaniko/executor \
-                                --context "$WORKSPACE/$image" \
+                                --context "$context" \
                                 --dockerfile "/kaniko/${image}.Dockerfile" \
                                 --destination "$IMAGE_REGISTRY/$image:$APP_VERSION" \
                                 --insecure \

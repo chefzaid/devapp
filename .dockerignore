@@ -1,0 +1,11 @@
+.git
+.idea
+.vscode
+**/target
+**/node_modules
+**/dist
+**/coverage
+**/.angular
+**/test-results.xml
+*.log
+*.tmp

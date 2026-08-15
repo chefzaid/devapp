@@ -40,6 +40,11 @@ h1 {
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: wrap;
+}
+
+.form-grid .form-input {
+    min-width: 160px;
 }
 
 .form-input {
@@ -115,6 +120,8 @@ h1 {
     margin-bottom: 8px;
     background-color: white;
     transition: background-color 0.2s;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .user-item:hover {
@@ -130,5 +137,5 @@ h1 {
 
 .user-name {
     color: #333;
-    font-size: 16px;
+    font-size: 14px;
 }

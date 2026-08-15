@@ -1,8 +1,11 @@
-import { User } from "./user.model";
+export type OrderStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
 
 export interface Order {
-    id?: number;
-    user: User;
-    productId: number;
-    status?: string;
+  id?: number;
+  userId: number;
+  userName?: string | null;
+  productId: number;
+  status: OrderStatus;
 }
+
+export type CreateOrderRequest = Pick<Order, 'userId' | 'productId'>;

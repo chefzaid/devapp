@@ -1,17 +1,23 @@
 # Dockerfile for DevApp Development Environment
-# Supports Angular 21 + Spring Boot 3.5.3 development
+# Java 25 + Spring Boot 4 + Angular 22 development
 
-FROM mcr.microsoft.com/devcontainers/java:21-bookworm
+FROM mcr.microsoft.com/devcontainers/base:bookworm
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV NODE_VERSION=24
-ENV MAVEN_VERSION=3.9.9
+ENV MAVEN_VERSION=3.9.16
 ENV MAVEN_HOME=/opt/maven
-ENV PATH=$MAVEN_HOME/bin:$PATH
+ENV JAVA_HOME=/usr/lib/jvm/java-25-amazon-corretto
+ENV PATH=$JAVA_HOME/bin:$MAVEN_HOME/bin:$PATH
 
-# Install Maven and additional system dependencies
-RUN apt-get update && apt-get install -y \
+# Install Corretto 25, Maven, and additional system dependencies
+RUN wget -qO- https://apt.corretto.aws/corretto.key \
+        | gpg --dearmor -o /usr/share/keyrings/corretto-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/corretto-keyring.gpg] https://apt.corretto.aws stable main" \
+        > /etc/apt/sources.list.d/corretto.list \
+    && apt-get update && apt-get install -y \
+    java-25-amazon-corretto-jdk \
     # Basic tools
     wget \
     # Network tools
@@ -31,15 +37,8 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y nodejs
 
-# Install Angular CLI globally
-RUN npm install -g @angular/cli@21
-
-# Install useful development tools
-RUN npm install -g \
-    typescript \
-    ts-node \
-    nodemon \
-    concurrently
+# Keep the package manager and CLI aligned with the application toolchain.
+RUN npm install -g npm@12.0.2 @angular/cli@22.1.4
 
 # Create workspace and Maven directories
 RUN mkdir -p /workspace \

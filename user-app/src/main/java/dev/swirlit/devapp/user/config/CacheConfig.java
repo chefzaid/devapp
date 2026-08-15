@@ -17,7 +17,7 @@ import java.time.Duration;
 
 @Configuration
 @EnableCaching
-@Profile("!dev & !test")
+@Profile({"uat", "prod"})
 public class CacheConfig {
 
     @Bean

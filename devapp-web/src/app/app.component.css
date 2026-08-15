@@ -37,6 +37,13 @@
     gap: 0.5rem;
 }
 
+.nav-button {
+    background: transparent;
+    border: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
 .nav-link:hover {
     color: white;
     background-color: rgba(255,255,255,0.1);

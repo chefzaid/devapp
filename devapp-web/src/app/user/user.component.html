@@ -1,47 +1,63 @@
 <div class="container">
     <h1>User Management</h1>
 
-    @if (error) {
+    @if (error(); as message) {
         <div class="error-message">
-            {{ error }}
-            <button (click)="error = null" class="close-btn">×</button>
+            {{ message }}
+            <button (click)="error.set(null)" class="close-btn" aria-label="Dismiss error">×</button>
         </div>
     }
 
     <div class="form-section">
         <h3>Create New User</h3>
-        <div class="form-group">
+        <div class="form-group form-grid">
             <input
                 [(ngModel)]="newUser.name"
-                placeholder="Enter user name"
-                [disabled]="creating"
+                placeholder="Display name"
+                aria-label="Display name"
+                [disabled]="creating()"
+                class="form-input">
+            <input
+                [(ngModel)]="newUser.username"
+                placeholder="Username"
+                aria-label="Username"
+                [disabled]="creating()"
+                class="form-input">
+            <input
+                [(ngModel)]="newUser.email"
+                placeholder="Email"
+                aria-label="Email"
+                type="email"
+                [disabled]="creating()"
                 class="form-input">
             <button
                 (click)="createUser()"
-                [disabled]="creating || !newUser.name.trim()"
+                [disabled]="creating() || !newUser.name.trim() || !newUser.username.trim() || !newUser.email.trim()"
                 class="btn btn-primary">
-                {{ creating ? 'Creating...' : 'Create User' }}
+                {{ creating() ? 'Creating...' : 'Create User' }}
             </button>
         </div>
     </div>
 
     <div class="users-section">
         <h2>Users</h2>
-        @if (loading) {
+        @if (loading()) {
             <div class="loading">Loading users...</div>
-        } @else if (users.length === 0) {
+        } @else if (users().length === 0) {
             <div class="no-data">No users found.</div>
         } @else {
             <ul class="users-list">
-                @for (user of users; track user.id) {
+                @for (user of users(); track user.id) {
                     <li class="user-item">
                         <span class="user-id">#{{ user.id }}</span>
                         <span class="user-name">{{ user.name }}</span>
+                        <span class="user-name">{{ '@' + user.username }}</span>
+                        <span class="user-name">{{ user.email }}</span>
                     </li>
                 }
             </ul>
         }
-        @if (!loading) {
+        @if (!loading()) {
             <button (click)="loadUsers()" class="btn btn-secondary">Refresh</button>
         }
     </div>

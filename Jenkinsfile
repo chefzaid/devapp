@@ -40,6 +40,18 @@ spec:
       volumeMounts:
         - {name: npm-cache, mountPath: /root/.npm}
         - {name: npm-config, mountPath: /root/.npmrc, subPath: .npmrc, readOnly: true}
+    - name: playwright
+      image: mcr.microsoft.com/playwright@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
+      command: [cat]
+      tty: true
+      env:
+        - {name: NODE_OPTIONS, value: "--max-old-space-size=1536"}
+      resources:
+        requests: {memory: "512Mi", cpu: "100m"}
+        limits: {memory: "2Gi", cpu: "1500m"}
+      securityContext:
+        runAsUser: 0
+        allowPrivilegeEscalation: false
     - name: kaniko
       image: gcr.io/kaniko-project/executor@sha256:c3109d5926a997b100c4343944e06c6b30a6804b2f9abe0994d3de6ef92b028e
       command: [/busybox/cat]
@@ -176,8 +188,9 @@ spec:
                             dir('devapp-web') {
                                 sh '''
                                     npm install --global npm@12.0.2
-                                    CYPRESS_INSTALL_BINARY=0 npm ci --cache /root/.npm
+                                    npm ci --cache /root/.npm
                                     npm run test:ci
+                                    npm run test:e2e:types
                                 '''
                             }
                         }
@@ -346,6 +359,41 @@ spec:
                         check_url order-app "http://order-app.${K8S_NAMESPACE}.svc.cluster.local:8081/actuator/health"
                         check_url devapp-web "http://devapp-web.${K8S_NAMESPACE}.svc.cluster.local/"
                     '''
+                }
+            }
+        }
+
+        stage('Browser Acceptance') {
+            when { expression { env.SKIP_CI != 'true' } }
+            steps {
+                container('playwright') {
+                    dir('devapp-web') {
+                        sh '''
+                            trap 'chown -R 1000:1000 test-results playwright-report 2>/dev/null || true' EXIT
+                            ingress_ip=$(getent ahostsv4 ingress-nginx-controller.infra.svc.cluster.local \
+                                | awk 'NR == 1 {print $1}')
+                            case "$ingress_ip" in
+                                ''|*[!0-9.]*)
+                                    echo "Could not resolve the in-cluster ingress IPv4 address" >&2
+                                    exit 1
+                                    ;;
+                            esac
+                            printf '%s\t%s\n' "$ingress_ip" devapp.swirlit.dev >> /etc/hosts
+
+                            WEB_URL=https://devapp.swirlit.dev \
+                            OIDC_USERNAME=user \
+                            OIDC_PASSWORD=password \
+                            IGNORE_HTTPS_ERRORS=true \
+                            CI=true \
+                            npm run test:integration
+                        '''
+                    }
+                }
+            }
+            post {
+                always {
+                    junit testResults: 'devapp-web/test-results/playwright-junit.xml', allowEmptyResults: true
+                    archiveArtifacts artifacts: 'devapp-web/test-results/playwright/**,devapp-web/playwright-report/**', allowEmptyArchive: true
                 }
             }
         }

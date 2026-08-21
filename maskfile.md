@@ -20,9 +20,9 @@ use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn -q -DskipTests install
 elif [ "$target" = "front" ]; then
-  cd devapp-web && CYPRESS_INSTALL_BINARY=0 npm install
+  cd devapp-web && npm install
 else
-  cd devapp-web && CYPRESS_INSTALL_BINARY=0 npm install && cd ..
+  cd devapp-web && npm install && cd ..
   mvn -q -DskipTests install
 fi
 ```

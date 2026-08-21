@@ -58,7 +58,7 @@ The local Compose stack covers the application-facing runtime services. Observab
 
 - Java 25.0.4, Maven 3.9.16, Spring Boot 4.1.0
 - Angular 22.1, TypeScript 6.0, Node.js 24.19 LTS, npm 12.0.2
-- Vitest 4.1.11, Cypress 15.21
+- Vitest 4.1.11, Playwright 1.62
 - PostgreSQL 18.4, Redis 8.8, Kafka 4.3.1, Keycloak 26.7.1
 - NGINX unprivileged 1.30.4
 
@@ -74,6 +74,7 @@ mvn clean verify
 
 cd devapp-web
 npm ci
+npm run test:e2e:install
 npm test
 npm run test:coverage
 npm run build-prod
@@ -82,7 +83,7 @@ npm run test:e2e
 
 Start `user-app` on 8080, `order-app` on 8081, and then `npm start`; Angular's development proxy routes both APIs. The included VS Code dev container provides Java 25, Maven, Node 24, and Angular CLI 22.
 
-The local browser suite uses `cypress.config.ts`. The separate live-cluster acceptance performs a real Keycloak Authorization Code + PKCE login and verifies both secured workflows:
+The Playwright suite starts the Angular development server automatically and checks Chromium, Firefox, and WebKit. The separate live-cluster acceptance performs a real Keycloak Authorization Code + PKCE login in all three browser engines and verifies both secured workflows:
 
 ```bash
 cd devapp-web
@@ -92,7 +93,15 @@ OIDC_PASSWORD=password \
 npm run test:integration
 ```
 
-The demo password is read from the process environment and is not written to Cypress logs. Run live acceptance only against the demo environment.
+Failure traces, screenshots, videos, and an HTML report are retained under `test-results/` and `playwright-report/`. These artifacts can contain entered test data, so run live acceptance only with the public demo credentials, never with a real secret.
+
+The public endpoint may challenge headless browsers at the Cloudflare edge. For unattended cluster acceptance, resolve `devapp.swirlit.dev` directly to the ingress address and set `IGNORE_HTTPS_ERRORS=true`; the latter is required because the ingress correctly uses a Cloudflare Origin CA certificate that browsers do not trust outside Cloudflare. Do not use that switch for normal public-endpoint tests. Jenkins performs this origin-only mapping inside its disposable Playwright container after Argo CD reports the exact revision healthy.
+
+The complete local stack and its browser acceptance can also run entirely in containers. This isolated run creates a user and an order, then waits for Kafka validation to change the order from `PENDING` to `APPROVED`:
+
+```bash
+docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
+```
 
 The production manifests can be rendered without changing the cluster:
 
@@ -111,7 +120,7 @@ Repository layout:
 
 ## Cluster delivery
 
-Jenkins polls `main`, runs `mvn clean verify` and the Angular Vitest suite, builds immutable images with Kaniko, and publishes them to Nexus. It then changes only the Kustomize image tags in Git. Argo CD owns reconciliation, pruning, and self-healing; Jenkins waits for that exact Git revision to become healthy before smoke-testing all three services.
+Jenkins polls `main`, runs `mvn clean verify`, the Angular Vitest suite, and Playwright type checking, builds immutable images with Kaniko, and publishes them to Nexus. It then changes only the Kustomize image tags in Git. Argo CD owns reconciliation, pruning, and self-healing; Jenkins waits for that exact Git revision to become healthy before smoke-testing all three services and running the real Keycloak browser journey in Chromium, Firefox, and WebKit.
 
 One-time CI/CD bootstrap is performed after the repository is pushed:
 

@@ -2,6 +2,10 @@
 .idea
 .vscode
 **/target
+!user-app/target
+!user-app/target/user-app.jar
+!order-app/target
+!order-app/target/order-app.jar
 **/node_modules
 **/dist
 **/coverage

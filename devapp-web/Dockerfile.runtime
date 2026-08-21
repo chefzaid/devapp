@@ -1,0 +1,3 @@
+FROM nginxinc/nginx-unprivileged:1.30.4-alpine@sha256:bc69cfff69f75aef06daeda8dea70de95fa9ad97a03fe134cd4e5e6789d51124
+COPY --chown=101:101 dist/devapp-web/browser /usr/share/nginx/html
+EXPOSE 8080

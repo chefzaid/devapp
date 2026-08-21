@@ -46,7 +46,7 @@ spec:
       tty: true
       resources:
         requests: {memory: "256Mi", cpu: "50m"}
-        limits: {memory: "1Gi", cpu: "1000m"}
+        limits: {memory: "2Gi", cpu: "1000m"}
       securityContext:
         allowPrivilegeEscalation: false
         # Jenkins creates durable-task directories mode 2755, while Kaniko
@@ -230,9 +230,11 @@ spec:
                         for image in user-app order-app devapp-web; do
                             # The shared workspace is owned by the Jenkins agent UID.
                             # Give Kaniko a root-owned staging copy so its startup
-                            # metadata reconciliation stays deterministic.
+                            # metadata reconciliation stays deterministic. The runtime
+                            # Dockerfiles package artifacts already tested above instead
+                            # of recompiling the applications inside Kaniko.
                             rm -f "/kaniko/${image}.Dockerfile"
-                            cp "$WORKSPACE/$image/Dockerfile" "/kaniko/${image}.Dockerfile"
+                            cp "$WORKSPACE/$image/Dockerfile.runtime" "/kaniko/${image}.Dockerfile"
                             if [ "$image" = devapp-web ]; then
                                 context="$WORKSPACE/devapp-web"
                             else

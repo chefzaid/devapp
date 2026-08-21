@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../services/auth.service';
 import { CommonModule } from '@angular/common';
+import { of } from 'rxjs';
 
 describe('LoginComponent', () => {
     let component: LoginComponent;
@@ -11,7 +12,8 @@ describe('LoginComponent', () => {
 
     beforeEach(async () => {
         const authSpy = {
-            login: vi.fn().mockName("AuthService.login")
+            login: vi.fn().mockName("AuthService.login"),
+            authStatus$: of('ready' as const)
         };
 
         await TestBed.configureTestingModule({

@@ -46,4 +46,17 @@ describe('authInterceptor', () => {
 
         await firstValueFrom(TestBed.runInInjectionContext(() => authInterceptor(req, next)));
     });
+
+    it('should bypass authentication without resolving the service for OIDC requests', async () => {
+        const next = vi.fn((req: HttpRequest<unknown>) => {
+            expect(req.headers.has('Authorization')).toBe(false);
+            return of({} as HttpEvent<unknown>);
+        });
+        const req = new HttpRequest('GET', '/auth/realms/devapp/.well-known/openid-configuration');
+
+        await firstValueFrom(TestBed.runInInjectionContext(() => authInterceptor(req, next)));
+
+        expect(authServiceSpy.getToken).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledOnce();
+    });
 });

@@ -33,14 +33,21 @@
         <span class="secure-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
         </span>
-        <span class="auth-state"><i></i> OIDC ready</span>
+        <span class="auth-state" [class.auth-error]="authStatus() === 'error'">
+          <i></i>
+          @switch (authStatus()) {
+            @case ('ready') { OIDC ready }
+            @case ('error') { OIDC unavailable }
+            @default { Connecting OIDC }
+          }
+        </span>
       </div>
       <p class="card-label">Secure access</p>
       <h2>Enter the cluster lab.</h2>
       <p class="card-copy">Sign in through Keycloak to explore the user and event-driven order flows.</p>
 
-      <button (click)="login()" class="sso-button" type="button">
-        <span>Login with SSO</span>
+      <button (click)="login()" class="sso-button" type="button" [disabled]="authStatus() !== 'ready'">
+        <span>{{ authStatus() === 'loading' ? 'Connecting…' : 'Login with SSO' }}</span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
       </button>
 

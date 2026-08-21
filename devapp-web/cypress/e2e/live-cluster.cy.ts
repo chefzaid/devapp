@@ -1,15 +1,18 @@
-const liveDescribe = Cypress.env('LIVE_CLUSTER') ? describe : describe.skip;
-
-liveDescribe('live cluster acceptance', () => {
+describe('live cluster acceptance', () => {
   it('authenticates through Keycloak and loads both secured workflows', () => {
+    cy.intercept('GET', '**/realms/devapp/.well-known/openid-configuration').as('oidcDiscovery');
     cy.visit('/login');
     cy.contains('One small app.');
-    cy.contains('button', 'Login with SSO').click();
+    cy.wait('@oidcDiscovery', { timeout: 15_000 }).its('response.statusCode').should('eq', 200);
+    cy.contains('button', 'Login with SSO').should('be.enabled').click();
 
     cy.location('pathname', { timeout: 20_000 }).should('include', '/auth/realms/devapp/');
-    cy.get('#username').type(Cypress.env('OIDC_USERNAME') || 'user');
-    cy.get('#password').type(Cypress.env('OIDC_PASSWORD') || 'password', { log: false });
-    cy.get('#kc-login').click();
+    cy.env<{ OIDC_USERNAME: string; OIDC_PASSWORD: string }>(['OIDC_USERNAME', 'OIDC_PASSWORD'])
+      .then(({ OIDC_USERNAME, OIDC_PASSWORD }) => {
+        cy.get('#username').type(OIDC_USERNAME || 'user');
+        cy.get('#password').type(OIDC_PASSWORD || 'password', { log: false });
+        cy.get('#kc-login').click();
+      });
 
     cy.location('pathname', { timeout: 20_000 }).should('eq', '/users');
     cy.contains('h1', 'People behind the requests.');

@@ -3,14 +3,18 @@ import { OAuthService, AuthConfig } from 'angular-oauth2-oidc';
 import { environment } from '../../environments/environment';
 import { BehaviorSubject, ReplaySubject } from 'rxjs';
 
+export type AuthStatus = 'loading' | 'ready' | 'error';
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   readonly authEnabled = environment.authEnabled;
   private readonly isLoggedInSubject = new BehaviorSubject<boolean>(!this.authEnabled);
+  private readonly authStatusSubject = new BehaviorSubject<AuthStatus>(this.authEnabled ? 'loading' : 'ready');
   private readonly readySubject = new ReplaySubject<void>(1);
   readonly isLoggedIn$ = this.isLoggedInSubject.asObservable();
+  readonly authStatus$ = this.authStatusSubject.asObservable();
   readonly ready$ = this.readySubject.asObservable();
 
   constructor(private oauthService: OAuthService) {
@@ -39,10 +43,12 @@ export class AuthService {
       this.isLoggedInSubject.next(this.oauthService.hasValidAccessToken());
     });
     this.oauthService.loadDiscoveryDocumentAndTryLogin().then(() => {
-        this.isLoggedInSubject.next(this.oauthService.hasValidAccessToken());
+      this.isLoggedInSubject.next(this.oauthService.hasValidAccessToken());
+      this.authStatusSubject.next('ready');
     }).catch((error: unknown) => {
       console.warn('OpenID Connect discovery failed', error);
       this.isLoggedInSubject.next(false);
+      this.authStatusSubject.next('error');
     }).finally(() => {
       this.readySubject.next();
       this.readySubject.complete();
@@ -50,7 +56,7 @@ export class AuthService {
   }
 
   login(): void {
-    if (this.authEnabled) {
+    if (this.authEnabled && this.authStatusSubject.value === 'ready') {
       this.oauthService.initCodeFlow();
     }
   }

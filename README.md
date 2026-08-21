@@ -11,7 +11,7 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Open <http://localhost:4200> and sign in with `demo` / `demo`. The Keycloak admin console is at <http://localhost:8180/auth/admin> with `admin` / `admin`.
+Open <http://localhost:4200> and sign in with `user` / `password`. The Keycloak admin console is at <http://localhost:8180/auth/admin> with `admin` / `admin`.
 
 Useful local endpoints:
 
@@ -50,7 +50,7 @@ The local Compose stack covers the application-facing runtime services. Observab
 
 - Java 25.0.4, Maven 3.9.16, Spring Boot 4.1.0
 - Angular 22.1, TypeScript 6.0, Node.js 24.19 LTS, npm 12.0.2
-- PostgreSQL 18.4, Redis 8.8, Kafka 4.3.1, Keycloak 26.7.0
+- PostgreSQL 18.4, Redis 8.8, Kafka 4.3.1, Keycloak 26.7.1
 - NGINX unprivileged 1.30.4
 
 TypeScript and Node type definitions intentionally follow Angular 22 and Node 24 compatibility ranges instead of incompatible newer majors.

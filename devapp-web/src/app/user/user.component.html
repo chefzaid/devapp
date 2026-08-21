@@ -1,64 +1,90 @@
-<div class="container">
-    <h1>User Management</h1>
+<section class="page-container">
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Identity domain</p>
+            <h1>People behind the requests.</h1>
+            <p>Create a profile in PostgreSQL, then use it as the owner of an event-driven order.</p>
+        </div>
+        <div class="count-card" aria-label="User count">
+            <strong>{{ users().length }}</strong>
+            <span>Active profiles</span>
+        </div>
+    </header>
 
     @if (error(); as message) {
-        <div class="error-message">
-            {{ message }}
+        <div class="error-banner" role="alert">
+            <span>{{ message }}</span>
             <button (click)="error.set(null)" class="close-btn" aria-label="Dismiss error">×</button>
         </div>
     }
 
-    <div class="form-section">
-        <h3>Create New User</h3>
-        <div class="form-group form-grid">
-            <input
-                [(ngModel)]="newUser.name"
-                placeholder="Display name"
-                aria-label="Display name"
-                [disabled]="creating()"
-                class="form-input">
-            <input
-                [(ngModel)]="newUser.username"
-                placeholder="Username"
-                aria-label="Username"
-                [disabled]="creating()"
-                class="form-input">
-            <input
-                [(ngModel)]="newUser.email"
-                placeholder="Email"
-                aria-label="Email"
-                type="email"
-                [disabled]="creating()"
-                class="form-input">
-            <button
-                (click)="createUser()"
-                [disabled]="creating() || !newUser.name.trim() || !newUser.username.trim() || !newUser.email.trim()"
-                class="btn btn-primary">
-                {{ creating() ? 'Creating...' : 'Create User' }}
-            </button>
+    <div class="users-layout">
+        <aside class="panel create-panel">
+            <div class="panel-header">
+                <div>
+                    <span class="panel-kicker">New record</span>
+                    <h2>Create a user</h2>
+                    <p>Three fields, one secured API call.</p>
+                </div>
+            </div>
+            <form class="form-grid" (ngSubmit)="createUser()">
+                <div class="form-field">
+                    <label for="displayName">Display name</label>
+                    <input id="displayName" name="displayName" [(ngModel)]="newUser.name" placeholder="e.g. Ada Lovelace" [disabled]="creating()" class="form-input" autocomplete="name">
+                </div>
+                <div class="form-field">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" [(ngModel)]="newUser.username" placeholder="e.g. ada" [disabled]="creating()" class="form-input" autocomplete="username">
+                </div>
+                <div class="form-field">
+                    <label for="email">Email address</label>
+                    <input id="email" name="email" [(ngModel)]="newUser.email" placeholder="ada@example.com" type="email" [disabled]="creating()" class="form-input" autocomplete="email">
+                </div>
+                <button type="submit" [disabled]="creating() || !newUser.name.trim() || !newUser.username.trim() || !newUser.email.trim()" class="btn btn-primary">
+                    @if (creating()) {
+                        <span>Creating profile…</span>
+                    } @else {
+                        <span>Create User</span>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                    }
+                </button>
+            </form>
+        </aside>
+
+        <div class="panel directory-panel">
+            <div class="panel-header directory-header">
+                <div>
+                    <span class="panel-kicker">PostgreSQL records</span>
+                    <h2>User directory</h2>
+                </div>
+                @if (!loading()) {
+                    <button (click)="loadUsers()" class="btn btn-secondary refresh-button" type="button" aria-label="Refresh users">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 1 0 2 5.3M20 4v7h-7"/></svg>
+                        <span>Refresh</span>
+                    </button>
+                }
+            </div>
+
+            @if (loading()) {
+                <div class="loading-state"><div><div class="loader"></div><p>Loading user records…</p></div></div>
+            } @else if (users().length === 0) {
+                <div class="empty-state"><div>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6"/></svg>
+                    <strong>No users yet</strong><p>Create the first profile to start the flow.</p>
+                </div></div>
+            } @else {
+                <div class="directory-labels" aria-hidden="true"><span>Profile</span><span>Username</span><span>Email</span><span>ID</span></div>
+                <ul class="users-list">
+                    @for (user of users(); track user.id) {
+                        <li class="user-item">
+                            <div class="profile-cell"><span class="avatar">{{ user.name.charAt(0).toUpperCase() }}</span><strong>{{ user.name }}</strong></div>
+                            <span class="username">{{ '@' + user.username }}</span>
+                            <a class="email" [href]="'mailto:' + user.email">{{ user.email }}</a>
+                            <span class="user-id">#{{ user.id }}</span>
+                        </li>
+                    }
+                </ul>
+            }
         </div>
     </div>
-
-    <div class="users-section">
-        <h2>Users</h2>
-        @if (loading()) {
-            <div class="loading">Loading users...</div>
-        } @else if (users().length === 0) {
-            <div class="no-data">No users found.</div>
-        } @else {
-            <ul class="users-list">
-                @for (user of users(); track user.id) {
-                    <li class="user-item">
-                        <span class="user-id">#{{ user.id }}</span>
-                        <span class="user-name">{{ user.name }}</span>
-                        <span class="user-name">{{ '@' + user.username }}</span>
-                        <span class="user-name">{{ user.email }}</span>
-                    </li>
-                }
-            </ul>
-        }
-        @if (!loading()) {
-            <button (click)="loadUsers()" class="btn btn-secondary">Refresh</button>
-        }
-    </div>
-</div>
+</section>

@@ -41,16 +41,16 @@
   ],
   "users": [
     {
-      "username": "demo",
-      "firstName": "Demo",
+      "username": "user",
+      "firstName": "Test",
       "lastName": "User",
-      "email": "demo@example.com",
+      "email": "user@example.com",
       "enabled": true,
       "emailVerified": true,
       "credentials": [
         {
           "type": "password",
-          "value": "demo",
+          "value": "password",
           "temporary": false
         }
       ]

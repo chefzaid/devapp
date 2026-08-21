@@ -8,11 +8,12 @@ import { Observable } from 'rxjs';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, RouterLink, RouterLinkActive, AsyncPipe, NotificationComponent]
 })
 export class AppComponent {
-  title = 'DevApp Web';
+  title = 'DevApp';
   isLoggedIn$: Observable<boolean>;
 
   constructor(public authService: AuthService) {

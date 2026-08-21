@@ -1,79 +1,90 @@
-<div class="container">
-    <h1>Order Management</h1>
+<section class="page-container">
+    <header class="page-heading">
+        <div>
+            <p class="eyebrow">Event domain</p>
+            <h1>Orders that travel the stack.</h1>
+            <p>Creating an order persists state, publishes a Kafka event, warms Redis, and leaves a trace in the observability layer.</p>
+        </div>
+        <div class="count-card" aria-label="Order count">
+            <strong>{{ orders().length }}</strong>
+            <span>Orders tracked</span>
+        </div>
+    </header>
 
     @if (error(); as message) {
-        <div class="error-message">
-            {{ message }}
+        <div class="error-banner" role="alert">
+            <span>{{ message }}</span>
             <button (click)="error.set(null)" class="close-btn" aria-label="Dismiss error">×</button>
         </div>
     }
 
-    <div class="form-section">
-        <h3>Create New Order</h3>
-        <div class="form-group">
+    <div class="panel order-composer">
+        <div class="panel-header">
+            <div>
+                <span class="panel-kicker">Publish a workflow</span>
+                <h2>Create an order</h2>
+                <p>Choose an existing user and a demo product identifier.</p>
+            </div>
+            <div class="event-route" aria-label="Order event route"><span>API</span><i></i><span>Kafka</span><i></i><span>Consumer</span></div>
+        </div>
+        <form class="form-grid order-form" (ngSubmit)="createOrder()">
             <div class="form-field">
-                <label for="userSelect">User:</label>
-                <select
-                    id="userSelect"
-                    [(ngModel)]="newOrder.userId"
-                    [disabled]="creating() || loadingUsers()"
-                    class="form-select">
-                    <option [ngValue]="0">Select a user</option>
+                <label for="userSelect">Order owner</label>
+                <select id="userSelect" name="userId" [(ngModel)]="newOrder.userId" [disabled]="creating() || loadingUsers()" class="form-select">
+                    <option [ngValue]="0">{{ loadingUsers() ? 'Loading users…' : 'Select a user' }}</option>
                     @for (user of users(); track user.id) {
-                        <option [ngValue]="user.id">{{ user.name }}</option>
+                        <option [ngValue]="user.id">{{ user.name }} ({{ '@' + user.username }})</option>
                     }
                 </select>
             </div>
             <div class="form-field">
-                <label for="productInput">Product ID:</label>
-                <input
-                    id="productInput"
-                    [(ngModel)]="newOrder.productId"
-                    placeholder="Enter product ID"
-                    type="number"
-                    min="1"
-                    [disabled]="creating()"
-                    class="form-input">
+                <label for="productInput">Product ID</label>
+                <input id="productInput" name="productId" [(ngModel)]="newOrder.productId" placeholder="e.g. 1001" type="number" min="1" [disabled]="creating()" class="form-input">
             </div>
-            <button
-                (click)="createOrder()"
-                [disabled]="creating() || newOrder.userId <= 0 || newOrder.productId <= 0"
-                class="btn btn-primary">
-                {{ creating() ? 'Creating...' : 'Create Order' }}
+            <button type="submit" [disabled]="creating() || newOrder.userId <= 0 || newOrder.productId <= 0" class="btn btn-primary">
+                @if (creating()) {
+                    <span>Publishing order…</span>
+                } @else {
+                    <span>Create Order</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                }
             </button>
-        </div>
+        </form>
     </div>
 
-    <div class="orders-section">
-        <h2>Orders</h2>
-        @if (loading()) {
-            <div class="loading">Loading orders...</div>
-        } @else if (orders().length === 0) {
-            <div class="no-data">No orders found.</div>
-        } @else {
-            <div class="orders-grid">
-                @for (order of orders(); track order.id) {
-                    <div class="order-card">
-                        <div class="order-header">
-                            <span class="order-id">Order #{{ order.id }}</span>
-                            <span class="order-status" [class]="'status-' + order.status?.toLowerCase()">
-                                {{ order.status }}
-                            </span>
-                        </div>
-                        <div class="order-details">
-                            <div class="detail-item">
-                                <strong>User:</strong> {{ order.userName || ('#' + order.userId) }}
-                            </div>
-                            <div class="detail-item">
-                                <strong>Product ID:</strong> {{ order.productId }}
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
+    <div class="orders-heading">
+        <div><span class="panel-kicker">PostgreSQL + Kafka</span><h2>Order stream</h2></div>
         @if (!loading()) {
-            <button (click)="loadOrders()" class="btn btn-secondary">Refresh</button>
+            <button (click)="loadOrders()" class="btn btn-secondary" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 1 0 2 5.3M20 4v7h-7"/></svg><span>Refresh</span>
+            </button>
         }
     </div>
-</div>
+
+    @if (loading()) {
+        <div class="panel loading-state"><div><div class="loader"></div><p>Loading the order stream…</p></div></div>
+    } @else if (orders().length === 0) {
+        <div class="panel empty-state"><div>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16.5 9.4-9-5.2M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16ZM3.3 7 12 12l8.7-5M12 22V12"/></svg>
+            <strong>No orders yet</strong><p>Create one above and watch it move through the event path.</p>
+        </div></div>
+    } @else {
+        <div class="orders-grid">
+            @for (order of orders(); track order.id) {
+                <article class="order-card">
+                    <div class="order-card-top">
+                        <span class="order-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m7.5 4.2 9 5.2v10.4M3.3 7 12 12l8.7-5M12 22V12M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg></span>
+                        <span class="order-status" [class]="'status-' + order.status.toLowerCase()">{{ order.status }}</span>
+                    </div>
+                    <p class="order-label">Order</p>
+                    <h3>#{{ order.id }}</h3>
+                    <dl class="order-details">
+                        <div><dt>Owner</dt><dd>{{ order.userName || ('User #' + order.userId) }}</dd></div>
+                        <div><dt>Product</dt><dd>#{{ order.productId }}</dd></div>
+                    </dl>
+                    <div class="event-confirmation"><i></i><span>Event pipeline connected</span></div>
+                </article>
+            }
+        </div>
+    }
+</section>

@@ -11,8 +11,8 @@ resources:
   - observability.yaml
 images:
   - name: nexus-registry.infra.svc.cluster.local:5000/devapp/user-app
-    newTag: 29-b56f281
+    newTag: 31-34c792b
   - name: nexus-registry.infra.svc.cluster.local:5000/devapp/order-app
-    newTag: 29-b56f281
+    newTag: 31-34c792b
   - name: nexus-registry.infra.svc.cluster.local:5000/devapp/devapp-web
-    newTag: 29-b56f281
+    newTag: 31-34c792b

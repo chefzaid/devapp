@@ -327,9 +327,24 @@ spec:
             steps {
                 container('smoke') {
                     sh '''
-                        curl -fsS --max-time 10 "http://user-app.${K8S_NAMESPACE}.svc.cluster.local:8080/actuator/health" >/dev/null
-                        curl -fsS --max-time 10 "http://order-app.${K8S_NAMESPACE}.svc.cluster.local:8081/actuator/health" >/dev/null
-                        curl -fsS --max-time 10 "http://devapp-web.${K8S_NAMESPACE}.svc.cluster.local/" >/dev/null
+                        check_url() {
+                            label="$1"
+                            url="$2"
+                            for attempt in $(seq 1 12); do
+                                if curl -fsS --max-time 10 "$url" >/dev/null; then
+                                    echo "$label smoke check passed on attempt $attempt"
+                                    return 0
+                                fi
+                                echo "$label is not reachable yet (attempt $attempt/12)" >&2
+                                sleep 5
+                            done
+                            echo "$label failed its smoke check after 12 attempts" >&2
+                            return 1
+                        }
+
+                        check_url user-app "http://user-app.${K8S_NAMESPACE}.svc.cluster.local:8080/actuator/health"
+                        check_url order-app "http://order-app.${K8S_NAMESPACE}.svc.cluster.local:8081/actuator/health"
+                        check_url devapp-web "http://devapp-web.${K8S_NAMESPACE}.svc.cluster.local/"
                     '''
                 }
             }

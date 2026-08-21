@@ -16,7 +16,7 @@ echo "  mask run [all|user|order|front] - run apps (default: all)"
 ```bash
 target="${1:-all}"
 . ./mask-common.sh
-use_java_21_if_available
+use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn -q -DskipTests install
 elif [ "$target" = "front" ]; then
@@ -32,7 +32,7 @@ fi
 ```bash
 target="${1:-all}"
 . ./mask-common.sh
-use_java_21_if_available
+use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn test
 elif [ "$target" = "front" ]; then
@@ -47,7 +47,7 @@ fi
 ```bash
 target="${1:-all}"
 . ./mask-common.sh
-use_java_21_if_available
+use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn clean verify
 elif [ "$target" = "front" ]; then
@@ -62,7 +62,7 @@ fi
 ```bash
 target="${1:-all}"
 . ./mask-common.sh
-use_java_21_if_available
+use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn clean package -DskipTests
 elif [ "$target" = "front" ]; then
@@ -77,7 +77,7 @@ fi
 ```bash
 target="${1:-all}"
 . ./mask-common.sh
-use_java_21_if_available
+use_java_25_if_available
 if [ "$target" = "user" ]; then
   mvn spring-boot:run -pl user-app
 elif [ "$target" = "order" ]; then

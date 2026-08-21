@@ -11,7 +11,15 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Open <http://localhost:4200> and sign in with `user` / `password`. The Keycloak admin console is at <http://localhost:8180/auth/admin> with `admin` / `admin`.
+Open <http://localhost:4200> and sign in with the demo account below.
+
+| Environment | URL | Username | Password |
+|---|---|---|---|
+| Local application | <http://localhost:4200> | `user` | `password` |
+| Live application | <https://devapp.swirlit.dev> | `user` | `password` |
+| Local Keycloak administration | <http://localhost:8180/auth/admin> | `admin` | `admin` |
+
+These credentials are intentionally public and are only for the disposable demo environment. Never reuse them for a real account or production deployment.
 
 Useful local endpoints:
 
@@ -50,10 +58,11 @@ The local Compose stack covers the application-facing runtime services. Observab
 
 - Java 25.0.4, Maven 3.9.16, Spring Boot 4.1.0
 - Angular 22.1, TypeScript 6.0, Node.js 24.19 LTS, npm 12.0.2
+- Vitest 4.1.11, Cypress 15.21
 - PostgreSQL 18.4, Redis 8.8, Kafka 4.3.1, Keycloak 26.7.1
 - NGINX unprivileged 1.30.4
 
-TypeScript and Node type definitions intentionally follow Angular 22 and Node 24 compatibility ranges instead of incompatible newer majors.
+TypeScript intentionally remains on 6.0 because Angular 22.1 requires TypeScript `>=6.0 <6.1`; Node.js 24 LTS is within the application's supported runtime range.
 
 ## Development and verification
 
@@ -68,9 +77,22 @@ npm ci
 npm test
 npm run test:coverage
 npm run build-prod
+npm run test:e2e
 ```
 
 Start `user-app` on 8080, `order-app` on 8081, and then `npm start`; Angular's development proxy routes both APIs. The included VS Code dev container provides Java 25, Maven, Node 24, and Angular CLI 22.
+
+The local browser suite uses `cypress.config.ts`. The separate live-cluster acceptance performs a real Keycloak Authorization Code + PKCE login and verifies both secured workflows:
+
+```bash
+cd devapp-web
+WEB_URL=https://devapp.swirlit.dev \
+OIDC_USERNAME=user \
+OIDC_PASSWORD=password \
+npm run test:integration
+```
+
+The demo password is read from the process environment and is not written to Cypress logs. Run live acceptance only against the demo environment.
 
 The production manifests can be rendered without changing the cluster:
 
@@ -99,9 +121,10 @@ One-time CI/CD bootstrap is performed after the repository is pushed:
 
 The script stores a repository-scoped GitHub token in Vault and provisions the Jenkins and Argo CD resources. Routine releases should go through this pipeline; `install-devapp.sh` remains a manual bootstrap option.
 
-Production URLs:
+Live demo URLs and credentials:
 
 - Application: <https://devapp.swirlit.dev>
+- Sign-in: username `user`, password `password`
 - API documentation: <https://devapp.swirlit.dev/api/docs>
 - Metrics: <https://grafana.swirlit.dev/d/devapp-overview>
 - Logs: <https://kibana.swirlit.dev/app/dashboards#/view/devapp-logs>

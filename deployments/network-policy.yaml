@@ -54,3 +54,16 @@ spec:
           port: 8080
         - protocol: TCP
           port: 8081
+    # The ephemeral Jenkins agent performs post-rollout smoke checks.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: jenkins-builds
+          podSelector:
+            matchLabels:
+              app: devapp-build
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081

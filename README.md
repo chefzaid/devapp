@@ -130,6 +130,8 @@ One-time CI/CD bootstrap is performed after the repository is pushed:
 
 The script stores a `root/devapp` GitLab project access token in Vault and provisions the Jenkins and Argo CD resources. Use a Maintainer token with `read_repository` and `write_repository` scopes. Routine releases should go through this pipeline; `install-devapp.sh` remains a manual bootstrap option.
 
+GitLab remains the CI/CD source of truth. The `Sync GitHub and GitLab` GitHub Actions workflow reconciles `main` immediately after GitHub pushes and merges, and every five minutes so Jenkins-generated GitOps commits are carried back to GitHub. Diverged histories are merged without force-pushing; a content conflict fails visibly for manual resolution.
+
 Live demo URLs and credentials:
 
 - Application: <https://devapp.swirlit.dev>

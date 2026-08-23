@@ -120,7 +120,7 @@ Repository layout:
 
 ## Cluster delivery
 
-Jenkins polls `main` from `gitlab.swirlit.local`, runs `mvn clean verify`, the Angular Vitest suite, and Playwright type checking, builds immutable images with Kaniko, and publishes them to `nexus-registry.swirlit.local`. It then changes only the Kustomize image tags in GitLab. Argo CD reads the same GitLab repository and owns reconciliation, pruning, and self-healing; Jenkins waits for that exact Git revision to become healthy before smoke-testing `user-app.swirlit.local`, `order-app.swirlit.local`, and `devapp-web.swirlit.local` and running the real Keycloak browser journey in Chromium, Firefox, and WebKit.
+Jenkins polls `main` from `gitlab.swirlit.internal`, runs `mvn clean verify`, the Angular Vitest suite, and Playwright type checking, builds immutable images with Kaniko, and publishes them to `nexus-registry.swirlit.internal`. It then changes only the Kustomize image tags in GitLab. Argo CD reads the same GitLab repository and owns reconciliation, pruning, and self-healing; Jenkins waits for that exact Git revision to become healthy before smoke-testing `user-app.swirlit.internal`, `order-app.swirlit.internal`, and `devapp-web.swirlit.internal` and running the real Keycloak browser journey in Chromium, Firefox, and WebKit.
 
 One-time CI/CD bootstrap is performed after the repository is pushed:
 
@@ -132,7 +132,7 @@ The script stores a `root/devapp` GitLab project access token in Vault and provi
 
 GitLab remains the CI/CD source of truth. The `Sync GitHub and GitLab` GitHub Actions workflow sends GitHub pushes and merges to GitLab immediately. Run the workflow manually when Jenkins-generated GitOps commits need to be carried back to GitHub. Diverged histories are merged without force-pushing; a content conflict fails visibly for manual resolution.
 
-All `*.swirlit.local` endpoints are cluster-only CoreDNS aliases owned by the
+All `*.swirlit.internal` endpoints are cluster-only CoreDNS aliases owned by the
 `bm-cluster` repository. They are deliberately absent from Cloudflare and
 public DNS; browser-facing URLs continue to use `*.swirlit.dev`.
 

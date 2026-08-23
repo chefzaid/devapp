@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: user-app
-        image: nexus-registry.swirlit.local:5000/devapp/user-app:v5
+        image: nexus-registry.swirlit.internal:5000/devapp/user-app:v5
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
@@ -45,7 +45,7 @@ spec:
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
         - name: DB_HOST
-          value: "postgres.swirlit.local"
+          value: "postgres.swirlit.internal"
         - name: DB_PORT
           value: "5432"
         - name: DB_NAME
@@ -61,19 +61,19 @@ spec:
               name: devapp-db-credentials
               key: DB_PASSWORD
         - name: KAFKA_BOOTSTRAP_SERVERS
-          value: "kafka.swirlit.local:9092"
+          value: "kafka.swirlit.internal:9092"
         - name: KAFKA_CONSUMER_GROUP
           value: "user-service-group"
         - name: KAFKA_ENABLED
           value: "true"
         - name: REDIS_HOST
-          value: "redis.swirlit.local"
+          value: "redis.swirlit.internal"
         - name: REDIS_PORT
           value: "6379"
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
           value: "https://devapp.swirlit.dev/auth/realms/devapp"
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
-          value: "http://keycloak.swirlit.local:8080/auth/realms/devapp/protocol/openid-connect/certs"
+          value: "http://keycloak.swirlit.internal:8080/auth/realms/devapp/protocol/openid-connect/certs"
         startupProbe:
           httpGet:
             path: /actuator/health/liveness

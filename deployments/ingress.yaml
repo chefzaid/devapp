@@ -90,6 +90,6 @@ metadata:
   namespace: devapp
 spec:
   type: ExternalName
-  externalName: keycloak.swirlit.local
+  externalName: keycloak.swirlit.internal
   ports:
   - port: 8080

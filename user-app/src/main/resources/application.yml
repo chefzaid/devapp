@@ -108,7 +108,7 @@ spring:
     activate:
       on-profile: uat | prod
   datasource:
-    url: jdbc:postgresql://${DB_HOST:postgres.swirlit.local}:${DB_PORT:5432}/${DB_NAME:devappdb}
+    url: jdbc:postgresql://${DB_HOST:postgres.swirlit.internal}:${DB_PORT:5432}/${DB_NAME:devappdb}
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
@@ -125,7 +125,7 @@ spring:
     type: redis
   data:
     redis:
-      host: ${REDIS_HOST:redis.swirlit.local}
+      host: ${REDIS_HOST:redis.swirlit.internal}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 2s

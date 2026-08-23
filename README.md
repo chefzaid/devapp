@@ -120,7 +120,7 @@ Repository layout:
 
 ## Cluster delivery
 
-Jenkins polls `main`, runs `mvn clean verify`, the Angular Vitest suite, and Playwright type checking, builds immutable images with Kaniko, and publishes them to Nexus. It then changes only the Kustomize image tags in Git. Argo CD owns reconciliation, pruning, and self-healing; Jenkins waits for that exact Git revision to become healthy before smoke-testing all three services and running the real Keycloak browser journey in Chromium, Firefox, and WebKit.
+Jenkins polls `main` from the in-cluster GitLab project, runs `mvn clean verify`, the Angular Vitest suite, and Playwright type checking, builds immutable images with Kaniko, and publishes them to Nexus. It then changes only the Kustomize image tags in GitLab. Argo CD reads the same GitLab repository and owns reconciliation, pruning, and self-healing; Jenkins waits for that exact Git revision to become healthy before smoke-testing all three services and running the real Keycloak browser journey in Chromium, Firefox, and WebKit.
 
 One-time CI/CD bootstrap is performed after the repository is pushed:
 
@@ -128,7 +128,7 @@ One-time CI/CD bootstrap is performed after the repository is pushed:
 ./configure-cicd.sh
 ```
 
-The script stores a repository-scoped GitHub token in Vault and provisions the Jenkins and Argo CD resources. Routine releases should go through this pipeline; `install-devapp.sh` remains a manual bootstrap option.
+The script stores a `root/devapp` GitLab project access token in Vault and provisions the Jenkins and Argo CD resources. Use a Maintainer token with `read_repository` and `write_repository` scopes. Routine releases should go through this pipeline; `install-devapp.sh` remains a manual bootstrap option.
 
 Live demo URLs and credentials:
 
@@ -137,6 +137,7 @@ Live demo URLs and credentials:
 - API documentation: <https://devapp.swirlit.dev/api/docs>
 - Metrics: <https://grafana.swirlit.dev/d/devapp-overview>
 - Logs: <https://kibana.swirlit.dev/app/dashboards#/view/devapp-logs>
+- GitLab: <https://gitlab.swirlit.dev/root/devapp>
 - Jenkins: <https://jenkins.swirlit.dev/job/devapp/>
 - Argo CD: <https://argocd.swirlit.dev/applications/devapp>
 

@@ -4,8 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_NAMESPACE="${INFRA_NAMESPACE:-infra}"
 BUILD_NAMESPACE="${BUILD_NAMESPACE:-jenkins-builds}"
-GITHUB_USERNAME="${GITHUB_USERNAME:-chefzaid}"
-GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+GITLAB_USERNAME="${GITLAB_USERNAME:-}"
+GITLAB_TOKEN="${GITLAB_TOKEN:-}"
 VAULT_BOOTSTRAP_TOKEN_FILE="${VAULT_BOOTSTRAP_TOKEN_FILE:-/var/lib/bm-cluster/vault-bootstrap-token}"
 
 info() { printf '[INFO] %s\n' "$*"; }
@@ -25,37 +25,34 @@ git -C "$SCRIPT_DIR" fetch origin main
 git -C "$SCRIPT_DIR" show origin/main:deployments/kustomization.yaml >/dev/null 2>&1 ||
     fail "Push this DevApp CI/CD wiring to origin/main before running the bootstrap"
 
-if [[ -z "$GITHUB_TOKEN" ]]; then
-    [[ -t 0 ]] || fail "Set GITHUB_TOKEN to a fine-grained GitHub personal access token"
-    printf '%s\n' "GitHub token required: fine-grained personal access token for chefzaid/devapp"
-    printf '%s\n' "Repository permission: Contents = Read and write (no account-wide token needed)."
-    read -rp "GitHub username [$GITHUB_USERNAME]: " entered_username
-    GITHUB_USERNAME="${entered_username:-$GITHUB_USERNAME}"
-    read -rsp "Fine-grained GitHub personal access token: " GITHUB_TOKEN
+if [[ -z "$GITLAB_USERNAME" || -z "$GITLAB_TOKEN" ]]; then
+    [[ -t 0 ]] || fail "Set GITLAB_USERNAME and GITLAB_TOKEN to the root/devapp project access-token credentials"
+    printf '%s\n' "GitLab project access token required for root/devapp."
+    printf '%s\n' "Role: Maintainer; scopes: read_repository and write_repository."
+    read -rp "GitLab token username: " GITLAB_USERNAME
+    read -rsp "GitLab project access token: " GITLAB_TOKEN
     printf '\n'
 fi
-[[ "$GITHUB_TOKEN" == github_pat_* ]] ||
-    fail "Expected a fine-grained GitHub token (the value normally starts with github_pat_)"
-[[ "$GITHUB_USERNAME" =~ ^[A-Za-z0-9-]+$ ]] || fail "Invalid GitHub username"
-[[ "$GITHUB_TOKEN" =~ ^github_pat_[A-Za-z0-9_]+$ ]] || fail "Invalid fine-grained GitHub token format"
+[[ "$GITLAB_USERNAME" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail "Invalid GitLab token username"
+[[ "$GITLAB_TOKEN" =~ ^glpat-[A-Za-z0-9_-]+$ ]] || fail "Invalid GitLab project access-token format"
 
-info "Storing the GitHub credential in Vault at secret/devapp/ci"
+info "Storing the GitLab project credential in Vault at secret/devapp/ci"
 sudo test -s "$VAULT_BOOTSTRAP_TOKEN_FILE" ||
     fail "Vault bootstrap token is missing from $VAULT_BOOTSTRAP_TOKEN_FILE"
 vault_token="$(sudo cat "$VAULT_BOOTSTRAP_TOKEN_FILE")"
 {
     printf '%s\n' "$vault_token"
-    printf '%s\n' "$GITHUB_USERNAME"
-    printf '%s\n' "$GITHUB_TOKEN"
+    printf '%s\n' "$GITLAB_USERNAME"
+    printf '%s\n' "$GITLAB_TOKEN"
 } | kubectl exec -i -n "$INFRA_NAMESPACE" vault-0 -- /bin/sh -ceu '
     IFS= read -r VAULT_TOKEN
-    IFS= read -r github_username
-    IFS= read -r github_token
+    IFS= read -r gitlab_username
+    IFS= read -r gitlab_token
     export VAULT_TOKEN
-    printf '"'"'{"data":{"github_username":"%s","github_token":"%s"}}'"'"' \
-      "$github_username" "$github_token" | vault write secret/data/devapp/ci - >/dev/null
+    printf '"'"'{"data":{"gitlab_username":"%s","gitlab_token":"%s"}}'"'"' \
+      "$gitlab_username" "$gitlab_token" | vault write secret/data/devapp/ci - >/dev/null
 '
-unset vault_token GITHUB_TOKEN
+unset vault_token GITLAB_TOKEN
 
 info "Creating the Vault-backed Jenkins agent credential"
 kubectl apply -f "$SCRIPT_DIR/deployments/jenkins-credentials.yaml"

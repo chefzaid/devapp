@@ -39,7 +39,7 @@ data:
       job = jenkins.createProject(WorkflowJob, 'devapp')
     }
     def scm = new GitSCM(
-      [new UserRemoteConfig('https://github.com/chefzaid/devapp.git', null, null, null)],
+      [new UserRemoteConfig('http://gitlab.infra.svc.cluster.local/root/devapp.git', null, null, null)],
       [new BranchSpec('*/main')],
       false,
       [],

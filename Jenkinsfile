@@ -131,7 +131,7 @@ spec:
         K8S_NAMESPACE = 'devapp'
         ARGO_NAMESPACE = 'infra'
         ARGO_APPLICATION = 'devapp'
-        GIT_REPOSITORY = 'https://github.com/chefzaid/devapp.git'
+        GIT_REPOSITORY = 'http://gitlab.infra.svc.cluster.local/root/devapp.git'
         IMAGE_REGISTRY = 'nexus-registry.infra.svc.cluster.local:5000/devapp'
     }
 

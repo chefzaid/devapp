@@ -140,6 +140,7 @@ Live demo URLs and credentials:
 - Metrics: <https://grafana.swirlit.dev/d/devapp-overview>
 - Logs: <https://kibana.swirlit.dev/app/dashboards#/view/devapp-logs>
 - GitLab: <https://gitlab.swirlit.dev/root/devapp>
+- GitHub mirror: <https://github.com/chefzaid/devapp>
 - Jenkins: <https://jenkins.swirlit.dev/job/devapp/>
 - Argo CD: <https://argocd.swirlit.dev/applications/devapp>
 

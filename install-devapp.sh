@@ -208,7 +208,7 @@ step "Deploying application manifests..."
 info "Setting the Kustomize image tag to: $VERSION"
 "$ROOT_DIR/scripts/set-image-tags.sh" "$VERSION"
 
-kubectl delete job devapp-kibana-bootstrap-v4 -n devapp --ignore-not-found >/dev/null
+kubectl delete job devapp-kibana-bootstrap-v5 -n devapp --ignore-not-found >/dev/null
 
 kubectl apply -k "$DEPLOY_DIR"
 
@@ -218,7 +218,7 @@ info "Waiting for application pods to start..."
 kubectl wait --for=condition=ready pod -l app=user-app   -n devapp --timeout=180s 2>/dev/null || warn "user-app still starting..."
 kubectl wait --for=condition=ready pod -l app=order-app  -n devapp --timeout=180s 2>/dev/null || warn "order-app still starting..."
 kubectl wait --for=condition=ready pod -l app=devapp-web -n devapp --timeout=120s 2>/dev/null || warn "devapp-web still starting..."
-kubectl wait --for=condition=complete job/devapp-kibana-bootstrap-v4 -n devapp --timeout=180s 2>/dev/null || warn "Kibana saved-object bootstrap is still running..."
+kubectl wait --for=condition=complete job/devapp-kibana-bootstrap-v5 -n devapp --timeout=180s 2>/dev/null || warn "Kibana saved-object bootstrap is still running..."
 
 # ---------- Smoke tests -------------------------------------------------------
 step "Running smoke tests..."

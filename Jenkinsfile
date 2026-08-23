@@ -131,8 +131,8 @@ spec:
         K8S_NAMESPACE = 'devapp'
         ARGO_NAMESPACE = 'infra'
         ARGO_APPLICATION = 'devapp'
-        GIT_REPOSITORY = 'http://gitlab.infra.svc.cluster.local/root/devapp.git'
-        IMAGE_REGISTRY = 'nexus-registry.infra.svc.cluster.local:5000/devapp'
+        GIT_REPOSITORY = 'http://gitlab.swirlit.local/root/devapp.git'
+        IMAGE_REGISTRY = 'nexus-registry.swirlit.local:5000/devapp'
     }
 
     options {
@@ -355,9 +355,9 @@ spec:
                             return 1
                         }
 
-                        check_url user-app "http://user-app.${K8S_NAMESPACE}.svc.cluster.local:8080/actuator/health"
-                        check_url order-app "http://order-app.${K8S_NAMESPACE}.svc.cluster.local:8081/actuator/health"
-                        check_url devapp-web "http://devapp-web.${K8S_NAMESPACE}.svc.cluster.local/"
+                        check_url user-app "http://user-app.swirlit.local:8080/actuator/health"
+                        check_url order-app "http://order-app.swirlit.local:8081/actuator/health"
+                        check_url devapp-web "http://devapp-web.swirlit.local/"
                     '''
                 }
             }
@@ -370,7 +370,7 @@ spec:
                     dir('devapp-web') {
                         sh '''
                             trap 'chown -R 1000:1000 test-results playwright-report 2>/dev/null || true' EXIT
-                            ingress_ip=$(getent ahostsv4 ingress-nginx-controller.infra.svc.cluster.local \
+                            ingress_ip=$(getent ahostsv4 ingress-nginx-controller.swirlit.local \
                                 | awk 'NR == 1 {print $1}')
                             case "$ingress_ip" in
                                 ''|*[!0-9.]*)

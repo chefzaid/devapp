@@ -120,7 +120,7 @@ Repository layout:
 
 ## Cluster delivery
 
-Jenkins polls `main` from the in-cluster GitLab project, runs `mvn clean verify`, the Angular Vitest suite, and Playwright type checking, builds immutable images with Kaniko, and publishes them to Nexus. It then changes only the Kustomize image tags in GitLab. Argo CD reads the same GitLab repository and owns reconciliation, pruning, and self-healing; Jenkins waits for that exact Git revision to become healthy before smoke-testing all three services and running the real Keycloak browser journey in Chromium, Firefox, and WebKit.
+Jenkins polls `main` from `gitlab.swirlit.local`, runs `mvn clean verify`, the Angular Vitest suite, and Playwright type checking, builds immutable images with Kaniko, and publishes them to `nexus-registry.swirlit.local`. It then changes only the Kustomize image tags in GitLab. Argo CD reads the same GitLab repository and owns reconciliation, pruning, and self-healing; Jenkins waits for that exact Git revision to become healthy before smoke-testing `user-app.swirlit.local`, `order-app.swirlit.local`, and `devapp-web.swirlit.local` and running the real Keycloak browser journey in Chromium, Firefox, and WebKit.
 
 One-time CI/CD bootstrap is performed after the repository is pushed:
 
@@ -131,6 +131,10 @@ One-time CI/CD bootstrap is performed after the repository is pushed:
 The script stores a `root/devapp` GitLab project access token in Vault and provisions the Jenkins and Argo CD resources. Use a Maintainer token with `read_repository` and `write_repository` scopes. Routine releases should go through this pipeline; `install-devapp.sh` remains a manual bootstrap option.
 
 GitLab remains the CI/CD source of truth. The `Sync GitHub and GitLab` GitHub Actions workflow sends GitHub pushes and merges to GitLab immediately. Run the workflow manually when Jenkins-generated GitOps commits need to be carried back to GitHub. Diverged histories are merged without force-pushing; a content conflict fails visibly for manual resolution.
+
+All `*.swirlit.local` endpoints are cluster-only CoreDNS aliases owned by the
+`bm-cluster` repository. They are deliberately absent from Cloudflare and
+public DNS; browser-facing URLs continue to use `*.swirlit.dev`.
 
 Live demo URLs and credentials:
 

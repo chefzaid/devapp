@@ -25,8 +25,8 @@ data:
     }
     cloud.setServerUrl('https://kubernetes.default.svc.cluster.local')
     cloud.setNamespace('jenkins-builds')
-    cloud.setJenkinsUrl('http://jenkins.infra.svc.cluster.local:8080')
-    cloud.setJenkinsTunnel('jenkins.infra.svc.cluster.local:50000')
+    cloud.setJenkinsUrl('http://jenkins.swirlit.local:8080')
+    cloud.setJenkinsTunnel('jenkins.swirlit.local:50000')
     cloud.setContainerCapStr('4')
     cloud.setSkipTlsVerify(false)
     cloud.setWebSocket(false)
@@ -39,7 +39,7 @@ data:
       job = jenkins.createProject(WorkflowJob, 'devapp')
     }
     def scm = new GitSCM(
-      [new UserRemoteConfig('http://gitlab.infra.svc.cluster.local/root/devapp.git', null, null, null)],
+      [new UserRemoteConfig('http://gitlab.swirlit.local/root/devapp.git', null, null, null)],
       [new BranchSpec('*/main')],
       false,
       [],
@@ -80,7 +80,7 @@ spec:
           args:
             - |
               password=$(cat /var/jenkins_home/secrets/initialAdminPassword)
-              url=http://jenkins.infra.svc.cluster.local:8080
+              url=http://jenkins.swirlit.local:8080
               until curl -fsS -u "admin:$password" "$url/api/json" >/dev/null; do
                 sleep 5
               done

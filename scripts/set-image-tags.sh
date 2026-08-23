@@ -18,5 +18,5 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 kustomization="$script_dir/../deployments/kustomization.yaml"
 
 for image in user-app order-app devapp-web; do
-    sed -i "/name: nexus-registry.infra.svc.cluster.local:5000\/devapp\/$image/{n;s/newTag: .*/newTag: $tag/;}" "$kustomization"
+    sed -i "/name: nexus-registry.swirlit.local:5000\/devapp\/$image/{n;s/newTag: .*/newTag: $tag/;}" "$kustomization"
 done

@@ -154,7 +154,7 @@ data:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: devapp-kibana-bootstrap-v4
+  name: devapp-kibana-bootstrap-v5
   namespace: devapp
   labels:
     app: devapp-kibana-bootstrap
@@ -181,11 +181,11 @@ spec:
             - sh
             - -c
             - |
-              until curl -fsS http://kibana.infra.svc.cluster.local:5601/api/status >/dev/null; do sleep 5; done
+              until curl -fsS http://kibana.swirlit.local:5601/api/status >/dev/null; do sleep 5; done
               response="$(curl -fsS -X POST \
                 -H 'kbn-xsrf: devapp-observability-bootstrap' \
                 -F file=@/saved-objects/devapp.ndjson \
-                'http://kibana.infra.svc.cluster.local:5601/api/saved_objects/_import?overwrite=true')"
+                'http://kibana.swirlit.local:5601/api/saved_objects/_import?overwrite=true')"
               echo "$response"
               echo "$response" | grep -q '"success":true'
           volumeMounts:

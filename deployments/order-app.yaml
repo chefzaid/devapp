@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: order-app
-        image: nexus-registry.swirlit.internal:5000/devapp/order-app:v5
+        image: nexus.swirlit.internal:5000/devapp/order-app:v5
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false

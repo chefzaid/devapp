@@ -132,7 +132,7 @@ spec:
         ARGO_NAMESPACE = 'infra'
         ARGO_APPLICATION = 'devapp'
         GIT_REPOSITORY = 'http://gitlab.swirlit.internal/root/devapp.git'
-        IMAGE_REGISTRY = 'nexus-registry.swirlit.internal:5000/devapp'
+        IMAGE_REGISTRY = 'nexus.swirlit.internal:5000/devapp'
     }
 
     options {
@@ -357,7 +357,7 @@ spec:
 
                         check_url user-app "http://user-app.swirlit.internal:8080/actuator/health"
                         check_url order-app "http://order-app.swirlit.internal:8081/actuator/health"
-                        check_url devapp-web "http://devapp-web.swirlit.internal/"
+                        check_url devapp-web "http://devapp.swirlit.internal/"
                     '''
                 }
             }

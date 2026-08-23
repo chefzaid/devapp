@@ -10,9 +10,9 @@ resources:
   - ingress.yaml
   - observability.yaml
 images:
-  - name: nexus-registry.swirlit.internal:5000/devapp/user-app
+  - name: nexus.swirlit.internal:5000/devapp/user-app
     newTag: 42-b26ed15
-  - name: nexus-registry.swirlit.internal:5000/devapp/order-app
+  - name: nexus.swirlit.internal:5000/devapp/order-app
     newTag: 42-b26ed15
-  - name: nexus-registry.swirlit.internal:5000/devapp/devapp-web
+  - name: nexus.swirlit.internal:5000/devapp/devapp-web
     newTag: 42-b26ed15

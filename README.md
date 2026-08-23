@@ -120,7 +120,7 @@ Repository layout:
 
 ## Cluster delivery
 
-Jenkins polls `main` from `gitlab.swirlit.internal`, runs `mvn clean verify`, the Angular Vitest suite, and Playwright type checking, builds immutable images with Kaniko, and publishes them to `nexus-registry.swirlit.internal`. It then changes only the Kustomize image tags in GitLab. Argo CD reads the same GitLab repository and owns reconciliation, pruning, and self-healing; Jenkins waits for that exact Git revision to become healthy before smoke-testing `user-app.swirlit.internal`, `order-app.swirlit.internal`, and `devapp-web.swirlit.internal` and running the real Keycloak browser journey in Chromium, Firefox, and WebKit.
+Jenkins polls `main` from `gitlab.swirlit.internal`, runs `mvn clean verify`, the Angular Vitest suite, and Playwright type checking, builds immutable images with Kaniko, and publishes them to `nexus.swirlit.internal`. It then changes only the Kustomize image tags in GitLab. Argo CD reads the same GitLab repository and owns reconciliation, pruning, and self-healing; Jenkins waits for that exact Git revision to become healthy before smoke-testing `user-app.swirlit.internal`, `order-app.swirlit.internal`, and `devapp.swirlit.internal` and running the real Keycloak browser journey in Chromium, Firefox, and WebKit.
 
 One-time CI/CD bootstrap is performed after the repository is pushed:
 

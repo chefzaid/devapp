@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: devapp-web
-  namespace: devapp
+  namespace: apps
   labels:
     app: devapp-web
 spec:
@@ -68,7 +68,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: devapp-web
-  namespace: devapp
+  namespace: apps
   labels:
     app: devapp-web
 spec:

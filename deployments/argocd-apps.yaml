@@ -13,7 +13,7 @@ spec:
     path: deployments
   destination:
     server: https://kubernetes.default.svc
-    namespace: devapp
+    namespace: apps
   syncPolicy:
     automated:
       prune: true

@@ -128,7 +128,7 @@ spec:
     }
 
     environment {
-        K8S_NAMESPACE = 'devapp'
+        K8S_NAMESPACE = 'apps'
         ARGO_NAMESPACE = 'infra'
         ARGO_APPLICATION = 'devapp'
         GIT_REPOSITORY = 'http://gitlab.swirlit.internal/root/devapp.git'

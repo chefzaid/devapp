@@ -4,7 +4,7 @@
   connection: local
   gather_facts: false
   vars:
-    app_namespace: "{{ app_ns | default('devapp') }}"
+    app_namespace: "{{ app_ns | default('apps') }}"
     deploy_dir: "{{ playbook_dir }}/../deployments"
 
   tasks:

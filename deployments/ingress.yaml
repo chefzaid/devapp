@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: devapp-ingress
-  namespace: devapp
+  namespace: apps
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
@@ -82,12 +82,12 @@ spec:
               number: 80
 
 ---
-# ExternalName service to access Keycloak from devapp namespace
+# ExternalName service to access Keycloak from the shared apps namespace
 apiVersion: v1
 kind: Service
 metadata:
   name: keycloak
-  namespace: devapp
+  namespace: apps
 spec:
   type: ExternalName
   externalName: keycloak.swirlit.internal

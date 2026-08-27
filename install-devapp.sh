@@ -2,7 +2,7 @@
 # ==============================================================================
 # install-devapp.sh
 # Builds and deploys the DevApp application (user-app, order-app, devapp-web)
-# into the 'devapp' K8s namespace.
+# into the shared 'apps' K8s namespace.
 #
 # Prerequisites: Infrastructure must already be installed.
 # ==============================================================================
@@ -87,7 +87,7 @@ echo "  1. Build Java backend (Maven)"
 echo "  2. Build Angular frontend (npm)"
 echo "  3. Build Docker images"
 echo "  4. Import images into K3s"
-echo "  5. Deploy to 'devapp' namespace"
+echo "  5. Deploy to 'apps' namespace"
 echo ""
 echo "Image tag: $VERSION"
 echo ""
@@ -196,11 +196,11 @@ $DOCKER_CMD save "devapp/devapp-web:$VERSION" | sudo k3s ctr images import -
 info "Images imported into K3s."
 
 # ---------- Deploy to K8s -----------------------------------------------------
-step "Creating devapp namespace..."
-kubectl create namespace devapp 2>/dev/null || true
+step "Creating apps namespace..."
+kubectl create namespace apps 2>/dev/null || true
 
 step "Ensuring HTTPS TLS secret for app ingress..."
-ensure_tls_secret devapp swirlit-dev-tls \
+ensure_tls_secret apps swirlit-dev-tls \
     devapp.swirlit.dev
 
 step "Deploying application manifests..."
@@ -208,17 +208,17 @@ step "Deploying application manifests..."
 info "Setting the Kustomize image tag to: $VERSION"
 "$ROOT_DIR/scripts/set-image-tags.sh" "$VERSION"
 
-kubectl delete job devapp-kibana-bootstrap-v6 -n devapp --ignore-not-found >/dev/null
+kubectl delete job devapp-kibana-bootstrap-v6 -n apps --ignore-not-found >/dev/null
 
 kubectl apply -k "$DEPLOY_DIR"
 
-kubectl wait --for=condition=Ready externalsecret/devapp-db-credentials -n devapp --timeout=180s 2>/dev/null || warn "devapp-db-credentials ExternalSecret still reconciling..."
+kubectl wait --for=condition=Ready externalsecret/devapp-db-credentials -n apps --timeout=180s 2>/dev/null || warn "devapp-db-credentials ExternalSecret still reconciling..."
 
 info "Waiting for application pods to start..."
-kubectl wait --for=condition=ready pod -l app=user-app   -n devapp --timeout=180s 2>/dev/null || warn "user-app still starting..."
-kubectl wait --for=condition=ready pod -l app=order-app  -n devapp --timeout=180s 2>/dev/null || warn "order-app still starting..."
-kubectl wait --for=condition=ready pod -l app=devapp-web -n devapp --timeout=120s 2>/dev/null || warn "devapp-web still starting..."
-kubectl wait --for=condition=complete job/devapp-kibana-bootstrap-v6 -n devapp --timeout=180s 2>/dev/null || warn "Kibana saved-object bootstrap is still running..."
+kubectl wait --for=condition=ready pod -l app=user-app   -n apps --timeout=180s 2>/dev/null || warn "user-app still starting..."
+kubectl wait --for=condition=ready pod -l app=order-app  -n apps --timeout=180s 2>/dev/null || warn "order-app still starting..."
+kubectl wait --for=condition=ready pod -l app=devapp-web -n apps --timeout=120s 2>/dev/null || warn "devapp-web still starting..."
+kubectl wait --for=condition=complete job/devapp-kibana-bootstrap-v6 -n apps --timeout=180s 2>/dev/null || warn "Kibana saved-object bootstrap is still running..."
 
 # ---------- Smoke tests -------------------------------------------------------
 step "Running smoke tests..."
@@ -238,9 +238,9 @@ check_endpoint() {
 }
 
 # Port-forward to test backend health
-kubectl port-forward -n devapp svc/user-app 18080:8080 &>/dev/null &
+kubectl port-forward -n apps svc/user-app 18080:8080 &>/dev/null &
 PF_PID1=$!
-kubectl port-forward -n devapp svc/order-app 18081:8081 &>/dev/null &
+kubectl port-forward -n apps svc/order-app 18081:8081 &>/dev/null &
 PF_PID2=$!
 sleep 3
 
@@ -276,6 +276,6 @@ echo ""
 check_dns_record "devapp.swirlit.dev"
 echo ""
 echo "Pod status:"
-kubectl get pods -n devapp --no-headers 2>&1 | awk '{printf "  %-50s %s\n", $1, $2}'
+kubectl get pods -n apps --no-headers 2>&1 | awk '{printf "  %-50s %s\n", $1, $2}'
 echo ""
 echo "See README.md for Keycloak setup (required for authentication)."

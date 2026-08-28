@@ -44,14 +44,14 @@ spec:
           port: 8080
         - protocol: TCP
           port: 8081
-    # The ephemeral Jenkins agent performs post-rollout smoke checks.
+    # GitLab CI jobs perform post-rollout smoke checks from the runner namespace.
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: jenkins-builds
+              kubernetes.io/metadata.name: gitlab-runners
           podSelector:
             matchLabels:
-              app: devapp-build
+              app: gitlab-ci-job
       ports:
         - protocol: TCP
           port: 8080

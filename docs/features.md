@@ -196,7 +196,7 @@ Implemented verification layers:
 - Playwright browser tests for Chromium, Firefox, and WebKit
 - mocked local UI journeys and live Keycloak/API acceptance
 - containerized full-stack acceptance through `infra/compose/docker-compose.test.yml`
-- production Angular build and Playwright TypeScript checks in Jenkins
+- production Angular build and Playwright TypeScript checks in GitLab CI
 - immutable JAR archiving after successful builds
 
 See [Testing](./testing.md) for commands, test maps, and where each layer should be used.
@@ -226,10 +226,10 @@ Implemented platform features:
 - startup, liveness, and readiness probes
 - requests and limits for application and CI containers
 - restrictive application pod security contexts
-- ingress NetworkPolicy for application pods, NGINX, Prometheus, and Jenkins smoke tests
+- ingress NetworkPolicy for application pods, NGINX, Prometheus, and GitLab CI smoke tests
 - Vault-backed database and CI credentials through External Secrets
-- Nexus Maven/npm proxies and private image registry integration
-- Jenkins Kubernetes agents with dedicated Maven, Node, Playwright, Kaniko, kubectl, smoke-test, and Git containers
+- GitLab Container Registry Maven/npm proxies and private image registry integration
+- GitLab CI Kubernetes agents with dedicated Maven, Node, Playwright, Kaniko, kubectl, smoke-test, and Git containers
 - parallel backend and frontend quality gates and builds
 - Kaniko image publication with immutable build/commit tags
 - manifest-only GitOps commit after verified image publication

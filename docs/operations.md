@@ -1,6 +1,6 @@
 # Operations Runbook
 
-This runbook covers the DevApp application layer, including its public DNS record, platform-integration resources, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring components are owned by [`bm-cluster`](https://github.com/chefzaid/bm-cluster); use its runbooks when the incident is platform-wide.
+This runbook covers the DevApp application layer, including its public DNS record, registry-secret projection, Argo CD application, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring services are owned by [`bm-cluster`](https://github.com/chefzaid/bm-cluster); use its runbooks when the incident is platform-wide. All DevApp-specific configuration remains in this repository.
 
 ## Runtime Surfaces
 
@@ -14,7 +14,7 @@ Public:
 | Kibana logs | <https://kibana.swirlit.dev/app/dashboards#/view/devapp-logs> |
 | GitLab | <https://gitlab.swirlit.dev/root/devapp> |
 | GitHub mirror | <https://github.com/chefzaid/devapp> |
-| Jenkins | <https://jenkins.swirlit.dev/job/devapp/> |
+| GitLab CI | <https://gitlab.swirlit.dev/root/devapp/-/pipelines> |
 | Argo CD | <https://argocd.swirlit.dev/applications/devapp> |
 
 Cluster-only:
@@ -304,7 +304,7 @@ The Job waits for shared Kibana and imports the saved objects with overwrite. If
 
 This is expected: automated self-heal is enabled. Make the change under `infra/k8s/`, commit it, and let Argo CD reconcile.
 
-### Jenkins published images but deployment did not advance
+### GitLab CI published images but deployment did not advance
 
 Inspect these stages:
 
@@ -323,7 +323,7 @@ Never force push over an advanced GitOps commit. Reconcile histories and start t
 
 ### GitHub and GitLab differ
 
-The GitHub workflow normally fast-forwards or merges the mirrors without force pushing. Run **Sync GitHub and GitLab** manually after Jenkins-originated commits when needed. A content conflict intentionally requires human resolution.
+The GitHub workflow normally fast-forwards or merges the mirrors without force pushing. Run **Sync GitHub and GitLab** manually after GitLab CI-originated commits when needed. A content conflict intentionally requires human resolution.
 
 ## Rate-Limit Incidents
 
@@ -388,7 +388,7 @@ Database credential rotation must coordinate:
 4. application restart/reconnection
 5. health verification
 
-GitLab token rotation must update `apps/devapp/ci` in Vault and verify the Jenkins ExternalSecret before the next desired-version commit.
+GitLab token rotation must update `apps/devapp/ci` in Vault and verify the GitLab CI ExternalSecret before the next desired-version commit.
 
 Keycloak signing-key rotation should allow token/JWK overlap and verify both backend resource servers. Never rotate by editing the exported disposable realm secret values for a live realm.
 

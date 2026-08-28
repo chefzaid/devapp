@@ -7,7 +7,7 @@
 
 The template needs modern REST/event services, a browser client, relational persistence, distributed caching, identity, messaging, observability, containers, Kubernetes, and automated delivery. It must also support a fast developer loop without requiring the whole platform.
 
-The surrounding `bm-cluster` platform already supplies PostgreSQL, Redis, Kafka, Keycloak, Vault, Nexus, Jenkins, Argo CD, Prometheus/Grafana, Elasticsearch/Kibana, K3s, and NGINX Ingress.
+The surrounding `bm-cluster` platform already supplies PostgreSQL, Redis, Kafka, Keycloak, Vault, GitLab Container Registry, GitLab CI, Argo CD, Prometheus/Grafana, Elasticsearch/Kibana, K3s, and NGINX Ingress.
 
 ## Decision
 

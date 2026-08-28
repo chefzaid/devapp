@@ -15,7 +15,7 @@ infra/keycloak/      disposable Keycloak realm import
 infra/k8s/           Kubernetes, GitOps, CI bootstrap, and observability resources
 infra/scripts/       CI/CD, image-tag, and task-runner helpers
 .devcontainer/       VS Code application toolchain and optional infrastructure
-Jenkinsfile          CI, image publication, GitOps update, and acceptance
+.gitlab-ci.yml          CI, image publication, GitOps update, and acceptance
 ```
 
 ## Local Topologies

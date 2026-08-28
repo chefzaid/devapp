@@ -158,7 +158,7 @@ Coverage output:
 - terminal summary from `npm run test:coverage`
 - LCOV output under `devapp-web/coverage/`
 
-CI uses `npm run test:ci`, which writes `devapp-web/test-results.xml` for Jenkins and an LCOV report for analysis tooling.
+CI uses `npm run test:ci`, which writes `devapp-web/test-results.xml` for GitLab CI and an LCOV report for analysis tooling.
 
 ## Playwright Suites
 
@@ -264,7 +264,7 @@ Render manifests without changing a cluster:
 kubectl kustomize infra/k8s
 ```
 
-The Jenkins pipeline performs:
+The GitLab CI pipeline performs:
 
 1. Maven `clean verify`
 2. frontend Vitest CI coverage and Playwright type check
@@ -313,7 +313,7 @@ Not yet first-class:
 - durable DLT/replay and consumer restart tests
 - consumer-driven HTTP/event contracts
 - mutation, load, soak, chaos, visual-regression, and accessibility suites
-- active SonarQube and dependency-check stages in Jenkins
+- active SonarQube and dependency-check stages in GitLab CI
 - policy-as-code checks for manifests
 
 Track these in [TODO.md](../TODO.md), not as existing coverage.
@@ -337,7 +337,7 @@ npm run test:e2e:install
 
 ### Public E2E receives an edge challenge
 
-The public Cloudflare path may challenge headless clients. Jenkins resolves the DevApp and canonical Keycloak public hostnames directly to the in-cluster ingress. `IGNORE_HTTPS_ERRORS=true` is used only for that origin route because the ingress has a Cloudflare Origin CA certificate; do not use it for normal public-endpoint validation.
+The public Cloudflare path may challenge headless clients. GitLab CI resolves the DevApp and canonical Keycloak public hostnames directly to the in-cluster ingress. `IGNORE_HTTPS_ERRORS=true` is used only for that origin route because the ingress has a Cloudflare Origin CA certificate; do not use it for normal public-endpoint validation.
 
 ### A browser test passes alone but fails in the suite
 

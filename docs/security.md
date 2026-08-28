@@ -36,7 +36,7 @@ Important limitations:
 - Prometheus endpoint is unauthenticated inside the cluster
 - no application field encryption/KMS example
 - no data export, erasure, anonymization, or retention workflow
-- no automated SAST, DAST, SBOM signing, or policy gate in Jenkins
+- no automated SAST, DAST, SBOM signing, or policy gate in GitLab CI
 - Kafka transport/authentication is supplied by the environment and the local demo is plaintext
 - no OpenTelemetry trace propagation across service events
 
@@ -128,7 +128,7 @@ With `app.security.enabled=true`, the services permit these without a bearer tok
 
 Every other request requires authentication.
 
-The Kubernetes ingress exposes API documentation but not Actuator. Health and metrics remain reachable on cluster services for probes, Prometheus, and Jenkins smoke checks.
+The Kubernetes ingress exposes API documentation but not Actuator. Health and metrics remain reachable on cluster services for probes, Prometheus, and GitLab CI smoke checks.
 
 Current access policy is authenticated-or-public; there are no roles, scopes, ownership rules, or `@PreAuthorize` examples. That is acceptable only because the demonstration domain has one shared directory/order space. A real application must add resource-specific authorization before storing multi-user data.
 
@@ -308,13 +308,13 @@ Deployed secret flow:
 - PostgreSQL and GitLab credentials originate in Vault
 - External Secrets creates namespace-scoped Kubernetes Secrets
 - image pull credentials are mounted only where required
-- Jenkins injects Maven/npm/registry/Git configuration through Secrets
+- GitLab CI injects Maven/npm/registry/Git configuration through Secrets
 - Git credential prompting uses a temporary askpass file removed after push
 
 Container hardening:
 
 - digest-pinned CI and base images
-- runtime images contain verified artifacts only in Jenkins
+- runtime images contain verified artifacts only in GitLab CI
 - fixed non-root users
 - dropped capabilities
 - read-only root filesystem in Kubernetes
@@ -329,7 +329,7 @@ Still required for a stronger supply-chain posture:
 - admission policy checks
 - base-image vulnerability policy
 
-SonarQube and OWASP Dependency-Check are not currently wired into Maven or Jenkins, so the repository does not keep dormant analyzer configuration or broad suppressions. Add reviewed Java 25-aware configuration together with the active CI gate rather than allowing it to drift unused.
+SonarQube and OWASP Dependency-Check are not currently wired into Maven or GitLab CI, so the repository does not keep dormant analyzer configuration or broad suppressions. Add reviewed Java 25-aware configuration together with the active CI gate rather than allowing it to drift unused.
 
 ## Actuator And Observability
 
@@ -337,7 +337,7 @@ Actuator health and metrics are unauthenticated at the Spring filter level for p
 
 - no public ingress route
 - ClusterIP services only
-- NetworkPolicy allows Prometheus, ingress for application traffic, same-namespace pods, and Jenkins smoke agents
+- NetworkPolicy allows Prometheus, ingress for application traffic, same-namespace pods, and GitLab CI smoke agents
 
 Logs include stack traces for internal unexpected failures. Ensure log access is restricted and add redaction tests before logging richer arguments or contexts.
 

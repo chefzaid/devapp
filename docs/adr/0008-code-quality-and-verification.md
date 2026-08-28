@@ -22,7 +22,7 @@ Use a test pyramid with explicit environment verification:
 - containerized full-stack acceptance
 - production Angular and packaged Java builds
 - Kubernetes manifest rendering
-- Jenkins quality gates before image publication
+- GitLab CI quality gates before image publication
 - internal smoke and exact-revision browser acceptance after rollout
 
 Start changes at the narrowest useful layer and add integration coverage when behavior crosses infrastructure boundaries.

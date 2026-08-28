@@ -23,9 +23,9 @@ Delivery:
 
 ```mermaid
 flowchart LR
-    source[GitLab main] --> jenkins[Jenkins quality/build]
-    jenkins --> nexus[Nexus images]
-    jenkins --> desired[GitOps image-tag commit]
+    source[GitLab main] --> pipeline[GitLab CI quality/build]
+    pipeline --> registry[GitLab Container Registry images]
+    pipeline --> desired[GitOps image-tag commit]
     desired --> argo[Argo CD]
     argo --> k3s[K3s apps namespace]
     k3s --> acceptance[Smoke + browser acceptance]
@@ -99,13 +99,13 @@ The initial database commit and Kafka publication are not atomic. This is a docu
 
 ### Deployment
 
-1. Jenkins checks out GitLab `main`.
+1. GitLab CI checks out GitLab `main`.
 2. backend and frontend quality gates run in parallel.
 3. verified artifacts are packaged into runtime images.
-4. Kaniko pushes immutable images to Nexus.
-5. Jenkins confirms Git did not advance, updates only Kustomize tags, and pushes a `[skip ci]` commit.
+4. Kaniko pushes immutable images to GitLab Container Registry.
+5. GitLab CI confirms Git did not advance, updates only Kustomize tags, and pushes a `[skip ci]` commit.
 6. Argo CD reconciles that commit into K3s.
-7. Jenkins waits for the exact revision to become healthy.
+7. GitLab CI waits for the exact revision to become healthy.
 8. internal smoke and real Keycloak browser acceptance run.
 
 ## Data Ownership Rules
@@ -159,7 +159,7 @@ Statuses:
 - [ADR 0004: Coordinate Services Asynchronously Through Kafka](./adr/0004-kafka-event-coordination.md)
 - [ADR 0005: Delegate Authentication To Keycloak And Validate JWTs At Each API](./adr/0005-keycloak-jwt-security.md)
 - [ADR 0006: Use Service-Owned Flyway Histories In The Shared PostgreSQL Schema](./adr/0006-service-owned-flyway.md)
-- [ADR 0007: Deliver Through Jenkins, Immutable Images, And Argo CD](./adr/0007-jenkins-argocd-gitops.md)
+- [ADR 0007: Deliver Through GitLab CI, Immutable Images, And Argo CD](./adr/0007-gitlab-ci-argocd-gitops.md)
 - [ADR 0008: Keep Verification Layered And Continuous](./adr/0008-code-quality-and-verification.md)
 
 ## Proposed ADRs For Roadmap Work

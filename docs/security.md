@@ -70,13 +70,13 @@ Security assumptions:
 
 Production browser flow:
 
-1. Angular loads Keycloak discovery from the public `/auth` issuer.
+1. Angular loads Keycloak discovery from the canonical `https://keycloak.swirlit.dev/auth` issuer.
 2. The login button starts Authorization Code flow.
 3. Keycloak authenticates the user.
 4. PKCE binds the returned authorization code to the initiating browser.
 5. Angular obtains an access token and tracks auth state.
 6. `authGuard` allows protected routes after authentication initialization.
-7. `authInterceptor` adds `Authorization: Bearer <token>` to API requests, excluding `/auth/` requests.
+7. `authInterceptor` adds `Authorization: Bearer <token>` to API requests, excluding Keycloak `/auth/` requests.
 8. Each Spring resource server validates signature, issuer, time claims, and token structure through the configured JWK set.
 
 Keycloak realm controls in `infra/keycloak/devapp-realm.json`:

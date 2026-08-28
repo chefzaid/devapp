@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, type MockedObject, vi } from "vitest";
 import { TestBed } from '@angular/core/testing';
-import { AuthService } from './auth.service';
+import { AuthService, resolveKeycloakBaseUrl } from './auth.service';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { firstValueFrom, Subject } from 'rxjs';
 
@@ -59,5 +59,19 @@ describe('AuthService', () => {
     it('should consider local development authenticated', () => {
         expect(service.isLoggedIn()).toBe(true);
         expect(oauthServiceSpy.hasValidAccessToken).not.toHaveBeenCalled();
+    });
+});
+
+describe('resolveKeycloakBaseUrl', () => {
+    it('keeps an absolute canonical Keycloak URL', () => {
+        expect(resolveKeycloakBaseUrl(
+            'https://keycloak.swirlit.dev/auth',
+            'https://devapp.swirlit.dev'
+        )).toBe('https://keycloak.swirlit.dev/auth');
+    });
+
+    it('resolves a relative URL for local development', () => {
+        expect(resolveKeycloakBaseUrl('/auth', 'http://localhost:4200'))
+            .toBe('http://localhost:4200/auth');
     });
 });

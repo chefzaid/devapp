@@ -154,8 +154,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${JWT_ISSUER_URI:https://devapp.swirlit.dev/auth/realms/devapp}
-          jwk-set-uri: ${JWT_JWK_SET_URI:https://devapp.swirlit.dev/auth/realms/devapp/protocol/openid-connect/certs}
+          issuer-uri: ${JWT_ISSUER_URI:https://keycloak.swirlit.dev/auth/realms/devapp}
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://keycloak.swirlit.dev/auth/realms/devapp/protocol/openid-connect/certs}
 
 app:
   security:

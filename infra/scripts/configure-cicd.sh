@@ -38,7 +38,7 @@ fi
 [[ "$GITLAB_USERNAME" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail "Invalid GitLab token username"
 [[ "$GITLAB_TOKEN" =~ ^glpat-[A-Za-z0-9_-]+$ ]] || fail "Invalid GitLab project access-token format"
 
-info "Storing the GitLab project credential in Vault at secret/devapp/ci"
+info "Storing the GitLab project credential in Vault at secret/apps/devapp/ci"
 sudo test -s "$VAULT_BOOTSTRAP_TOKEN_FILE" ||
     fail "Vault bootstrap token is missing from $VAULT_BOOTSTRAP_TOKEN_FILE"
 vault_token="$(sudo cat "$VAULT_BOOTSTRAP_TOKEN_FILE")"
@@ -52,7 +52,7 @@ vault_token="$(sudo cat "$VAULT_BOOTSTRAP_TOKEN_FILE")"
     IFS= read -r gitlab_token
     export VAULT_TOKEN
     printf '"'"'{"data":{"gitlab_username":"%s","gitlab_token":"%s"}}'"'"' \
-      "$gitlab_username" "$gitlab_token" | vault write secret/data/devapp/ci - >/dev/null
+      "$gitlab_username" "$gitlab_token" | vault write secret/data/apps/devapp/ci - >/dev/null
 '
 unset vault_token GITLAB_TOKEN
 

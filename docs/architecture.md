@@ -61,7 +61,7 @@ Service-owned entities do not live in the shared module. Services share an event
 - functional routing, auth guard, and HTTP interceptor
 - typed API service/model pairs
 - observable authentication and notification state
-- relative `/api` and `/auth` production routing
+- relative `/api` routing and canonical public Keycloak authentication
 - Vitest at the unit/component layer
 - Playwright for critical cross-system journeys
 - unprivileged NGINX production runtime

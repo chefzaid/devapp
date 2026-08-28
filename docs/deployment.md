@@ -1,6 +1,6 @@
 # Deployment Guide
 
-DevApp targets the K3s platform managed by [`bm-cluster`](https://github.com/chefzaid/bm-cluster). This repository owns application images, Kubernetes desired state, CI orchestration, and application-specific observability; the platform repository owns shared PostgreSQL, Redis, Kafka, Keycloak, Vault, External Secrets, Nexus, Jenkins, Argo CD, Prometheus, Grafana, Elasticsearch, Kibana, and ingress infrastructure.
+DevApp targets the K3s platform managed by [`bm-cluster`](https://github.com/chefzaid/bm-cluster). This repository owns application images, Kubernetes desired state, CI orchestration, public DNS, dashboard metadata, registry-secret reconciliation, CI permissions, and application-specific observability. The platform repository stays application-agnostic and owns shared PostgreSQL, Redis, Kafka, Keycloak, Vault, External Secrets, Nexus, Jenkins, Argo CD, Prometheus, Grafana, Elasticsearch, Kibana, ingress infrastructure, and generic integration contracts.
 
 ## Runtime Topology
 
@@ -11,7 +11,7 @@ flowchart TB
     ingress --> web[devapp-web\nAngular + NGINX]
     ingress --> user[user-app]
     ingress --> order[order-app]
-    ingress --> keycloak[Keycloak ExternalName]
+    cloudflare --> keycloak[Keycloak\nkeycloak.swirlit.dev]
 
     user --> pg[(shared PostgreSQL)]
     order --> pg
@@ -43,13 +43,14 @@ DevApp infrastructure assets are grouped by execution boundary:
 | `infra/compose/` | complete local stack and the Playwright acceptance override |
 | `infra/keycloak/` | disposable local realm import |
 | `infra/k8s/` | application manifests, Kustomize, Argo CD, Jenkins bootstrap, secrets, policies, and observability |
-| `infra/scripts/` | CI/CD bootstrap, immutable image-tag update, and Mask Java helper |
+| `infra/scripts/` | public-DNS reconciliation, CI/CD bootstrap, immutable image-tag update, and Mask Java helper |
 
 Common entry points, run from the repository root:
 
 ```bash
 docker compose -f infra/compose/compose.yaml up --build -d
 kubectl kustomize infra/k8s
+./infra/scripts/configure-cloudflare.sh
 ./infra/scripts/configure-cicd.sh
 ansible-playbook -i infra/ansible/inventory infra/ansible/deploy.yml
 ```
@@ -65,9 +66,10 @@ ansible-playbook -i infra/ansible/inventory infra/ansible/deploy.yml
 | `user-app.yaml` | user Deployment and ClusterIP Service |
 | `order-app.yaml` | order Deployment and ClusterIP Service |
 | `devapp-web.yaml` | Angular/NGINX Deployment and ClusterIP Service |
-| `ingress.yaml` | TLS/path routing and Keycloak ExternalName Service |
+| `ingress.yaml` | TLS/path routing and Homepage discovery metadata |
 | `network-policy.yaml` | allowed application ingress sources and ports |
 | `devapp-secrets.yaml` | Vault-backed PostgreSQL ExternalSecret |
+| `platform-integration.yaml` | Vault-backed registry secret and DevApp-scoped Jenkins/Argo CD RBAC |
 | `observability.yaml` | Grafana dashboard, Kibana objects, import Job |
 
 Deployment and CI bootstrap resources live beside the application set:
@@ -107,7 +109,6 @@ Public host: `https://devapp.swirlit.dev`
 
 | Path | Backend |
 |---|---|
-| `/auth` | shared Keycloak through an ExternalName service |
 | `/api/users` | `user-app:8080` |
 | `/api/orders` | `order-app:8081` |
 | `/api/docs`, `/api/swagger-ui`, `/swagger-ui` | user service aggregated documentation UI |
@@ -165,7 +166,7 @@ Backend deployment variables:
 
 Public issuer and internal key-set URLs are intentionally different. Token issuer comparison uses the public URL; key retrieval avoids an unnecessary public network hop.
 
-Frontend environment values are compiled into the production bundle and use relative `/api` and `/auth` routes.
+Frontend environment values are compiled into the production bundle. API requests use relative `/api` routes; production and UAT authentication use the canonical `https://keycloak.swirlit.dev/auth` endpoint.
 
 ## Secrets
 
@@ -176,18 +177,36 @@ Vault KV path: infra/postgres
 properties: username, password
 ```
 
-The container registry pull secret is supplied by platform bootstrap as `devapp-registry-auth`.
+`platform-integration.yaml` reconciles `devapp-registry-auth` from the platform's generic registry contract:
+
+```text
+Vault KV path: infra/registry
+properties: pull_username, pull_password
+```
+
+The platform provisions those generic credentials; DevApp owns their application-specific Kubernetes projection.
 
 Jenkins GitLab credentials are stored at:
 
 ```text
-Vault KV path: devapp/ci
+Vault KV path: apps/devapp/ci
 properties: gitlab_username, gitlab_token
 ```
 
 and materialized only in `jenkins-builds` as `devapp-ci-credentials`.
 
 Never replace these flows with plain secrets committed to Git. Kubernetes Secret base64 values are encoding, not encryption.
+
+## Public DNS
+
+DevApp owns the `devapp.swirlit.dev` record. Reconcile it after the shared ingress has a public load-balancer address:
+
+```bash
+CLOUDFLARE_API_TOKEN=<user-api-token> \
+./infra/scripts/configure-cloudflare.sh
+```
+
+The token needs `Zone:Read` and `DNS:Edit` for `swirlit.dev`. The script only upserts DevApp's proxied A record. Zone configuration, wildcard TLS, ingress proxy trust, WAF, cache, and access policies remain generic platform responsibilities.
 
 ## One-Time CI/CD Bootstrap
 
@@ -196,7 +215,7 @@ Prerequisites:
 - repository already pushed to GitLab `main`
 - reachable K3s cluster
 - `infra` and `jenkins-builds` namespaces
-- Jenkins, Argo CD, Vault, External Secrets, Nexus, and registry credentials from `bm-cluster`
+- Jenkins, Argo CD, Vault, External Secrets, Nexus, wildcard TLS, and generic registry credentials from `bm-cluster`
 - GitLab project token with Maintainer role and `read_repository`, `write_repository` scopes
 - local `kubectl`, `git`, and `sudo`
 

@@ -373,9 +373,9 @@ spec:
                             return 1
                         }
 
-                        check_url user-app "http://user-app.swirlit.internal:8080/actuator/health"
-                        check_url order-app "http://order-app.swirlit.internal:8081/actuator/health"
-                        check_url devapp-web "http://devapp.swirlit.internal/"
+                        check_url user-app "http://user-app.apps.svc.cluster.local:8080/actuator/health"
+                        check_url order-app "http://order-app.apps.svc.cluster.local:8081/actuator/health"
+                        check_url devapp-web "http://devapp-web.apps.svc.cluster.local/"
                     '''
                 }
             }
@@ -396,7 +396,7 @@ spec:
                                     exit 1
                                     ;;
                             esac
-                            printf '%s\t%s\n' "$ingress_ip" devapp.swirlit.dev >> /etc/hosts
+                            printf '%s\t%s %s\n' "$ingress_ip" devapp.swirlit.dev keycloak.swirlit.dev >> /etc/hosts
 
                             WEB_URL=https://devapp.swirlit.dev \
                             OIDC_USERNAME=user \

@@ -337,7 +337,7 @@ npm run test:e2e:install
 
 ### Public E2E receives an edge challenge
 
-The public Cloudflare path may challenge headless clients. Jenkins resolves the public hostname directly to the in-cluster ingress. `IGNORE_HTTPS_ERRORS=true` is used only for that origin route because the ingress has a Cloudflare Origin CA certificate; do not use it for normal public-endpoint validation.
+The public Cloudflare path may challenge headless clients. Jenkins resolves the DevApp and canonical Keycloak public hostnames directly to the in-cluster ingress. `IGNORE_HTTPS_ERRORS=true` is used only for that origin route because the ingress has a Cloudflare Origin CA certificate; do not use it for normal public-endpoint validation.
 
 ### A browser test passes alone but fails in the suite
 

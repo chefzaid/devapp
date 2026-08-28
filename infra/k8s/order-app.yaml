@@ -75,7 +75,7 @@ spec:
         - name: SPRING_DATA_REDIS_PORT
           value: "6379"
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
-          value: "https://devapp.swirlit.dev/auth/realms/devapp"
+          value: "https://keycloak.swirlit.dev/auth/realms/devapp"
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
           value: "http://keycloak.swirlit.internal:8080/auth/realms/devapp/protocol/openid-connect/certs"
         startupProbe:

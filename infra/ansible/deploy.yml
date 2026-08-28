@@ -25,8 +25,9 @@
       loop: [user-app, order-app, devapp-web]
       ignore_errors: yes
 
-    - name: Wait for devapp database ExternalSecret
-      command: kubectl wait --for=condition=Ready externalsecret/devapp-db-credentials -n {{ app_namespace }} --timeout=180s
+    - name: Wait for DevApp ExternalSecrets
+      command: kubectl wait --for=condition=Ready externalsecret/{{ item }} -n {{ app_namespace }} --timeout=180s
+      loop: [devapp-db-credentials, devapp-registry-auth]
       ignore_errors: yes
 
     - name: Wait for Kibana saved-object bootstrap

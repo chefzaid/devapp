@@ -258,7 +258,7 @@ Environment files:
 - `devapp-web/src/environments/environment.uat.ts`: production-shaped auth
 - `devapp-web/src/environments/environment.prod.ts`: production auth
 
-The production and UAT UI use relative `/api` and `/auth` URLs. This keeps public routing at the NGINX/Ingress boundary and avoids embedding environment-specific service hosts in the browser bundle.
+The production and UAT UI use relative `/api` URLs and the canonical `https://keycloak.swirlit.dev/auth` issuer. The development UI keeps its local `/auth` proxy while authentication is disabled by default.
 
 Frontend scripts:
 

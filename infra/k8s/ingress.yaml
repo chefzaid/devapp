@@ -4,6 +4,12 @@ metadata:
   name: devapp-ingress
   namespace: apps
   annotations:
+    gethomepage.dev/description: Public development application
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Applications & Identity
+    gethomepage.dev/href: https://devapp.swirlit.dev
+    gethomepage.dev/icon: mdi-application-braces-outline
+    gethomepage.dev/name: DevApp
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
@@ -18,14 +24,6 @@ spec:
   - host: devapp.swirlit.dev
     http:
       paths:
-      # Keycloak auth (via ExternalName service)
-      - path: /auth
-        pathType: Prefix
-        backend:
-          service:
-            name: keycloak
-            port:
-              number: 8080
       # User API
       - path: /api/users
         pathType: Prefix
@@ -72,16 +70,3 @@ spec:
             name: devapp-web
             port:
               number: 80
-
----
-# ExternalName service to access Keycloak from the shared apps namespace
-apiVersion: v1
-kind: Service
-metadata:
-  name: keycloak
-  namespace: apps
-spec:
-  type: ExternalName
-  externalName: keycloak.swirlit.internal
-  ports:
-  - port: 8080

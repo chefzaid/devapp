@@ -1,6 +1,6 @@
 # Operations Runbook
 
-This runbook covers the DevApp application layer. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring components are owned by [`bm-cluster`](https://github.com/chefzaid/bm-cluster); use its runbooks when the incident is platform-wide.
+This runbook covers the DevApp application layer, including its public DNS record, platform-integration resources, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring components are owned by [`bm-cluster`](https://github.com/chefzaid/bm-cluster); use its runbooks when the incident is platform-wide.
 
 ## Runtime Surfaces
 
@@ -21,22 +21,22 @@ Cluster-only:
 
 | Surface | Address |
 |---|---|
-| user service | `user-app.apps.svc:8080` or `user-app.swirlit.internal:8080` |
-| order service | `order-app.apps.svc:8081` or `order-app.swirlit.internal:8081` |
-| web service | `devapp-web.apps.svc:80` or `devapp.swirlit.internal` |
+| user service | `user-app.apps.svc.cluster.local:8080` |
+| order service | `order-app.apps.svc.cluster.local:8081` |
+| web service | `devapp-web.apps.svc.cluster.local:80` |
 | PostgreSQL | `postgres.swirlit.internal:5432` |
 | Redis | `redis.swirlit.internal:6379` |
 | Kafka | `kafka.swirlit.internal:9092` |
 | Keycloak | `keycloak.swirlit.internal:8080/auth` |
 
-The `*.swirlit.internal` names are private CoreDNS aliases. They are intentionally absent from public DNS.
+Application services use canonical Kubernetes service DNS. The shared dependencies retain platform-owned private `*.swirlit.internal` aliases, which are intentionally absent from public DNS.
 
 ## First Checks After A Rollout
 
 ```bash
 kubectl get application devapp -n infra
 kubectl get deploy,pods,svc,ingress -n apps
-kubectl get externalsecret devapp-db-credentials -n apps
+kubectl get externalsecret devapp-db-credentials devapp-registry-auth -n apps
 kubectl get job devapp-kibana-bootstrap-v6 -n apps
 ```
 
@@ -258,11 +258,11 @@ Symptoms:
 
 Checks:
 
-- public discovery: `/auth/realms/devapp/.well-known/openid-configuration`
-- token `iss` equals `https://devapp.swirlit.dev/auth/realms/devapp`
+- public discovery: `https://keycloak.swirlit.dev/auth/realms/devapp/.well-known/openid-configuration`
+- token `iss` equals `https://keycloak.swirlit.dev/auth/realms/devapp`
 - backend public issuer setting matches exactly
 - internal JWK URL resolves from the app pod
-- Keycloak ExternalName and shared service are healthy
+- canonical Keycloak ingress and the shared internal service are healthy
 - system time is synchronized
 
 Do not log or paste the full access token. Decode only non-sensitive header/claim metadata in controlled tooling when necessary.
@@ -276,7 +276,7 @@ kubectl describe ingress devapp-ingress -n apps
 kubectl kustomize infra/k8s | less
 ```
 
-`/api/users`, `/api/orders`, documentation paths, and `/auth` must route before the `/` catch-all.
+`/api/users`, `/api/orders`, and documentation paths must route before the `/` catch-all. Keycloak is reached on its own canonical public hostname and is not proxied by the DevApp ingress.
 
 ### Prometheus target is down
 
@@ -388,7 +388,7 @@ Database credential rotation must coordinate:
 4. application restart/reconnection
 5. health verification
 
-GitLab token rotation must update `devapp/ci` in Vault and verify the Jenkins ExternalSecret before the next desired-version commit.
+GitLab token rotation must update `apps/devapp/ci` in Vault and verify the Jenkins ExternalSecret before the next desired-version commit.
 
 Keycloak signing-key rotation should allow token/JWK overlap and verify both backend resource servers. Never rotate by editing the exported disposable realm secret values for a live realm.
 

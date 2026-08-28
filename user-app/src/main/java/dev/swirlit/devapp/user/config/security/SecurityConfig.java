@@ -24,20 +24,20 @@ public class SecurityConfig {
             @Value("${app.security.enabled:false}") boolean securityEnabled) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .headers(headers -> headers.frameOptions(FrameOptionsConfig::sameOrigin));
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         if (securityEnabled) {
             http.authorizeHttpRequests(requests -> requests
                             .requestMatchers(
                                     "/actuator/health/**", "/actuator/info", "/actuator/prometheus",
                                     "/api/docs/**", "/api/swagger-ui/**", "/swagger-ui/**",
-                                    "/api/users/openapi/**", "/h2-console/**")
+                                    "/api/users/openapi/**")
                             .permitAll()
                             .anyRequest().authenticated())
                     .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
         } else {
-            http.authorizeHttpRequests(requests -> requests.anyRequest().permitAll());
+            http.authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
+                    .headers(headers -> headers.frameOptions(FrameOptionsConfig::sameOrigin));
         }
         return http.build();
     }
@@ -49,6 +49,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setExposedHeaders(List.of(
+                "Location", "X-Request-Id", "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset", "Retry-After"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

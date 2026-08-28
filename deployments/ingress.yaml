@@ -64,14 +64,6 @@ spec:
             name: user-app
             port:
               number: 8080
-      # Actuator endpoints (user-app)
-      - path: /actuator
-        pathType: Prefix
-        backend:
-          service:
-            name: user-app
-            port:
-              number: 8080
       # Frontend (catch-all)
       - path: /
         pathType: Prefix

@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -39,8 +40,8 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
+    public List<Order> getAllOrders(int limit) {
+        return orderRepository.findAll(PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "id"))).getContent();
     }
 
     @Transactional(readOnly = true)

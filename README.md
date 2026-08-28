@@ -39,7 +39,7 @@ The business flow is intentionally simple: users are stored by `user-app`; `orde
 
 | Technology | Demo usage |
 |---|---|
-| Java 25, Spring Boot 4.1 | Virtual-threaded REST services, validation, Problem Details, Actuator |
+| Java 25, Spring Boot 4.1 | Virtual-threaded REST services, validation, bounded reads, Problem Details, Actuator |
 | Angular 22 | Standalone, lazy-loaded, signal-based UI with Vitest tests |
 | PostgreSQL 18 | Persistent user and order tables through Spring Data JPA |
 | Redis 8.8 | Distributed Spring Cache for API reads |
@@ -51,6 +51,18 @@ The business flow is intentionally simple: users are stored by `user-app`; `orde
 | Nexus | Maven/npm proxying and the private application image registry |
 | Jenkins / Argo CD | Tested image build followed by a GitOps manifest update and rollout |
 | K3s / Kubernetes / NGINX Ingress | Hardened workloads, probes, policies, services, TLS ingress |
+
+## Application hardening
+
+The API boundary deliberately does not serialize JPA entities. Response DTOs expose only supported fields, while audit principals and optimistic-lock versions remain internal. Collection reads accept an optional `limit` parameter and reject values outside `1..100`; body, path, and query validation failures use consistent Problem Details responses. Every response also carries `X-Request-Id`, which is included in production JSON logs and error bodies for cross-service troubleshooting.
+
+Production requests require a Keycloak JWT, H2 is disabled, HTTPS is forced at the ingress, and Actuator is no longer routed by the public ingress. Prometheus still reaches `/actuator/prometheus` directly through the cluster-only service and NetworkPolicy. A configurable per-principal limiter protects each application instance (120 requests/minute by default); a shared API-gateway or Cloudflare policy should remain the global limit when replicas scale horizontally.
+
+Flyway owns PostgreSQL schema changes and Hibernate validates rather than mutates the production schema. Kafka producers use acknowledgements, idempotence, and bounded retries. Consumers retry transient failures four times before publishing the original record to `<topic>.DLT`; order-result handling validates identity and state transitions and is idempotent for duplicate results. The existing `app.messaging.enabled` property is the feature switch for the event flow.
+
+Passwords never enter either application: the browser uses Authorization Code + PKCE and Keycloak owns password hashing and credential policy. Email is displayed by this directory demo and therefore is not irreversibly hashed; a real deployment should combine strict authorization and retention with encrypted database volumes/backups, or application-level envelope encryption backed by a managed KMS when the threat model requires field-level protection.
+
+There are no synchronous downstream HTTP calls, so a circuit breaker or `@Async` wrapper would not improve this design. Kafka is already the asynchronous boundary. Likewise, no purge job is included because the model currently has no expirable records. For workflows where a pending order may never be stranded after a database/Kafka dual-write failure, the next architectural step is a transactional outbox (typically relayed with CDC), not an in-process retry loop; extend that to a saga only when multiple services introduce compensating business actions.
 
 The local Compose stack covers the application-facing runtime services. Observability, secrets, registry, CI/CD, and GitOps integrations are demonstrated by the Kubernetes deployment because those are cluster responsibilities.
 

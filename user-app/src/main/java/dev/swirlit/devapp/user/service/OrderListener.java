@@ -40,10 +40,7 @@ public class OrderListener {
         } catch (EntityNotFoundException exception) {
             log.warn("Rejecting order {} because user {} does not exist", event.orderId(), event.userId());
             result = event.withResult(null, OrderStatus.REJECTED);
-        } catch (RuntimeException exception) {
-            log.error("Rejecting order {} after processing failure", event.orderId(), exception);
-            result = event.withResult(null, OrderStatus.REJECTED);
         }
-        kafkaTemplate.send(Constants.ORDER_RESULT_TOPIC, event.orderId().toString(), result);
+        kafkaTemplate.send(Constants.ORDER_RESULT_TOPIC, event.orderId().toString(), result).join();
     }
 }

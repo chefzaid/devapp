@@ -5,16 +5,25 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.ConstraintViolationException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -39,10 +48,63 @@ public class GlobalExceptionHandler {
         return detail;
     }
 
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    ProblemDetail handleMethodValidation(HandlerMethodValidationException exception) {
+        Map<String, String> violations = new LinkedHashMap<>();
+        exception.getParameterValidationResults().forEach(result -> {
+            String parameter = result.getMethodParameter().getParameterName();
+            String message = result.getResolvableErrors().isEmpty()
+                    ? "is invalid"
+                    : result.getResolvableErrors().getFirst().getDefaultMessage();
+            violations.put(parameter == null ? "parameter" : parameter, message);
+        });
+
+        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, "Validation failed", "The request is invalid");
+        detail.setProperty("violations", violations);
+        return detail;
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    ProblemDetail handleConstraintViolation(ConstraintViolationException exception) {
+        Map<String, String> violations = new LinkedHashMap<>();
+        exception.getConstraintViolations().forEach(violation ->
+                violations.put(violation.getPropertyPath().toString(), violation.getMessage()));
+
+        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, "Validation failed", "The request is invalid");
+        detail.setProperty("violations", violations);
+        return detail;
+    }
+
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class})
+    ProblemDetail handleMalformedRequest(Exception exception) {
+        return problem(HttpStatus.BAD_REQUEST, "Malformed request", "The request syntax or parameter types are invalid");
+    }
+
+    @ExceptionHandler(ResourceConflictException.class)
+    ProblemDetail handleResourceConflict(ResourceConflictException exception) {
+        return problem(HttpStatus.CONFLICT, "Data conflict", exception.getMessage());
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     ProblemDetail handleConflict(DataIntegrityViolationException exception) {
-        log.warn("Database constraint violation", exception);
+        log.warn("Database constraint violation: {}", exception.getMostSpecificCause().getMessage());
         return problem(HttpStatus.CONFLICT, "Data conflict", "A record with the same unique value already exists");
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    ProblemDetail handleNoResource(NoResourceFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, "Resource not found", "The requested resource does not exist");
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    ProblemDetail handleMethodNotSupported(HttpRequestMethodNotSupportedException exception) {
+        return problem(HttpStatus.METHOD_NOT_ALLOWED, "Method not allowed", "The HTTP method is not supported here");
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    ProblemDetail handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException exception) {
+        return problem(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type", "Use a supported Content-Type");
     }
 
     @ExceptionHandler(Exception.class)
@@ -55,6 +117,10 @@ public class GlobalExceptionHandler {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(status, message);
         detail.setTitle(title);
         detail.setType(URI.create("https://devapp.swirlit.dev/problems/" + status.value()));
+        String requestId = MDC.get("requestId");
+        if (requestId != null) {
+            detail.setProperty("requestId", requestId);
+        }
         return detail;
     }
 }

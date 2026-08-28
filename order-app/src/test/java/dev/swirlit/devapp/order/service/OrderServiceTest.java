@@ -18,7 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.core.KafkaTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,9 +47,9 @@ class OrderServiceTest {
     @Test
     void getAllOrdersSortsNewestFirst() {
         Order order = order(1L);
-        when(orderRepository.findAll(any(Sort.class))).thenReturn(List.of(order));
+        when(orderRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(order)));
 
-        assertEquals(List.of(order), orderService.getAllOrders());
+        assertEquals(List.of(order), orderService.getAllOrders(25));
     }
 
     @Test

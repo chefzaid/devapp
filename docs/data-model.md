@@ -217,4 +217,4 @@ Passwords remain outside this model in Keycloak. Email cannot be irreversibly ha
 - [Security](./security.md)
 - [Development](./development.md)
 - [Testing](./testing.md)
-- [Architecture and ADRs](./adr/README.md)
+- [Architecture and ADRs](./architecture.md)

@@ -33,6 +33,29 @@ Shared infrastructure namespace: `infra`
 
 Jenkins agent namespace: `jenkins-builds`
 
+## Infrastructure Layout And Entry Points
+
+DevApp infrastructure assets are grouped by execution boundary:
+
+| Directory | Purpose |
+|---|---|
+| `infra/ansible/` | optional manual application of the committed Kustomize desired state |
+| `infra/compose/` | complete local stack and the Playwright acceptance override |
+| `infra/keycloak/` | disposable local realm import |
+| `infra/k8s/` | application manifests, Kustomize, Argo CD, Jenkins bootstrap, secrets, policies, and observability |
+| `infra/scripts/` | CI/CD bootstrap, immutable image-tag update, and Mask Java helper |
+
+Common entry points, run from the repository root:
+
+```bash
+docker compose -f infra/compose/compose.yaml up --build -d
+kubectl kustomize infra/k8s
+./infra/scripts/configure-cicd.sh
+ansible-playbook -i infra/ansible/inventory infra/ansible/deploy.yml
+```
+
+`Jenkinsfile` and `maskfile.md` remain at the repository root because their tools discover those conventional names there. Application source and build files also remain outside `infra/`.
+
 ## Kubernetes Resources
 
 `infra/k8s/kustomization.yaml` includes:
@@ -317,4 +340,4 @@ kubectl kustomize infra/k8s
 - [Testing](./testing.md)
 - [Operations](./operations.md)
 - [Security](./security.md)
-- [Architecture and ADRs](./adr/README.md)
+- [Architecture and ADRs](./architecture.md)

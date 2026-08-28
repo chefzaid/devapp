@@ -398,4 +398,4 @@ Keycloak signing-key rotation should allow token/JWK overlap and verify both bac
 - [Security](./security.md)
 - [Testing](./testing.md)
 - [Data Model](./data-model.md)
-- [Architecture and ADRs](./adr/README.md)
+- [Architecture and ADRs](./architecture.md)

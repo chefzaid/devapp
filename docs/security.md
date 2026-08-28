@@ -386,4 +386,4 @@ Before merging a sensitive change:
 - [Deployment](./deployment.md)
 - [Operations](./operations.md)
 - [Testing](./testing.md)
-- [Architecture and ADRs](./adr/README.md)
+- [Architecture and ADRs](./architecture.md)

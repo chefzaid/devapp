@@ -153,14 +153,14 @@ Statuses:
 
 ## Accepted ADRs
 
-- [ADR 0001: Split Detailed Documentation Out Of The Root README](./0001-documentation-structure.md)
-- [ADR 0002: Keep A Minimal Domain Across Two Independently Deployable Services](./0002-minimal-domain-microservices.md)
-- [ADR 0003: Use The Java, Angular, And Shared Platform Stack](./0003-platform-stack-and-profiles.md)
-- [ADR 0004: Coordinate Services Asynchronously Through Kafka](./0004-kafka-event-coordination.md)
-- [ADR 0005: Delegate Authentication To Keycloak And Validate JWTs At Each API](./0005-keycloak-jwt-security.md)
-- [ADR 0006: Use Service-Owned Flyway Histories In The Shared PostgreSQL Schema](./0006-service-owned-flyway.md)
-- [ADR 0007: Deliver Through Jenkins, Immutable Images, And Argo CD](./0007-jenkins-argocd-gitops.md)
-- [ADR 0008: Keep Verification Layered And Continuous](./0008-code-quality-and-verification.md)
+- [ADR 0001: Split Detailed Documentation Out Of The Root README](./adr/0001-documentation-structure.md)
+- [ADR 0002: Keep A Minimal Domain Across Two Independently Deployable Services](./adr/0002-minimal-domain-microservices.md)
+- [ADR 0003: Use The Java, Angular, And Shared Platform Stack](./adr/0003-platform-stack-and-profiles.md)
+- [ADR 0004: Coordinate Services Asynchronously Through Kafka](./adr/0004-kafka-event-coordination.md)
+- [ADR 0005: Delegate Authentication To Keycloak And Validate JWTs At Each API](./adr/0005-keycloak-jwt-security.md)
+- [ADR 0006: Use Service-Owned Flyway Histories In The Shared PostgreSQL Schema](./adr/0006-service-owned-flyway.md)
+- [ADR 0007: Deliver Through Jenkins, Immutable Images, And Argo CD](./adr/0007-jenkins-argocd-gitops.md)
+- [ADR 0008: Keep Verification Layered And Continuous](./adr/0008-code-quality-and-verification.md)
 
 ## Proposed ADRs For Roadmap Work
 
@@ -203,10 +203,10 @@ What becomes easier, harder, riskier, or more constrained?
 
 ## Related Guides
 
-- [Features](../features.md)
-- [Data Model](../data-model.md)
-- [Development](../development.md)
-- [Testing](../testing.md)
-- [Deployment](../deployment.md)
-- [Operations](../operations.md)
-- [Security](../security.md)
+- [Features](./features.md)
+- [Data Model](./data-model.md)
+- [Development](./development.md)
+- [Testing](./testing.md)
+- [Deployment](./deployment.md)
+- [Operations](./operations.md)
+- [Security](./security.md)

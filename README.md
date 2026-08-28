@@ -10,7 +10,7 @@ DevApp is a deliberately small, production-shaped full-stack template. Two Java 
 ## Documentation
 
 - [Features](./docs/features.md)
-- [Architecture Overview and ADR Index](./docs/adr/README.md)
+- [Architecture Overview and ADR Index](./docs/architecture.md)
 - [Data Model Reference](./docs/data-model.md)
 - [Development Guide](./docs/development.md)
 - [Testing Guide](./docs/testing.md)

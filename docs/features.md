@@ -261,7 +261,7 @@ These are tracked as technically focused candidates in [TODO.md](../TODO.md).
 
 ## Related Guides
 
-- [Architecture and ADRs](./adr/README.md)
+- [Architecture and ADRs](./architecture.md)
 - [Development](./development.md)
 - [Testing](./testing.md)
 - [Deployment](./deployment.md)

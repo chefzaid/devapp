@@ -10,8 +10,8 @@ resources:
   - observability.yaml
 images:
   - name: nexus.swirlit.internal:5000/devapp/user-app
-    newTag: 49-98d23dd
+    newTag: 51-c97b2ec
   - name: nexus.swirlit.internal:5000/devapp/order-app
-    newTag: 49-98d23dd
+    newTag: 51-c97b2ec
   - name: nexus.swirlit.internal:5000/devapp/devapp-web
-    newTag: 49-98d23dd
+    newTag: 51-c97b2ec

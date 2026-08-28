@@ -178,7 +178,7 @@ spec:
                             echo "Updating Argo CD source path from $current_path to $desired_path"
                             kubectl patch application "$ARGO_APPLICATION" -n "$ARGO_NAMESPACE" \
                                 --type merge \
-                                --patch "{\"spec\":{\"source\":{\"path\":\"$desired_path\"}}}"
+                                --patch '{"spec":{"source":{"path":"infra/k8s"}}}'
                         fi
                     '''
                 }

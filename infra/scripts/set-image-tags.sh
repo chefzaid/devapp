@@ -15,7 +15,7 @@ case "$tag" in
 esac
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-kustomization="$script_dir/../deployments/kustomization.yaml"
+kustomization="$script_dir/../k8s/kustomization.yaml"
 
 for image in user-app order-app devapp-web; do
     sed -i "/name: nexus.swirlit.internal:5000\/devapp\/$image/{n;s/newTag: .*/newTag: $tag/;}" "$kustomization"

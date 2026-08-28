@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: http://gitlab.swirlit.internal/root/devapp.git
     targetRevision: main
-    path: deployments
+    path: infra/k8s
   destination:
     server: https://kubernetes.default.svc
     namespace: apps

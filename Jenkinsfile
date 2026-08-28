@@ -167,6 +167,24 @@ spec:
             }
         }
 
+        stage('Reconcile GitOps Source') {
+            steps {
+                container('kubectl') {
+                    sh '''
+                        desired_path=infra/k8s
+                        current_path=$(kubectl get application "$ARGO_APPLICATION" -n "$ARGO_NAMESPACE" \
+                            -o jsonpath='{.spec.source.path}')
+                        if [ "$current_path" != "$desired_path" ]; then
+                            echo "Updating Argo CD source path from $current_path to $desired_path"
+                            kubectl patch application "$ARGO_APPLICATION" -n "$ARGO_NAMESPACE" \
+                                --type merge \
+                                --patch "{\"spec\":{\"source\":{\"path\":\"$desired_path\"}}}"
+                        fi
+                    '''
+                }
+            }
+        }
+
         stage('Code Quality') {
             when { expression { env.SKIP_CI != 'true' } }
             parallel {
@@ -278,10 +296,10 @@ spec:
                             exit 1
                         fi
                         git checkout -B main origin/main
-                        scripts/set-image-tags.sh "$APP_VERSION"
+                        infra/scripts/set-image-tags.sh "$APP_VERSION"
                         git config user.name "DevApp Jenkins"
                         git config user.email "jenkins@swirlit.dev"
-                        git add deployments/kustomization.yaml
+                        git add infra/k8s/kustomization.yaml
                         git commit -m "deploy: ${APP_VERSION} [skip ci]"
 
                         set +x

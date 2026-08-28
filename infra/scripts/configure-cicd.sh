@@ -2,6 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+K8S_DIR="$ROOT_DIR/infra/k8s"
 INFRA_NAMESPACE="${INFRA_NAMESPACE:-infra}"
 BUILD_NAMESPACE="${BUILD_NAMESPACE:-jenkins-builds}"
 GITLAB_USERNAME="${GITLAB_USERNAME:-}"
@@ -21,8 +23,8 @@ kubectl get deploy jenkins -n "$INFRA_NAMESPACE" >/dev/null 2>&1 || fail "Jenkin
 kubectl get crd applications.argoproj.io >/dev/null 2>&1 || fail "Argo CD is not installed"
 kubectl get pod vault-0 -n "$INFRA_NAMESPACE" >/dev/null 2>&1 || fail "Vault pod vault-0 is not installed"
 
-git -C "$SCRIPT_DIR" fetch origin main
-git -C "$SCRIPT_DIR" show origin/main:deployments/kustomization.yaml >/dev/null 2>&1 ||
+git -C "$ROOT_DIR" fetch origin main
+git -C "$ROOT_DIR" show origin/main:infra/k8s/kustomization.yaml >/dev/null 2>&1 ||
     fail "Push this DevApp CI/CD wiring to origin/main before running the bootstrap"
 
 if [[ -z "$GITLAB_USERNAME" || -z "$GITLAB_TOKEN" ]]; then
@@ -55,13 +57,13 @@ vault_token="$(sudo cat "$VAULT_BOOTSTRAP_TOKEN_FILE")"
 unset vault_token GITLAB_TOKEN
 
 info "Creating the Vault-backed Jenkins agent credential"
-kubectl apply -f "$SCRIPT_DIR/deployments/jenkins-credentials.yaml"
+kubectl apply -f "$K8S_DIR/jenkins-credentials.yaml"
 kubectl wait --for=condition=Ready externalsecret/devapp-ci-credentials \
     -n "$BUILD_NAMESPACE" --timeout=180s
 
 info "Installing the Jenkins Pipeline, Git, Kubernetes-agent, JUnit, and workspace-cleanup plugins"
 kubectl delete job devapp-jenkins-plugin-install -n "$INFRA_NAMESPACE" --ignore-not-found >/dev/null
-kubectl apply -f "$SCRIPT_DIR/deployments/jenkins-plugins.yaml"
+kubectl apply -f "$K8S_DIR/jenkins-plugins.yaml"
 if ! kubectl wait --for=condition=complete job/devapp-jenkins-plugin-install \
     -n "$INFRA_NAMESPACE" --timeout=15m; then
     kubectl logs -n "$INFRA_NAMESPACE" job/devapp-jenkins-plugin-install --tail=100 || true
@@ -74,7 +76,7 @@ kubectl rollout status deployment/jenkins -n "$INFRA_NAMESPACE" --timeout=10m
 
 info "Configuring the in-cluster Kubernetes cloud and the DevApp Pipeline job"
 kubectl delete job devapp-jenkins-configure -n "$INFRA_NAMESPACE" --ignore-not-found >/dev/null
-kubectl apply -f "$SCRIPT_DIR/deployments/jenkins-job.yaml"
+kubectl apply -f "$K8S_DIR/jenkins-job.yaml"
 if ! kubectl wait --for=condition=complete job/devapp-jenkins-configure \
     -n "$INFRA_NAMESPACE" --timeout=5m; then
     kubectl logs -n "$INFRA_NAMESPACE" job/devapp-jenkins-configure --tail=100 || true
@@ -82,7 +84,7 @@ if ! kubectl wait --for=condition=complete job/devapp-jenkins-configure \
 fi
 
 info "Creating the Argo CD Application"
-kubectl apply -f "$SCRIPT_DIR/deployments/argocd-apps.yaml"
+kubectl apply -f "$K8S_DIR/argocd-apps.yaml"
 kubectl annotate application devapp -n "$INFRA_NAMESPACE" \
     argocd.argoproj.io/refresh=hard --overwrite >/dev/null
 

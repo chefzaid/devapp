@@ -64,7 +64,7 @@ services:
       KC_HOSTNAME: http://localhost:4200/auth
       KC_PROXY_HEADERS: xforwarded
     volumes:
-      - ./infra/keycloak/devapp-realm.json:/opt/keycloak/data/import/devapp-realm.json:ro
+      - ../keycloak/devapp-realm.json:/opt/keycloak/data/import/devapp-realm.json:ro
     ports:
       - "8180:8080"
     healthcheck:
@@ -76,7 +76,7 @@ services:
 
   user-app:
     build:
-      context: .
+      context: ../..
       dockerfile: user-app/Dockerfile
     environment: &backend-environment
       SPRING_PROFILES_ACTIVE: prod
@@ -110,7 +110,7 @@ services:
 
   order-app:
     build:
-      context: .
+      context: ../..
       dockerfile: order-app/Dockerfile
     environment:
       <<: *backend-environment
@@ -133,7 +133,7 @@ services:
 
   web:
     build:
-      context: devapp-web
+      context: ../../devapp-web
       dockerfile: Dockerfile
     ports:
       - "4200:8080"

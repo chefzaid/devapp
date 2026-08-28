@@ -1,6 +1,3 @@
-include:
-  - path: compose.yaml
-
 services:
   keycloak:
     environment:
@@ -22,7 +19,7 @@ services:
     ipc: host
     working_dir: /workspace
     volumes:
-      - ./devapp-web:/workspace
+      - ../../devapp-web:/workspace
       - test-node-modules:/workspace/node_modules
       - test-results:/workspace/test-results
       - playwright-report:/workspace/playwright-report

@@ -18,6 +18,7 @@ default:
 
 variables:
   APP_VERSION: "$CI_PIPELINE_IID-$CI_COMMIT_SHORT_SHA"
+  REGISTRY_PUSH_HOST: "gitlab-registry.swirlit.internal:5050"
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.cache/maven"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
 
@@ -83,13 +84,14 @@ test:web:
   before_script:
     - mkdir -p /kaniko/.docker
     - auth="$(printf '%s:%s' "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD" | base64 | tr -d '\n')"
-    - printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$CI_REGISTRY" "$auth" > /kaniko/.docker/config.json
+    - printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$REGISTRY_PUSH_HOST" "$auth" > /kaniko/.docker/config.json
   script:
     - >-
       /kaniko/executor
       --context "$BUILD_CONTEXT"
       --dockerfile "$DOCKERFILE"
-      --destination "$CI_REGISTRY_IMAGE/$IMAGE_NAME:$APP_VERSION"
+      --destination "$REGISTRY_PUSH_HOST/$CI_PROJECT_PATH/$IMAGE_NAME:$APP_VERSION"
+      --insecure-registry "$REGISTRY_PUSH_HOST"
       --snapshot-mode=redo
       --use-new-run
       --cleanup

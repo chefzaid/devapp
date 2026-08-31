@@ -13,7 +13,7 @@
 
     <groupId>dev.swirlit.devapp</groupId>
     <artifactId>parent</artifactId>
-    <version>1.0.3</version>
+    <version>1.1.0</version>
     <packaging>pom</packaging>
     <name>devapp-parent</name>
     <description>DevApp Java 25 microservices demo</description>

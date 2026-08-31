@@ -16,7 +16,7 @@ RUN wget -qO- https://apt.corretto.aws/corretto.key \
         | gpg --dearmor -o /usr/share/keyrings/corretto-keyring.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/corretto-keyring.gpg] https://apt.corretto.aws stable main" \
         > /etc/apt/sources.list.d/corretto.list \
-    && apt-get update && apt-get install -y \
+    && apt-get update && apt-get install -y --no-install-recommends \
     java-25-amazon-corretto-jdk \
     # Basic tools
     wget \
@@ -35,7 +35,8 @@ RUN wget -qO- https://apt.corretto.aws/corretto.key \
 
 # Install Node.js 24.x using NodeSource repository
 RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
-    && apt-get install -y nodejs
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
 # Keep the package manager and CLI aligned with the application toolchain.
 RUN npm install -g npm@12.0.2 @angular/cli@22.1.4

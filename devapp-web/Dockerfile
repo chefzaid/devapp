@@ -11,3 +11,4 @@ FROM docker.io/nginxinc/nginx-unprivileged:1.30.4-alpine@sha256:bc69cfff69f75aef
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build --chown=101:101 /workspace/dist/devapp-web/browser /usr/share/nginx/html
 EXPOSE 8080
+USER 101:101

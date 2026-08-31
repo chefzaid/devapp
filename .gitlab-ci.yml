@@ -244,7 +244,7 @@ variables:
       policy: pull-push
   script:
     - mkdir -p security-reports
-    - trivy fs --offline-scan --include-dev-deps --scanners vuln,misconfig,secret --skip-dirs .git,.cache,node_modules,target,dist,coverage --format json --output security-reports/trivy.json .
+    - trivy fs --offline-scan --include-dev-deps --scanners vuln,misconfig,secret --skip-dirs '**/.git' --skip-dirs '**/.cache' --skip-dirs '**/node_modules' --skip-dirs '**/target' --skip-dirs '**/dist' --skip-dirs '**/coverage' --format json --output security-reports/trivy.json .
     - trivy convert --scanners vuln,misconfig,secret --format sarif --output security-reports/trivy.sarif security-reports/trivy.json
     - trivy convert --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --format table --exit-code 1 security-reports/trivy.json
   allow_failure: true

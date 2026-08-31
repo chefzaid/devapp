@@ -23,7 +23,9 @@ describe('UserComponent', () => {
   beforeEach(() => {
     userService = {
       getAllUsers: vi.fn().mockReturnValue(of([])),
-      createUser: vi.fn()
+      createUser: vi.fn(),
+      updateUser: vi.fn(),
+      deleteUser: vi.fn()
     } as unknown as MockedObject<UserService>;
     notifications = {
       success: vi.fn(),
@@ -93,5 +95,46 @@ describe('UserComponent', () => {
     expect(component.error()).toBe('create failed');
     expect(component.creating()).toBe(false);
     expect(notifications.error).toHaveBeenCalled();
+  });
+
+  it('updates a user and closes the edit form', () => {
+    const updated = { ...alice, name: 'Alice Updated' };
+    component.users.set([alice]);
+    component.startEditing(alice);
+    component.editUser.name = updated.name;
+    userService.updateUser.mockReturnValue(of(updated));
+
+    component.updateUser();
+
+    expect(userService.updateUser).toHaveBeenCalledWith(1, {
+      name: 'Alice Updated', username: 'alice', email: 'alice@example.com'
+    });
+    expect(component.users()).toEqual([updated]);
+    expect(component.editingUserId()).toBeNull();
+    expect(component.saving()).toBe(false);
+  });
+
+  it('reports an update failure', () => {
+    component.startEditing(alice);
+    userService.updateUser.mockReturnValue(throwError(() => 'update failed'));
+
+    component.updateUser();
+
+    expect(component.error()).toBe('update failed');
+    expect(component.saving()).toBe(false);
+    expect(notifications.error).toHaveBeenCalled();
+  });
+
+  it('deletes a user after confirmation', () => {
+    component.users.set([alice]);
+    component.requestDelete(alice.id);
+    userService.deleteUser.mockReturnValue(of(undefined));
+
+    component.deleteUser(alice);
+
+    expect(userService.deleteUser).toHaveBeenCalledWith(1);
+    expect(component.users()).toEqual([]);
+    expect(component.pendingDeleteUserId()).toBeNull();
+    expect(component.deletingUserId()).toBeNull();
   });
 });

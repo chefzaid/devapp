@@ -10,6 +10,12 @@ interface CreatedOrder {
   id: number;
 }
 
+interface CreatedUser {
+  id: number;
+  name: string;
+  username: string;
+}
+
 test('authenticates through Keycloak and loads both secured workflows', async (
   { page },
   testInfo,
@@ -59,7 +65,9 @@ test('authenticates through Keycloak and loads both secured workflows', async (
   ).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: 'User directory' })).toBeVisible();
 
-  if ((await page.locator('.user-item').count()) === 0 && exerciseWrites) {
+  let createdUser: CreatedUser | undefined;
+  let createdUserRow = page.locator('.user-item').filter({ hasText: '__not-created__' });
+  if (exerciseWrites) {
     const userKey = `e2e-${testInfo.project.name}-${Date.now()}`;
     await page.getByLabel('Display name').fill(`Playwright ${testInfo.project.name}`);
     await page.getByLabel('Username').fill(userKey);
@@ -70,7 +78,24 @@ test('authenticates through Keycloak and loads both secured workflows', async (
         response.url().endsWith('/api/users') && response.request().method() === 'POST',
     );
     await page.getByRole('button', { name: 'Create User' }).click();
-    expect((await createdUserResponse).status()).toBe(201);
+    const userResponse = await createdUserResponse;
+    expect(userResponse.status()).toBe(201);
+    createdUser = (await userResponse.json()) as CreatedUser;
+    createdUserRow = page.locator('.user-item').filter({ hasText: userKey });
+    await expect(createdUserRow).toBeVisible();
+
+    await createdUserRow.getByRole('button', { name: `Edit ${createdUser.name}` }).click();
+    const updatedName = `Updated ${createdUser.name}`;
+    await page.getByLabel('Display name').fill(updatedName);
+    const updatedUserResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/users/${createdUser?.id}`) &&
+        response.request().method() === 'PUT',
+    );
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    expect((await updatedUserResponse).status()).toBe(200);
+    createdUser.name = updatedName;
+    await expect(createdUserRow).toContainText(updatedName);
   }
 
   await expect(page.locator('.user-item').first()).toBeVisible();
@@ -85,7 +110,10 @@ test('authenticates through Keycloak and loads both secured workflows', async (
   if (exerciseWrites) {
     const ownerSelect = page.getByLabel('Order owner');
     await expect.poll(() => ownerSelect.locator('option').count()).toBeGreaterThan(1);
-    await ownerSelect.selectOption({ index: 1 });
+    if (!createdUser) {
+      throw new Error('The write journey requires its disposable user');
+    }
+    await ownerSelect.selectOption({ label: `${createdUser.name} (@${createdUser.username})` });
     await page.getByLabel('Product ID').fill('1001');
 
     const createdOrderResponse = page.waitForResponse(
@@ -115,5 +143,52 @@ test('authenticates through Keycloak and loads both secured workflows', async (
         { timeout: 30_000 },
       )
       .toBe('APPROVED');
+
+    await orderCard.getByRole('button', { name: `Edit order #${createdOrder.id}` }).click();
+    await page.getByLabel('Product ID').fill('1002');
+    const updatedOrderResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/orders/${createdOrder.id}`) &&
+        response.request().method() === 'PUT',
+    );
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    expect((await updatedOrderResponse).status()).toBe(200);
+    await expect(orderCard).toContainText('#1002');
+    await expect
+      .poll(
+        async () => {
+          const refreshedOrders = page.waitForResponse(
+            (response) =>
+              response.url().endsWith('/api/orders') && response.request().method() === 'GET',
+          );
+          await page.getByRole('button', { name: 'Refresh' }).click();
+          expect((await refreshedOrders).status()).toBe(200);
+          return (await orderCard.locator('.order-status').textContent())?.trim();
+        },
+        { timeout: 30_000 },
+      )
+      .toBe('APPROVED');
+
+    await orderCard.getByRole('button', { name: `Delete order #${createdOrder.id}` }).click();
+    const deletedOrderResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/orders/${createdOrder.id}`) &&
+        response.request().method() === 'DELETE',
+    );
+    await orderCard.getByRole('button', { name: `Confirm delete order #${createdOrder.id}` }).click();
+    expect((await deletedOrderResponse).status()).toBe(204);
+    await expect(orderCard).toHaveCount(0);
+
+    await page.getByRole('link', { name: 'Users' }).click();
+    await expect(createdUserRow).toBeVisible();
+    await createdUserRow.getByRole('button', { name: `Delete ${createdUser.name}` }).click();
+    const deletedUserResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/users/${createdUser?.id}`) &&
+        response.request().method() === 'DELETE',
+    );
+    await createdUserRow.getByRole('button', { name: `Confirm delete ${createdUser.name}` }).click();
+    expect((await deletedUserResponse).status()).toBe(204);
+    await expect(createdUserRow).toHaveCount(0);
   }
 });

@@ -6,6 +6,7 @@ import java.util.Locale;
 import dev.swirlit.devapp.common.exception.ResourceConflictException;
 import dev.swirlit.devapp.user.domain.User;
 import dev.swirlit.devapp.user.dto.CreateUserRequest;
+import dev.swirlit.devapp.user.dto.UpdateUserRequest;
 import dev.swirlit.devapp.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 
@@ -40,8 +41,8 @@ public class UserService {
     @Transactional
     @CacheEvict(cacheNames = "users", allEntries = true)
     public User createUser(CreateUserRequest request) {
-        String username = request.username().trim().toLowerCase(Locale.ROOT);
-        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        String username = normalize(request.username());
+        String email = normalize(request.email());
         if (userRepository.existsByUsername(username)) {
             throw new ResourceConflictException("The username is already in use");
         }
@@ -51,5 +52,39 @@ public class UserService {
 
         User user = new User(request.name().trim(), username, email);
         return userRepository.save(user);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = "users", allEntries = true)
+    public User updateUser(Long userId, UpdateUserRequest request) {
+        User user = findUser(userId);
+        String username = normalize(request.username());
+        String email = normalize(request.email());
+        if (userRepository.existsByUsernameAndIdNot(username, userId)) {
+            throw new ResourceConflictException("The username is already in use");
+        }
+        if (userRepository.existsByEmailIgnoreCaseAndIdNot(email, userId)) {
+            throw new ResourceConflictException("The email address is already in use");
+        }
+
+        user.setName(request.name().trim());
+        user.setUsername(username);
+        user.setEmail(email);
+        return user;
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = "users", allEntries = true)
+    public void deleteUser(Long userId) {
+        userRepository.delete(findUser(userId));
+    }
+
+    private User findUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User %d was not found".formatted(userId)));
+    }
+
+    private static String normalize(String value) {
+        return value.trim().toLowerCase(Locale.ROOT);
     }
 }

@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import dev.swirlit.devapp.user.domain.User;
 import dev.swirlit.devapp.user.dto.CreateUserRequest;
+import dev.swirlit.devapp.user.dto.UpdateUserRequest;
 import dev.swirlit.devapp.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -86,5 +88,54 @@ class UserServiceTest {
 
         assertThrows(ResourceConflictException.class,
                 () -> userService.createUser(new CreateUserRequest("Ada", "new-user", "ADA@EXAMPLE.TEST")));
+    }
+
+    @Test
+    void updateUserNormalizesAndChangesProfile() {
+        User existing = new User("Ada", "ada", "ada@example.test");
+        existing.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        User updated = userService.updateUser(
+                1L, new UpdateUserRequest(" Ada Byron ", "ada.byron", "ADA.BYRON@EXAMPLE.TEST "));
+
+        assertEquals("Ada Byron", updated.getName());
+        assertEquals("ada.byron", updated.getUsername());
+        assertEquals("ada.byron@example.test", updated.getEmail());
+    }
+
+    @Test
+    void updateUserRejectsAnotherUsersUsername() {
+        User existing = new User("Ada", "ada", "ada@example.test");
+        existing.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(userRepository.existsByUsernameAndIdNot("grace", 1L)).thenReturn(true);
+
+        assertThrows(ResourceConflictException.class,
+                () -> userService.updateUser(
+                        1L, new UpdateUserRequest("Ada", "grace", "ada@example.test")));
+    }
+
+    @Test
+    void updateUserRejectsAnotherUsersEmail() {
+        User existing = new User("Ada", "ada", "ada@example.test");
+        existing.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(userRepository.existsByEmailIgnoreCaseAndIdNot("grace@example.test", 1L)).thenReturn(true);
+
+        assertThrows(ResourceConflictException.class,
+                () -> userService.updateUser(
+                        1L, new UpdateUserRequest("Ada", "ada", "grace@example.test")));
+    }
+
+    @Test
+    void deleteUserRemovesExistingProfile() {
+        User existing = new User("Ada", "ada", "ada@example.test");
+        existing.setId(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        userService.deleteUser(1L);
+
+        verify(userRepository).delete(existing);
     }
 }

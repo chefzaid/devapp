@@ -9,6 +9,7 @@ import dev.swirlit.devapp.common.event.OrderEvent;
 import dev.swirlit.devapp.common.util.Constants;
 import dev.swirlit.devapp.order.domain.Order;
 import dev.swirlit.devapp.order.dto.CreateOrderRequest;
+import dev.swirlit.devapp.order.dto.UpdateOrderRequest;
 import dev.swirlit.devapp.order.repository.OrderRepository;
 import jakarta.persistence.EntityNotFoundException;
 
@@ -21,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -89,10 +91,77 @@ class OrderServiceTest {
     }
 
     @Test
+    void createOrderPublishesOnlyAfterTransactionCommit() {
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order value = invocation.getArgument(0);
+            value.setId(7L);
+            return value;
+        });
+        when(kafkaTemplate.send(eq(Constants.ORDER_TOPIC), eq("7"), any(OrderEvent.class)))
+                .thenReturn(new CompletableFuture<>());
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            orderService.createOrder(new CreateOrderRequest(2L, 2001L));
+            verify(kafkaTemplate, never()).send(any(), any(), any());
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(synchronization -> synchronization.afterCommit());
+
+            verify(kafkaTemplate).send(eq(Constants.ORDER_TOPIC), eq("7"), any(OrderEvent.class));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
     void getOrderRejectsUnknownId() {
         when(orderRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> orderService.getOrderById(99L));
+    }
+
+    @Test
+    void updateOrderResetsValidationAndPublishesNewEvent() {
+        Order existing = order(7L);
+        existing.setStatus(OrderStatus.APPROVED);
+        existing.setUserName("Ada Lovelace");
+        when(orderRepository.findById(7L)).thenReturn(Optional.of(existing));
+        when(kafkaTemplate.send(eq(Constants.ORDER_TOPIC), eq("7"), any(OrderEvent.class)))
+                .thenReturn(new CompletableFuture<>());
+
+        Order updated = orderService.updateOrder(7L, new UpdateOrderRequest(2L, 2002L));
+
+        assertEquals(2L, updated.getUserId());
+        assertEquals(2002L, updated.getProductId());
+        assertEquals(OrderStatus.PENDING, updated.getStatus());
+        assertEquals(null, updated.getUserName());
+        ArgumentCaptor<OrderEvent> event = ArgumentCaptor.forClass(OrderEvent.class);
+        verify(kafkaTemplate).send(eq(Constants.ORDER_TOPIC), eq("7"), event.capture());
+        assertEquals(2L, event.getValue().userId());
+        assertEquals(2002L, event.getValue().productId());
+    }
+
+    @Test
+    void updateOrderLeavesUnchangedOrderAlone() {
+        Order existing = order(7L);
+        existing.setStatus(OrderStatus.APPROVED);
+        when(orderRepository.findById(7L)).thenReturn(Optional.of(existing));
+
+        Order updated = orderService.updateOrder(7L, new UpdateOrderRequest(1L, 1001L));
+
+        assertEquals(OrderStatus.APPROVED, updated.getStatus());
+        verify(kafkaTemplate, never()).send(any(), any(), any());
+    }
+
+    @Test
+    void deleteOrderRemovesExistingOrder() {
+        Order existing = order(7L);
+        when(orderRepository.findById(7L)).thenReturn(Optional.of(existing));
+
+        orderService.deleteOrder(7L);
+
+        verify(orderRepository).delete(existing);
     }
 
     private static Order order(Long id) {

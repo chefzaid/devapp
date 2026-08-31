@@ -175,7 +175,7 @@ Problem Details expose stable status/title/detail and validation maps. Unexpecte
 Configured behavior:
 
 - allowed origins from `app.cors.allowed-origins`
-- methods: `GET`, `POST`, `OPTIONS`
+- methods: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`
 - request headers: `Authorization`, `Content-Type`
 - credentials allowed
 - one-hour preflight cache
@@ -269,7 +269,7 @@ Auditing timestamps and principals are not a complete security audit trail. Sens
 
 ## Kafka And Event Security
 
-Consumers validate required identifiers, allowed statuses, persisted identity, and state transitions. Invalid events fail rather than silently mutating the wrong order.
+Consumers validate required identifiers, allowed statuses, persisted identity, and state transitions. Results superseded by an order edit or deletion are ignored; other invalid events fail rather than mutating the wrong order.
 
 Reliability controls such as idempotent production, retries, and DLT are not security controls by themselves.
 

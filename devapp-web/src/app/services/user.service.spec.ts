@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { UserService } from './user.service';
-import { User } from '../models/user.model';
+import { UpdateUserRequest, User } from '../models/user.model';
 
 describe('UserService', () => {
     let service: UserService;
@@ -55,6 +55,30 @@ describe('UserService', () => {
         const req = http.expectOne('/api/users/2');
         expect(req.request.method).toBe('GET');
         req.flush(user);
+    });
+
+    it('should update user', () => {
+        const update: UpdateUserRequest = {
+            name: 'Alice Updated',
+            username: 'alice',
+            email: 'alice@example.com'
+        };
+        const user: User = { id: 2, name: 'Alice Updated', username: 'alice', email: 'alice@example.com' };
+
+        service.updateUser(2, update).subscribe(data => expect(data).toEqual(user));
+
+        const req = http.expectOne('/api/users/2');
+        expect(req.request.method).toBe('PUT');
+        expect(req.request.body).toEqual(update);
+        req.flush(user);
+    });
+
+    it('should delete user', () => {
+        service.deleteUser(2).subscribe();
+
+        const req = http.expectOne('/api/users/2');
+        expect(req.request.method).toBe('DELETE');
+        req.flush(null);
     });
 
     it('should return server message when available', async () => {

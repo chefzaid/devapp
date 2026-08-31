@@ -31,7 +31,9 @@ describe('OrderComponent', () => {
   beforeEach(() => {
     orderService = {
       getAllOrders: vi.fn().mockReturnValue(of([])),
-      createOrder: vi.fn()
+      createOrder: vi.fn(),
+      updateOrder: vi.fn(),
+      deleteOrder: vi.fn()
     } as unknown as MockedObject<OrderService>;
     userService = {
       getAllUsers: vi.fn().mockReturnValue(of([]))
@@ -113,5 +115,43 @@ describe('OrderComponent', () => {
 
     expect(component.error()).toBe('create order failed');
     expect(component.creating()).toBe(false);
+  });
+
+  it('updates an order and closes the edit form', () => {
+    const updated = { ...order, productId: 20, status: 'PENDING' as const, userName: null };
+    component.orders.set([order]);
+    component.startEditing(order);
+    component.editOrder.productId = 20;
+    orderService.updateOrder.mockReturnValue(of(updated));
+
+    component.updateOrder();
+
+    expect(orderService.updateOrder).toHaveBeenCalledWith(1, { userId: 1, productId: 20 });
+    expect(component.orders()).toEqual([updated]);
+    expect(component.editingOrderId()).toBeNull();
+    expect(component.saving()).toBe(false);
+  });
+
+  it('reports an order update failure', () => {
+    component.startEditing(order);
+    orderService.updateOrder.mockReturnValue(throwError(() => 'update order failed'));
+
+    component.updateOrder();
+
+    expect(component.error()).toBe('update order failed');
+    expect(component.saving()).toBe(false);
+  });
+
+  it('deletes an order after confirmation', () => {
+    component.orders.set([order]);
+    component.requestDelete(order.id);
+    orderService.deleteOrder.mockReturnValue(of(undefined));
+
+    component.deleteOrder(order);
+
+    expect(orderService.deleteOrder).toHaveBeenCalledWith(1);
+    expect(component.orders()).toEqual([]);
+    expect(component.pendingDeleteOrderId()).toBeNull();
+    expect(component.deletingOrderId()).toBeNull();
   });
 });

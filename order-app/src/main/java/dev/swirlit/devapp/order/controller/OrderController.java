@@ -5,6 +5,7 @@ import java.util.List;
 
 import dev.swirlit.devapp.order.dto.CreateOrderRequest;
 import dev.swirlit.devapp.order.dto.OrderResponse;
+import dev.swirlit.devapp.order.dto.UpdateOrderRequest;
 import dev.swirlit.devapp.order.service.OrderService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -12,9 +13,11 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -46,5 +49,18 @@ public class OrderController {
         var created = orderService.createOrder(request);
         return ResponseEntity.created(URI.create("/api/orders/" + created.getId()))
                 .body(OrderResponse.from(created));
+    }
+
+    @PutMapping("/{id}")
+    public OrderResponse updateOrder(
+            @PathVariable @Positive Long id,
+            @Valid @RequestBody UpdateOrderRequest request) {
+        return OrderResponse.from(orderService.updateOrder(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteOrder(@PathVariable @Positive Long id) {
+        orderService.deleteOrder(id);
+        return ResponseEntity.noContent().build();
     }
 }

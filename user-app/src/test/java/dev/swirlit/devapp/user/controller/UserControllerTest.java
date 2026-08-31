@@ -5,6 +5,7 @@ import java.util.List;
 import dev.swirlit.devapp.common.exception.GlobalExceptionHandler;
 import dev.swirlit.devapp.user.domain.User;
 import dev.swirlit.devapp.user.dto.CreateUserRequest;
+import dev.swirlit.devapp.user.dto.UpdateUserRequest;
 import dev.swirlit.devapp.user.service.UserService;
 
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -111,6 +114,36 @@ class UserControllerTest {
                         .content("{not-json}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Malformed request"));
+    }
+
+    @Test
+    void updateUserValidatesAndReturnsProfile() throws Exception {
+        User updated = user(1L, "Ada Byron", "ada.byron", "ada.byron@example.test");
+        when(userService.updateUser(any(Long.class), any(UpdateUserRequest.class))).thenReturn(updated);
+
+        mockMvc.perform(put("/api/users/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Ada Byron","username":"ada.byron","email":"ada.byron@example.test"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.username").value("ada.byron"));
+    }
+
+    @Test
+    void updateUserRejectsInvalidPayload() throws Exception {
+        mockMvc.perform(put("/api/users/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"\",\"username\":\"Bad Name\",\"email\":\"bad\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"));
+    }
+
+    @Test
+    void deleteUserReturnsNoContent() throws Exception {
+        mockMvc.perform(delete("/api/users/1"))
+                .andExpect(status().isNoContent());
     }
 
     private static User user(Long id, String name, String username, String email) {

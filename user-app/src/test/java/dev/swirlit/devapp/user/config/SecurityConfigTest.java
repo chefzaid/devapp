@@ -18,6 +18,8 @@ import java.util.List;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -50,5 +52,14 @@ class SecurityConfigTest {
 
         mockMvc.perform(get("/api/users").with(jwt()))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void allowsUserUpdateAndDeleteCorsPreflight() throws Exception {
+        mockMvc.perform(options("/api/users/1")
+                        .header("Origin", "http://localhost:4200")
+                        .header("Access-Control-Request-Method", "PUT"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS"));
     }
 }

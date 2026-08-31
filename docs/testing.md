@@ -71,23 +71,23 @@ mask build all
 
 ### User service
 
-- `UserServiceTest`: bounded reads, not-found behavior, normalization, duplicate username/email rejection, persistence, and cache-oriented service behavior
+- `UserServiceTest`: bounded reads, not-found behavior, create/edit normalization, duplicate username/email rejection, deletion, persistence, and cache-oriented service behavior
 - `OrderListenerTest`: approved result, missing-user rejection, synchronous result publication, and propagation of transient failures
-- `UserControllerTest`: create/get/list responses, invalid bodies, invalid IDs/limits, malformed JSON, and private entity-field exclusion
+- `UserControllerTest`: create/get/list/edit/delete responses, invalid bodies, invalid IDs/limits, malformed JSON, and private entity-field exclusion
 - `CacheConfigTest`: Redis serialization and TTL configuration
 - `DatabaseHealthIndicatorTest`: healthy and failed repository access
 - `SecurityConfigTest`: anonymous API rejection and JWT-authenticated API access in a full application context
 
 ### Order service
 
-- `OrderServiceTest`: bounded reads, not-found behavior, create flow, feature-switched publishing, and publication failures
-- `OrderResultListenerTest`: approval/rejection, duplicate results, missing orders, invalid identity/status/state, and retryable behavior
-- `OrderControllerTest`: create/get/list responses and input/path/query error contracts
+- `OrderServiceTest`: bounded reads, not-found behavior, create/edit/delete flow, edit revalidation, feature-switched publishing, and publication failures
+- `OrderResultListenerTest`: approval/rejection, duplicate results, deleted orders, superseded edit results, invalid status/state, and retryable behavior
+- `OrderControllerTest`: create/get/list/edit/delete responses and input/path/query error contracts
 - `CacheConfigTest`: Redis serialization and TTL configuration
 - `DatabaseHealthIndicatorTest`: healthy and failed repository access
 - `SecurityConfigTest`: anonymous API rejection and JWT-authenticated API access in a full application context
 
-The current clean reactor run executes 46 tests: 4 in `devapp-common`, 21 in `order-app`, and 21 in `user-app`.
+The current clean reactor run executes 65 tests across `devapp-common`, `order-app`, and `user-app`.
 
 ## Direct Maven Workflows
 
@@ -151,7 +151,7 @@ Current Vitest specs:
 - `auth.guard.spec.ts`
 - `auth.interceptor.spec.ts`
 
-The current clean frontend run executes 40 tests across 9 files.
+The current clean frontend run executes 52 tests across 9 files.
 
 Coverage output:
 
@@ -180,8 +180,9 @@ npm run test:e2e
 3. authenticates through Keycloak
 4. loads the secured user directory
 5. loads the secured order workflow
-6. optionally creates a user and order
-7. waits for Kafka validation to approve the new order
+6. optionally creates and edits a disposable user
+7. creates and edits an order, waiting for Kafka validation after each change
+8. deletes the disposable order and user again
 
 Run against an environment:
 

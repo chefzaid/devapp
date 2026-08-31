@@ -40,23 +40,33 @@ class OrderResultListenerTest {
     }
 
     @Test
+    void consumeAppliesRejectedResult() {
+        Order existing = new Order(1L, 1001L);
+        existing.setId(1L);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        orderResultListener.consume(event(1L, OrderStatus.REJECTED, null));
+
+        assertEquals(OrderStatus.REJECTED, existing.getStatus());
+        assertEquals(null, existing.getUserName());
+    }
+
+    @Test
     void consumeIgnoresUnknownOrder() {
         when(orderRepository.findById(404L)).thenReturn(Optional.empty());
 
-        assertThrows(jakarta.persistence.EntityNotFoundException.class,
-                () -> orderResultListener.consume(event(404L, OrderStatus.REJECTED, null)));
+        orderResultListener.consume(event(404L, OrderStatus.REJECTED, null));
 
         verify(orderRepository).findById(404L);
     }
 
     @Test
-    void consumeRejectsMismatchedOrderIdentity() {
+    void consumeIgnoresSupersededOrderIdentity() {
         Order existing = new Order(2L, 1001L);
         existing.setId(1L);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(existing));
 
-        assertThrows(IllegalArgumentException.class,
-                () -> orderResultListener.consume(event(1L, OrderStatus.APPROVED, "Ada Lovelace")));
+        orderResultListener.consume(event(1L, OrderStatus.APPROVED, "Ada Lovelace"));
         assertEquals(OrderStatus.PENDING, existing.getStatus());
     }
 
@@ -71,6 +81,30 @@ class OrderResultListenerTest {
         orderResultListener.consume(event(1L, OrderStatus.APPROVED, "Ada Lovelace"));
 
         assertEquals(OrderStatus.APPROVED, existing.getStatus());
+    }
+
+    @Test
+    void consumeRejectsMissingIdentifiers() {
+        OrderEvent invalid = new OrderEvent(null, 1L, 1001L, null, OrderStatus.APPROVED, Instant.now());
+
+        assertThrows(IllegalArgumentException.class, () -> orderResultListener.consume(invalid));
+    }
+
+    @Test
+    void consumeRejectsNonFinalResultStatus() {
+        assertThrows(IllegalArgumentException.class,
+                () -> orderResultListener.consume(event(1L, OrderStatus.PENDING, null)));
+    }
+
+    @Test
+    void consumeRejectsDifferentResultForFinalOrder() {
+        Order existing = new Order(1L, 1001L);
+        existing.setId(1L);
+        existing.setStatus(OrderStatus.APPROVED);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> orderResultListener.consume(event(1L, OrderStatus.REJECTED, null)));
     }
 
     private static OrderEvent event(Long orderId, OrderStatus status, String userName) {

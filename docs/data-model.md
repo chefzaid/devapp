@@ -66,7 +66,9 @@ Table: `app_users`
 | `email` | required, unique, maximum 180 characters | email-validated, trimmed, lowercased with `Locale.ROOT` |
 | base fields | optimistic locking and audit metadata | only audit timestamps are returned |
 
-Creation fails fast when normalized username or email already exists. Database unique constraints remain the authoritative race-safe enforcement and are mapped to HTTP `409 Conflict`.
+Creation and edits fail fast when the normalized username or email belongs to another user. Database unique constraints remain the authoritative race-safe enforcement and are mapped to HTTP `409 Conflict`.
+
+Deleting a user removes only the owned `app_users` row. Existing orders retain their approved `user_name` snapshot because `order-app` owns those records and there is intentionally no cross-service cascade. Future validation requests for the deleted user are rejected.
 
 The model has no password column. Keycloak owns identities and credentials; an application `User` is demonstration directory data rather than the authentication account record.
 
@@ -87,6 +89,8 @@ Table: `orders`
 
 New orders start as `PENDING`.
 
+Editing an order can change `user_id` and `product_id`. A meaningful change clears `user_name`, resets the status to `PENDING`, and publishes a new validation request. Repeating an identical update is idempotent and preserves the current validation status. Deletion removes the order; any already-in-flight result for that deleted order is ignored.
+
 Supported enum values:
 
 - `PENDING`: saved and awaiting validation
@@ -94,7 +98,7 @@ Supported enum values:
 - `REJECTED`: referenced user does not exist
 - `COMPLETED`: reserved by the enum but no completion feature is currently implemented
 
-The result listener accepts only `APPROVED` and `REJECTED` events. It verifies order, user, and product identity; ignores an exact duplicate result; and rejects any other transition from a non-pending order.
+The result listener accepts only `APPROVED` and `REJECTED` events. It verifies order, user, and product identity; ignores an exact duplicate result; ignores a result superseded by an edit or deletion; and rejects any other transition from a non-pending order.
 
 ## Event Contract
 
@@ -139,13 +143,14 @@ Current transaction boundaries:
 
 - collection and single-resource queries are read-only transactions
 - user and order creates are write transactions
+- user and order edits/deletes are write transactions
 - applying an order result is a write transaction
 - Kafka consumption acknowledges one record at a time
 
 Important consistency boundary:
 
 1. `order-app` inserts the order in a database transaction.
-2. It sends the Kafka event from application code.
+2. After the database commit succeeds, it sends the Kafka event from application code.
 3. Those two operations are not one atomic commit.
 
 Kafka producer idempotence prevents duplicate records caused by producer retries, but it does not solve a process failure between the database commit and publish. A transactional outbox is the planned reusable solution.

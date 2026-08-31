@@ -59,6 +59,20 @@ publish_release() {
     "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases" >/dev/null
 }
 
+smoke_curl() {
+  local url="$1" deadline response
+  deadline=$(( $(date +%s) + 120 ))
+  while true; do
+    if response="$(curl --fail --silent --show-error --connect-timeout 5 --max-time 15 "$url")"; then
+      printf '%s' "$response"
+      return 0
+    fi
+    [[ "$(date +%s)" -lt "$deadline" ]] || return 1
+    printf 'Waiting for smoke-check endpoint %s.\n' "$url" >&2
+    sleep 5
+  done
+}
+
 deploy_release() {
   if [[ -f release.env ]]; then
     # shellcheck disable=SC1091
@@ -82,9 +96,9 @@ deploy_release() {
     sleep 10
   done
   [[ "$revision" == "$DEPLOY_REVISION" && "$sync" == Synced && "$health" == Healthy ]]
-  curl --fail --silent --show-error http://user-app.apps.svc.cluster.local:8080/actuator/health >/dev/null
-  curl --fail --silent --show-error http://order-app.apps.svc.cluster.local:8081/actuator/health >/dev/null
-  curl --fail --silent --show-error http://devapp-web.apps.svc.cluster.local/ >/dev/null
+  smoke_curl http://user-app.apps.svc.cluster.local:8080/actuator/health >/dev/null
+  smoke_curl http://order-app.apps.svc.cluster.local:8081/actuator/health >/dev/null
+  smoke_curl http://devapp-web.apps.svc.cluster.local/ >/dev/null
 }
 
 case "$phase" in

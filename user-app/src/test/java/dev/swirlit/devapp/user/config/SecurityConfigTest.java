@@ -2,9 +2,11 @@ package dev.swirlit.devapp.user.config;
 
 import dev.swirlit.devapp.user.service.UserService;
 
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.kafka.autoconfigure.KafkaProperties;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.cache.CacheManager;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -15,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -40,6 +43,9 @@ class SecurityConfigTest {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
+    @Autowired
+    private KafkaProperties kafkaProperties;
+
     @Test
     void rejectsAnonymousApiRequest() throws Exception {
         mockMvc.perform(get("/api/users"))
@@ -61,5 +67,10 @@ class SecurityConfigTest {
                         .header("Access-Control-Request-Method", "PUT"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS"));
+    }
+
+    @Test
+    void hasValidKafkaProducerConfiguration() {
+        assertDoesNotThrow(() -> new ProducerConfig(kafkaProperties.buildProducerProperties()));
     }
 }

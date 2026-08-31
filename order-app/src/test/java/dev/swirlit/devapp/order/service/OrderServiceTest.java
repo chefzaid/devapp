@@ -25,6 +25,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -112,6 +113,19 @@ class OrderServiceTest {
         } finally {
             TransactionSynchronizationManager.clearSynchronization();
         }
+    }
+
+    @Test
+    void createOrderDoesNotReportFailureAfterCommitWhenPublisherInitializationFails() {
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order value = invocation.getArgument(0);
+            value.setId(7L);
+            return value;
+        });
+        when(kafkaTemplate.send(eq(Constants.ORDER_TOPIC), eq("7"), any(OrderEvent.class)))
+                .thenThrow(new IllegalStateException("producer configuration failed"));
+
+        assertDoesNotThrow(() -> orderService.createOrder(new CreateOrderRequest(2L, 2001L)));
     }
 
     @Test

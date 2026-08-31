@@ -76,7 +76,7 @@ mask build all
 - `UserControllerTest`: create/get/list/edit/delete responses, invalid bodies, invalid IDs/limits, malformed JSON, and private entity-field exclusion
 - `CacheConfigTest`: Redis serialization and TTL configuration
 - `DatabaseHealthIndicatorTest`: healthy and failed repository access
-- `SecurityConfigTest`: anonymous API rejection and JWT-authenticated API access in a full application context
+- `SecurityConfigTest`: anonymous API rejection, JWT-authenticated API access, CORS preflight, and valid Kafka producer settings in a full application context
 
 ### Order service
 
@@ -85,9 +85,9 @@ mask build all
 - `OrderControllerTest`: create/get/list/edit/delete responses and input/path/query error contracts
 - `CacheConfigTest`: Redis serialization and TTL configuration
 - `DatabaseHealthIndicatorTest`: healthy and failed repository access
-- `SecurityConfigTest`: anonymous API rejection and JWT-authenticated API access in a full application context
+- `SecurityConfigTest`: anonymous API rejection, JWT-authenticated API access, CORS preflight, and valid Kafka producer settings in a full application context
 
-The current clean reactor run executes 65 tests across `devapp-common`, `order-app`, and `user-app`.
+The current clean reactor run executes 68 tests across `devapp-common`, `order-app`, and `user-app`.
 
 ## Direct Maven Workflows
 

@@ -155,6 +155,8 @@ Important consistency boundary:
 
 Kafka producer idempotence prevents duplicate records caused by producer retries, but it does not solve a process failure between the database commit and publish. A transactional outbox is the planned reusable solution.
 
+Because publication starts after commit, synchronous or asynchronous producer failures are logged without turning a successfully created database resource into a misleading HTTP failure. The order remains `PENDING` for operational diagnosis until a durable outbox is implemented.
+
 Consumer behavior is idempotent for repeated final results in current process state, but there is no durable inbox table. A durable processed-event key is planned for stronger duplicate protection.
 
 ## Caching Rules

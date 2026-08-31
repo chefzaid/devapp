@@ -104,6 +104,7 @@ Implemented Kafka behavior:
 - declarative topic creation when messaging is enabled
 - feature switch through `app.messaging.enabled` / `KAFKA_ENABLED`
 - producers configured with `acks=all`, idempotence, bounded delivery time, and retries
+- producer request and delivery timeouts validated together against Kafka client defaults
 - record-level listener acknowledgement
 - four consumer attempts by default with fixed retry delay
 - dead-letter publishing after retry exhaustion

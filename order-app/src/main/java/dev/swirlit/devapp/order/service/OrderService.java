@@ -111,14 +111,18 @@ public class OrderService {
     }
 
     private void sendPendingOrder(OrderEvent event) {
-        kafkaTemplate.send(Constants.ORDER_TOPIC, event.orderId().toString(), event)
-                .whenComplete((result, error) -> {
-                    if (error == null) {
-                        log.info("Published order event id={} partition={}",
-                                event.orderId(), result.getRecordMetadata().partition());
-                    } else {
-                        log.error("Could not publish order event id={}", event.orderId(), error);
-                    }
-                });
+        try {
+            kafkaTemplate.send(Constants.ORDER_TOPIC, event.orderId().toString(), event)
+                    .whenComplete((result, error) -> {
+                        if (error == null) {
+                            log.info("Published order event id={} partition={}",
+                                    event.orderId(), result.getRecordMetadata().partition());
+                        } else {
+                            log.error("Could not publish order event id={}", event.orderId(), error);
+                        }
+                    });
+        } catch (RuntimeException error) {
+            log.error("Could not initialize order event publication id={}", event.orderId(), error);
+        }
     }
 }

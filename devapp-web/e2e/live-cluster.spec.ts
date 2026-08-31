@@ -85,8 +85,11 @@ test('authenticates through Keycloak and loads both secured workflows', async (
     await expect(createdUserRow).toBeVisible();
 
     await createdUserRow.getByRole('button', { name: `Edit ${createdUser.name}` }).click();
+    await expect(
+      page.getByRole('heading', { level: 2, name: `Update user #${createdUser.id}` }),
+    ).toBeVisible();
     const updatedName = `Updated ${createdUser.name}`;
-    await page.getByLabel('Display name').fill(updatedName);
+    await page.locator('#editDisplayName').fill(updatedName);
     const updatedUserResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith(`/api/users/${createdUser?.id}`) &&
@@ -145,7 +148,10 @@ test('authenticates through Keycloak and loads both secured workflows', async (
       .toBe('APPROVED');
 
     await orderCard.getByRole('button', { name: `Edit order #${createdOrder.id}` }).click();
-    await page.getByLabel('Product ID').fill('1002');
+    await expect(
+      page.getByRole('heading', { level: 2, name: `Update order #${createdOrder.id}` }),
+    ).toBeVisible();
+    await page.locator('#editProductInput').fill('1002');
     const updatedOrderResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith(`/api/orders/${createdOrder.id}`) &&

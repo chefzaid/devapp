@@ -12,8 +12,8 @@ resources:
   - observability.yaml
 images:
   - name: registry.swirlit.dev/swirlit/devapp/user-app
-    newTag: 1.1.8
+    newTag: 1.0.3
   - name: registry.swirlit.dev/swirlit/devapp/order-app
-    newTag: 1.1.8
+    newTag: 1.0.3
   - name: registry.swirlit.dev/swirlit/devapp/devapp-web
-    newTag: 1.1.8
+    newTag: 1.0.3

@@ -322,14 +322,15 @@ Container hardening:
 
 Still required for a stronger supply-chain posture:
 
-- automated dependency and secret scanning
-- SBOM generation
+- published and signed SBOMs
 - image signing/verification and provenance
 - SAST/DAST
 - admission policy checks
 - base-image vulnerability policy
 
 SonarQube analysis runs automatically in full-mode `02-quality` on the default branch independently of optional manual `01-e2e`; standard mode exposes quality as an optional manual job. The scanner imports JaCoCo and LCOV coverage, submits without waiting for the quality gate, and authenticates with a masked project-scoped token. The reporting job retains dependency-audit output and is allowed to fail, so findings never block `01-release`. Compilation and package validation remain required; unit tests and the 80 percent coverage policy are visible, non-blocking jobs.
+
+`03-security` uses a digest-pinned Trivy image to scan dependency manifests, infrastructure-as-code, and the repository working tree for vulnerable packages, misconfigurations, and exposed secrets. It retains JSON and SARIF reports for seven days and exits nonzero for high/critical findings, while `allow_failure` keeps the signal optional. The job is numbered after quality but has no dependency on it: it is manually runnable in standard mode and runs automatically in full mode.
 
 ## Actuator And Observability
 

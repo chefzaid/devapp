@@ -24,7 +24,7 @@ variables:
     options:
       - "standard"
       - "full"
-    description: "Use full from Run pipeline on the default branch to execute build and release/deploy in one shot; E2E remains optional and manual."
+    description: "Use full to run non-blocking quality/security reports and release/deploy; E2E remains optional and manual."
   COVERAGE_MINIMUM: "80"
   NEW_MAJOR_VERSION:
     value: ""
@@ -217,6 +217,43 @@ variables:
       dotenv: quality-reports/quality.env
     paths:
       - quality-reports/
+  rules:
+    - if: '$PIPELINE_MODE == "full" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$PIPELINE_MODE == "full" && $CI_COMMIT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: true
+
+03-security:
+  stage: verify
+  image:
+    name: docker.io/aquasec/trivy:0.74.0@sha256:ee940acbf1f58ebadb42d01434ce4609530bf1b52536afbd1eee66cd7123c5c9
+    entrypoint: [""]
+  variables:
+    TRIVY_CACHE_DIR: .cache/trivy
+    TRIVY_DISABLE_TELEMETRY: "true"
+    TRIVY_NO_PROGRESS: "true"
+    TRIVY_TIMEOUT: 10m
+  cache:
+    - key: devapp-trivy-v1
+      paths:
+        - .cache/trivy/
+      policy: pull-push
+  script:
+    - mkdir -p security-reports
+    - trivy fs --offline-scan --include-dev-deps --scanners vuln,misconfig,secret --skip-dirs .git,.cache,node_modules,target,dist,coverage --format json --output security-reports/trivy.json .
+    - trivy convert --scanners vuln,misconfig,secret --format sarif --output security-reports/trivy.sarif security-reports/trivy.json
+    - trivy convert --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --format table --exit-code 1 security-reports/trivy.json
+  allow_failure: true
+  artifacts:
+    name: "devapp-security-$CI_COMMIT_SHORT_SHA"
+    when: always
+    expire_in: 7 days
+    paths:
+      - security-reports/
   rules:
     - if: '$PIPELINE_MODE == "full" && $CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$PIPELINE_MODE == "full" && $CI_COMMIT_BRANCH'

@@ -80,7 +80,7 @@ registry.swirlit.dev/swirlit/devapp/order-app:<semantic-version>
 registry.swirlit.dev/swirlit/devapp/devapp-web:<semantic-version>
 ```
 
-`01-build` compiles Maven and Angular outputs, optional `02-test` publishes unit and coverage results, and required `03-package` performs daemonless image validation. Combined coverage below 80 percent fails only the optional test job. Standard mode leaves `02-quality` manual; full mode runs that non-blocking quality branch automatically. Optional manual `01-e2e` remains independent. `01-release` publishes versioned artifacts and images; `02-deploy` runs only after release succeeds.
+`01-build` compiles Maven and Angular outputs, optional `02-test` publishes unit and coverage results, and required `03-package` performs daemonless image validation. Combined coverage below 80 percent fails only the optional test job. Standard mode leaves `02-quality` and `03-security` manual; full mode runs both non-blocking report branches automatically. Trivy security is ordered after quality but has no dependency on it. Optional manual `01-e2e` remains independent. `01-release` publishes versioned artifacts and images; `02-deploy` runs only after release succeeds.
 
 ## One-Time GitLab Bootstrap
 
@@ -124,11 +124,11 @@ The database Secret is projected by `infra/k8s/external-secrets.yaml` from the c
 The dashboard exposes explicit jobs with these dependencies:
 
 1. `01-build → 02-test (optional) → 03-package` is the automatic build path.
-2. `01-e2e` is optional/manual; `02-quality` consumes test reports independently, manually in standard mode and automatically in full mode. Neither gates release.
+2. `01-e2e` is optional/manual; `02-quality` consumes test reports and `03-security` scans the repository independently, manually in standard mode and automatically in full mode. None gates release.
 3. `01-release → 02-deploy` requires the successful build path and a successful release.
 4. `set-major-version` is an independent manual job on `main`. Supply `NEW_MAJOR_VERSION` when starting the pipeline; the job prepares `<major>.0.0` and synchronizes Maven and npm manifests.
 
-Select `PIPELINE_MODE=full` from **Run pipeline** on `main` to run non-blocking quality reporting and `01-build → 01-release → 02-deploy` automatically. E2E remains an optional manual branch and cannot suppress delivery.
+Select `PIPELINE_MODE=full` from **Run pipeline** on `main` to run non-blocking quality/security reporting and `01-build → 01-release → 02-deploy` automatically. E2E remains an optional manual branch and cannot suppress delivery.
 
 Release and major-version changes are serialized through the `devapp-production` resource group. If `main` has moved, a stale action fails instead of overwriting newer desired state. Argo CD, rather than CI, owns workload reconciliation, pruning, and self-healing.
 
@@ -157,7 +157,7 @@ kubectl rollout status deployment/order-app -n apps
 kubectl rollout status deployment/devapp-web -n apps
 ```
 
-A release is complete only when the required build and publication jobs passed, GitLab recorded the release and production deployment, and Argo CD reports the expected revision as `Synced` and `Healthy` after the smoke checks. Optional test, E2E, and quality reports do not lock release.
+A release is complete only when the required build and publication jobs passed, GitLab recorded the release and production deployment, and Argo CD reports the expected revision as `Synced` and `Healthy` after the smoke checks. Optional test, E2E, quality, and security reports do not lock release.
 
 Rollback by reverting or changing the image-tag commit on `main`. Do not patch live Deployments: Argo CD self-healing will restore the Git state.
 

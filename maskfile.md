@@ -15,7 +15,7 @@ echo "  mask run [all|user|order|front] - run apps (default: all)"
 
 ```bash
 target="${1:-all}"
-. ./mask-common.sh
+. ./infra/scripts/mask-helpers.sh
 use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn -q -DskipTests install
@@ -31,7 +31,7 @@ fi
 
 ```bash
 target="${1:-all}"
-. ./mask-common.sh
+. ./infra/scripts/mask-helpers.sh
 use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn test
@@ -46,7 +46,7 @@ fi
 
 ```bash
 target="${1:-all}"
-. ./mask-common.sh
+. ./infra/scripts/mask-helpers.sh
 use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn clean verify
@@ -61,7 +61,7 @@ fi
 
 ```bash
 target="${1:-all}"
-. ./mask-common.sh
+. ./infra/scripts/mask-helpers.sh
 use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn clean package -DskipTests
@@ -76,7 +76,7 @@ fi
 
 ```bash
 target="${1:-all}"
-. ./mask-common.sh
+. ./infra/scripts/mask-helpers.sh
 use_java_25_if_available
 if [ "$target" = "user" ]; then
   mvn spring-boot:run -pl user-app

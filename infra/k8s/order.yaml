@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-app
+  namespace: apps
+  labels:
+    app: order-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-app
+  template:
+    metadata:
+      labels:
+        app: order-app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8081"
+    spec:
+      terminationGracePeriodSeconds: 30
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: devapp-registry-auth
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: order-app
+        image: registry.swirlit.dev/swirlit/devapp/order-app:v5
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        ports:
+        - containerPort: 8081
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+        - name: DB_HOST
+          value: "postgres.swirlit.internal"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "devappdb"
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: devapp-db-credentials
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: devapp-db-credentials
+              key: DB_PASSWORD
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka.swirlit.internal:9092"
+        - name: KAFKA_CONSUMER_GROUP
+          value: "order-service-group"
+        - name: KAFKA_ENABLED
+          value: "true"
+        - name: REDIS_HOST
+          value: "redis.swirlit.internal"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: SPRING_DATA_REDIS_HOST
+          value: "redis.swirlit.internal"
+        - name: SPRING_DATA_REDIS_PORT
+          value: "6379"
+        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+          value: "https://keycloak.swirlit.dev/auth/realms/swirlit"
+        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+          value: "http://keycloak.swirlit.internal:8080/auth/realms/swirlit/protocol/openid-connect/certs"
+        startupProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8081
+          periodSeconds: 5
+          failureThreshold: 24
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8081
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8081
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 384Mi
+          limits:
+            cpu: "1"
+            memory: 768Mi
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-app
+  namespace: apps
+  labels:
+    app: order-app
+spec:
+  selector:
+    app: order-app
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8081
+      targetPort: 8081
+  type: ClusterIP

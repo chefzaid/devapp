@@ -24,19 +24,19 @@ public class SecurityConfig {
             @Value("${app.security.enabled:false}") boolean securityEnabled) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .headers(headers -> headers.frameOptions(FrameOptionsConfig::sameOrigin));
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         if (securityEnabled) {
             http.authorizeHttpRequests(requests -> requests
                             .requestMatchers(
                                     "/actuator/health/**", "/actuator/info", "/actuator/prometheus",
-                                    "/api/orders/openapi/**", "/h2-console/**")
+                                    "/api/orders/openapi/**")
                             .permitAll()
                             .anyRequest().authenticated())
                     .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
         } else {
-            http.authorizeHttpRequests(requests -> requests.anyRequest().permitAll());
+            http.authorizeHttpRequests(requests -> requests.anyRequest().permitAll())
+                    .headers(headers -> headers.frameOptions(FrameOptionsConfig::sameOrigin));
         }
         return http.build();
     }
@@ -48,6 +48,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setExposedHeaders(List.of(
+                "Location", "X-Request-Id", "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset", "Retry-After"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

@@ -1,7 +1,9 @@
 package dev.swirlit.devapp.user.service;
 
 import java.util.List;
+import java.util.Locale;
 
+import dev.swirlit.devapp.common.exception.ResourceConflictException;
 import dev.swirlit.devapp.user.domain.User;
 import dev.swirlit.devapp.user.dto.CreateUserRequest;
 import dev.swirlit.devapp.user.repository.UserRepository;
@@ -9,6 +11,7 @@ import jakarta.persistence.EntityNotFoundException;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +26,8 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<User> getAllUsers() {
-        return userRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
+    public List<User> getAllUsers(int limit) {
+        return userRepository.findAll(PageRequest.of(0, limit, Sort.by(Sort.Direction.ASC, "name"))).getContent();
     }
 
     @Transactional(readOnly = true)
@@ -37,7 +40,16 @@ public class UserService {
     @Transactional
     @CacheEvict(cacheNames = "users", allEntries = true)
     public User createUser(CreateUserRequest request) {
-        User user = new User(request.name().trim(), request.username().trim(), request.email().trim().toLowerCase());
+        String username = request.username().trim().toLowerCase(Locale.ROOT);
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByUsername(username)) {
+            throw new ResourceConflictException("The username is already in use");
+        }
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ResourceConflictException("The email address is already in use");
+        }
+
+        User user = new User(request.name().trim(), username, email);
         return userRepository.save(user);
     }
 }

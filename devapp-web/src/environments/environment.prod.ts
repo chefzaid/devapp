@@ -3,6 +3,6 @@ export const environment = {
   authEnabled: true,
   apiUrl: '/api',
   orderApiUrl: '/api',
-  keycloakUrl: '/auth',
-  keycloakRealm: 'devapp'
+  keycloakUrl: 'https://keycloak.swirlit.dev/auth',
+  keycloakRealm: 'swirlit'
 };

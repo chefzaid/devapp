@@ -1,0 +1,59 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-application-ingress
+  namespace: apps
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - devapp-web
+          - user-app
+          - order-app
+  policyTypes:
+    - Ingress
+  ingress:
+    # Keep internal application communication available.
+    - from:
+        - podSelector: {}
+    # Public requests arrive only through the cluster ingress controller.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: infra
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081
+    # Prometheus in infra scrapes the annotated actuator endpoints.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: infra
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081
+    # GitLab CI jobs perform post-rollout smoke checks from the runner namespace.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gitlab-runners
+          podSelector:
+            matchLabels:
+              app: gitlab-ci-job
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8081

@@ -10,10 +10,14 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.Version;
 
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public class BaseEntity {
+
+    @Version
+    private long version;
 
     @CreatedBy
     private String createdBy;
@@ -29,6 +33,10 @@ public class BaseEntity {
 
     public String getCreatedBy() {
         return createdBy;
+    }
+
+    public long getVersion() {
+        return version;
     }
 
     public void setCreatedBy(String createdBy) {

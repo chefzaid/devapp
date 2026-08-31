@@ -1,0 +1,314 @@
+workflow:
+  name: "$CI_PROJECT_NAME: $PIPELINE_MODE pipeline"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
+stages:
+  - build
+  - verify
+  - release
+  - version
+
+default:
+  tags:
+    - bm-cluster
+  interruptible: true
+
+variables:
+  GIT_DEPTH: "0"
+  PIPELINE_MODE:
+    value: "standard"
+    options:
+      - "standard"
+      - "full"
+    description: "Use full from Run pipeline on the default branch to execute build and release/deploy in one shot; E2E remains optional and manual."
+  COVERAGE_MINIMUM: "80"
+  NEW_MAJOR_VERSION:
+    value: ""
+    description: "Major version number for the manual set-major-version job (for example: 2)."
+  REGISTRY_PUSH_HOST: "gitlab-registry.swirlit.internal:5050"
+  PACKAGE_REGISTRY_API_V4_URL: "http://gitlab.swirlit.internal/api/v4"
+  SONAR_HOST_URL: "http://sonarqube.infra.svc.cluster.local:9000"
+  SONAR_USER_HOME: "$CI_PROJECT_DIR/.cache/sonar"
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.cache/maven"
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
+  KANIKO_IMAGE: "gcr.io/kaniko-project/executor@sha256:c3109d5926a997b100c4343944e06c6b30a6804b2f9abe0994d3de6ef92b028e"
+  KANIKO_EXECUTOR: "$CI_PROJECT_DIR/.cache/kaniko/executor"
+
+01-build:
+  stage: build
+  image: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
+  cache:
+    - key: devapp-maven-v2
+      paths:
+        - .cache/maven/
+      policy: pull-push
+    - key:
+        files:
+          - devapp-web/package-lock.json
+        prefix: devapp-npm-v2
+      paths:
+        - .cache/npm/
+      policy: pull-push
+  before_script:
+    - apk add --no-cache bash git jq kubectl nodejs npm
+    - export APP_VERSION="$(infra/scripts/current-version.sh)"
+  script:
+    - infra/scripts/ci-verify.sh build
+  artifacts:
+    name: "devapp-compiled-$CI_COMMIT_SHORT_SHA"
+    expire_in: 7 days
+    paths:
+      - user-app/target/user-app.jar
+      - order-app/target/order-app.jar
+      - devapp-web/dist/
+      - devapp-web/devapp-web-*.tar.gz
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+
+02-test:
+  stage: build
+  needs:
+    - job: 01-build
+      artifacts: false
+  image: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
+  cache:
+    - key: devapp-maven-v2
+      paths:
+        - .cache/maven/
+      policy: pull-push
+    - key:
+        files:
+          - devapp-web/package-lock.json
+        prefix: devapp-npm-v2
+      paths:
+        - .cache/npm/
+      policy: pull-push
+  before_script:
+    - apk add --no-cache bash chromium git nodejs npm python3
+    - export APP_VERSION="$(infra/scripts/current-version.sh)"
+  script:
+    - infra/scripts/ci-verify.sh test
+  coverage: '/TOTAL_COVERAGE=([0-9]+(?:\.[0-9]+)?)%/'
+  allow_failure: true
+  artifacts:
+    name: "devapp-tests-$CI_COMMIT_SHORT_SHA"
+    when: always
+    expire_in: 7 days
+    reports:
+      junit:
+        - '**/target/surefire-reports/*.xml'
+        - devapp-web/test-results.xml
+        - coverage-policy-junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: devapp-web/coverage/devapp-web/cobertura-coverage.xml
+      dotenv: coverage-policy.env
+    paths:
+      - devapp-web/coverage/
+      - devapp-web/test-results.xml
+      - '**/target/site/jacoco/'
+      - '**/target/surefire-reports/'
+      - '**/target/classes/'
+      - coverage-policy-junit.xml
+      - coverage-policy.env
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+
+03-package:
+  stage: build
+  needs:
+    - job: 01-build
+      artifacts: true
+    - job: 02-test
+      artifacts: false
+  image:
+    name: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
+    entrypoint: [""]
+  cache:
+    - key: devapp-kaniko-executor-v1
+      paths:
+        - .cache/kaniko/
+      policy: pull-push
+  before_script:
+    - apk add --no-cache bash crane git
+    - export APP_VERSION="$(infra/scripts/current-version.sh)"
+    - mkdir -p .cache/kaniko /kaniko/ssl/certs
+    - test -s "$KANIKO_EXECUTOR" || crane export "$KANIKO_IMAGE" | tar -xOf - kaniko/executor > "$KANIKO_EXECUTOR"
+    - chmod 0755 "$KANIKO_EXECUTOR"
+    - cp /etc/ssl/certs/ca-certificates.crt /kaniko/ssl/certs/ca-certificates.crt
+  script:
+    - infra/scripts/ci-container-build.sh verify
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+
+01-e2e:
+  stage: verify
+  needs:
+    - job: 01-build
+      artifacts: true
+    - job: 03-package
+      artifacts: false
+  image:
+    name: mcr.microsoft.com/playwright@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
+    entrypoint: [""]
+  cache:
+    - key:
+        files:
+          - devapp-web/package-lock.json
+        prefix: devapp-playwright-npm-v2
+      paths:
+        - .cache/npm/
+      policy: pull-push
+  before_script:
+    - cd devapp-web
+    - npm ci
+  script:
+    - npm run test:e2e
+  artifacts:
+    name: "devapp-e2e-$CI_COMMIT_SHORT_SHA"
+    expose_as: "Playwright E2E report"
+    when: always
+    expire_in: 7 days
+    reports:
+      junit: devapp-web/test-results/playwright-junit.xml
+    paths:
+      - devapp-web/test-results/
+      - devapp-web/playwright-report/
+  manual_confirmation: "Run the optional Playwright E2E tests for $CI_COMMIT_SHORT_SHA?"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: true
+
+02-quality:
+  stage: verify
+  needs:
+    - job: 02-test
+      artifacts: true
+  image:
+    name: mcr.microsoft.com/playwright@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
+    entrypoint: [""]
+  cache:
+    - key: devapp-sonar-v1
+      paths:
+        - .cache/sonar/cache/
+      policy: pull-push
+  before_script:
+    - export APP_VERSION="$("$CI_PROJECT_DIR/infra/scripts/current-version.sh")"
+    - npm install --global @sonar/scan@5.0.0
+  script:
+    - bash infra/scripts/ci-quality.sh
+  allow_failure: true
+  artifacts:
+    name: "devapp-quality-$CI_COMMIT_SHORT_SHA"
+    when: always
+    expire_in: 7 days
+    reports:
+      dotenv: quality-reports/quality.env
+    paths:
+      - quality-reports/
+  rules:
+    - if: '$PIPELINE_MODE == "full" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$PIPELINE_MODE == "full" && $CI_COMMIT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true
+    - if: '$CI_COMMIT_BRANCH'
+      when: manual
+      allow_failure: true
+
+01-release:
+  stage: release
+  needs:
+    - job: 01-build
+      artifacts: true
+    - job: 03-package
+      artifacts: false
+  image:
+    name: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
+    entrypoint: [""]
+  cache:
+    - key: devapp-kaniko-executor-v1
+      paths:
+        - .cache/kaniko/
+      policy: pull-push
+  resource_group: devapp-production
+  interruptible: false
+  before_script:
+    - apk add --no-cache bash crane curl git jq
+    - export APP_VERSION="$(infra/scripts/current-version.sh)"
+    - mkdir -p .cache/kaniko /kaniko/ssl/certs
+    - test -s "$KANIKO_EXECUTOR" || crane export "$KANIKO_IMAGE" | tar -xOf - kaniko/executor > "$KANIKO_EXECUTOR"
+    - chmod 0755 "$KANIKO_EXECUTOR"
+    - cp /etc/ssl/certs/ca-certificates.crt /kaniko/ssl/certs/ca-certificates.crt
+  script:
+    - infra/scripts/ci-release.sh publish
+  artifacts:
+    name: "devapp-release-$CI_COMMIT_SHORT_SHA"
+    expose_as: "Release packages and checksums"
+    when: always
+    expire_in: 7 days
+    reports:
+      dotenv: release.env
+    paths:
+      - package-output/
+      - release.env
+  manual_confirmation: "Release the successful DevApp build for $CI_COMMIT_SHORT_SHA?"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $PIPELINE_MODE == "full"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: false
+
+02-deploy:
+  stage: release
+  needs:
+    - job: 01-release
+      artifacts: true
+  image:
+    name: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
+    entrypoint: [""]
+  resource_group: devapp-production
+  interruptible: false
+  before_script:
+    - apk add --no-cache bash curl jq
+    - curl --fail --silent --show-error --location --output /usr/local/bin/kubectl "https://dl.k8s.io/release/v1.35.4/bin/linux/amd64/kubectl"
+    - echo "b529430df69a688fd61b64ad2299edb5fd71cb58be2a4779dba624c7d3510efd  /usr/local/bin/kubectl" | sha256sum -c
+    - chmod 0755 /usr/local/bin/kubectl
+  script:
+    - infra/scripts/ci-release.sh deploy
+  environment:
+    name: production
+    url: https://devapp.swirlit.dev
+    deployment_tier: production
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+set-major-version:
+  stage: version
+  image:
+    name: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
+    entrypoint: [""]
+  needs: []
+  dependencies: []
+  resource_group: devapp-production
+  interruptible: false
+  before_script:
+    - apk add --no-cache bash git jq
+  script:
+    - infra/scripts/ci-set-major-version.sh
+  manual_confirmation: "Set the next DevApp major version from NEW_MAJOR_VERSION?"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: false

@@ -44,7 +44,7 @@ class OrderControllerTest {
 
     @Test
     void getAllOrdersReturnsOrders() throws Exception {
-        when(orderService.getAllOrders()).thenReturn(List.of(
+        when(orderService.getAllOrders(100)).thenReturn(List.of(
                 order(2L, 2L, "Grace Hopper", 1002L, OrderStatus.COMPLETED),
                 order(1L, 1L, "Ada Lovelace", 1001L, OrderStatus.APPROVED)));
 
@@ -52,7 +52,9 @@ class OrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].userName").value("Grace Hopper"))
-                .andExpect(jsonPath("$[1].status").value("APPROVED"));
+                .andExpect(jsonPath("$[1].status").value("APPROVED"))
+                .andExpect(jsonPath("$[0].createdBy").doesNotExist())
+                .andExpect(jsonPath("$[0].version").doesNotExist());
     }
 
     @Test
@@ -84,6 +86,20 @@ class OrderControllerTest {
         mockMvc.perform(post("/api/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":0,\"productId\":-1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"));
+    }
+
+    @Test
+    void rejectsInvalidListLimit() throws Exception {
+        mockMvc.perform(get("/api/orders").param("limit", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.violations.limit").exists());
+    }
+
+    @Test
+    void rejectsNonPositiveId() throws Exception {
+        mockMvc.perform(get("/api/orders/-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation failed"));
     }

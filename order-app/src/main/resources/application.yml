@@ -1,5 +1,6 @@
 server:
   port: 8081
+  forward-headers-strategy: framework
   shutdown: graceful
   compression:
     enabled: true
@@ -35,6 +36,8 @@ spring:
   h2:
     console:
       enabled: true
+  flyway:
+    enabled: false
   cache:
     type: simple
     cache-names: orders
@@ -49,16 +52,30 @@ spring:
         spring.json.trusted.packages: dev.swirlit.devapp.common.event
         spring.json.value.default.type: dev.swirlit.devapp.common.event.OrderEvent
     producer:
+      acks: all
+      retries: 10
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        enable.idempotence: true
+        delivery.timeout.ms: 30000
+        max.in.flight.requests.per.connection: 5
     listener:
       auto-startup: ${KAFKA_ENABLED:false}
+      ack-mode: record
 
 app:
   security:
     enabled: false
   messaging:
     enabled: ${KAFKA_ENABLED:false}
+    retry:
+      interval: 1s
+      max-attempts: 4
+  rate-limit:
+    enabled: false
+    requests-per-minute: ${RATE_LIMIT_REQUESTS_PER_MINUTE:120}
+    max-tracked-clients: 10000
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
 
@@ -112,10 +129,19 @@ spring:
       minimum-idle: 2
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
   sql:
     init:
       mode: never
+  h2:
+    console:
+      enabled: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    table: flyway_schema_history_orders
+    locations: classpath:db/migration
   cache:
     type: redis
   data:
@@ -128,13 +154,15 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${JWT_ISSUER_URI:https://devapp.swirlit.dev/auth/realms/devapp}
-          jwk-set-uri: ${JWT_JWK_SET_URI:https://devapp.swirlit.dev/auth/realms/devapp/protocol/openid-connect/certs}
+          issuer-uri: ${JWT_ISSUER_URI:https://keycloak.swirlit.dev/auth/realms/swirlit}
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://keycloak.swirlit.dev/auth/realms/swirlit/protocol/openid-connect/certs}
 
 app:
   security:
     enabled: true
   messaging:
+    enabled: true
+  rate-limit:
     enabled: true
 
 management:

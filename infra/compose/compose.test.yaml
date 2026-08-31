@@ -1,0 +1,38 @@
+services:
+  keycloak:
+    environment:
+      KC_HOSTNAME: http://web:8080/auth
+
+  user-app:
+    environment:
+      JWT_ISSUER_URI: http://web:8080/auth/realms/devapp
+      CORS_ALLOWED_ORIGINS: http://web:8080
+
+  order-app:
+    environment:
+      JWT_ISSUER_URI: http://web:8080/auth/realms/devapp
+      CORS_ALLOWED_ORIGINS: http://web:8080
+
+  test-runner:
+    image: mcr.microsoft.com/playwright:v1.62.1-noble
+    init: true
+    ipc: host
+    working_dir: /workspace
+    volumes:
+      - ../../devapp-web:/workspace
+      - test-node-modules:/workspace/node_modules
+      - test-results:/workspace/test-results
+      - playwright-report:/workspace/playwright-report
+    environment:
+      WEB_URL: http://web:8080
+      CI: "true"
+      E2E_EXERCISE_WRITES: "true"
+    command: ["sh", "-c", "npm ci && npm run test:integration"]
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  test-node-modules:
+  test-results:
+  playwright-report:

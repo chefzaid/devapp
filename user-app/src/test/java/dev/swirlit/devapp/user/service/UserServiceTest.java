@@ -14,7 +14,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
+import dev.swirlit.devapp.common.exception.ResourceConflictException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -36,9 +39,9 @@ class UserServiceTest {
     @Test
     void getAllUsersSortsByName() {
         User user = new User("Ada", "ada", "ada@example.test");
-        when(userRepository.findAll(any(Sort.class))).thenReturn(List.of(user));
+        when(userRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(user)));
 
-        assertEquals(List.of(user), userService.getAllUsers());
+        assertEquals(List.of(user), userService.getAllUsers(25));
     }
 
     @Test
@@ -58,6 +61,7 @@ class UserServiceTest {
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         org.mockito.Mockito.verify(userRepository).save(captor.capture());
         assertEquals("Ada", captor.getValue().getName());
+        assertEquals("ada", captor.getValue().getUsername());
         assertEquals("ada@example.test", captor.getValue().getEmail());
     }
 
@@ -66,5 +70,21 @@ class UserServiceTest {
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> userService.getUser(99L));
+    }
+
+    @Test
+    void createUserFailsFastForDuplicateUsername() {
+        when(userRepository.existsByUsername("ada")).thenReturn(true);
+
+        assertThrows(ResourceConflictException.class,
+                () -> userService.createUser(new CreateUserRequest("Ada", "ada", "new@example.test")));
+    }
+
+    @Test
+    void createUserFailsFastForDuplicateEmail() {
+        when(userRepository.existsByEmailIgnoreCase("ada@example.test")).thenReturn(true);
+
+        assertThrows(ResourceConflictException.class,
+                () -> userService.createUser(new CreateUserRequest("Ada", "new-user", "ADA@EXAMPLE.TEST")));
     }
 }

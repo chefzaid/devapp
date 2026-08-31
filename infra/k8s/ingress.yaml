@@ -1,0 +1,73 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devapp-ingress
+  namespace: apps
+  annotations:
+    gethomepage.dev/description: Public development application
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Applications
+    gethomepage.dev/href: https://devapp.swirlit.dev
+    gethomepage.dev/icon: mdi-application-braces-outline
+    gethomepage.dev/name: DevApp
+    gethomepage.dev/pod-selector: app=devapp-web
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - devapp.swirlit.dev
+    secretName: swirlit-dev-tls
+  rules:
+  - host: devapp.swirlit.dev
+    http:
+      paths:
+      # User API
+      - path: /api/users
+        pathType: Prefix
+        backend:
+          service:
+            name: user-app
+            port:
+              number: 8080
+      # Order API
+      - path: /api/orders
+        pathType: Prefix
+        backend:
+          service:
+            name: order-app
+            port:
+              number: 8081
+      # Aggregated OpenAPI UI and its static assets
+      - path: /api/docs
+        pathType: Prefix
+        backend:
+          service:
+            name: user-app
+            port:
+              number: 8080
+      - path: /swagger-ui
+        pathType: Prefix
+        backend:
+          service:
+            name: user-app
+            port:
+              number: 8080
+      - path: /api/swagger-ui
+        pathType: Prefix
+        backend:
+          service:
+            name: user-app
+            port:
+              number: 8080
+      # Frontend (catch-all)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: devapp-web
+            port:
+              number: 80

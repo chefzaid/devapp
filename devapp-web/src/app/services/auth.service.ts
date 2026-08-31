@@ -5,6 +5,9 @@ import { BehaviorSubject, ReplaySubject } from 'rxjs';
 
 export type AuthStatus = 'loading' | 'ready' | 'error';
 
+export const resolveKeycloakBaseUrl = (keycloakUrl: string, origin: string): string =>
+  new URL(keycloakUrl, origin).toString().replace(/\/$/, '');
+
 @Injectable({
   providedIn: 'root'
 })
@@ -28,8 +31,9 @@ export class AuthService {
       return;
     }
 
+    const keycloakBaseUrl = resolveKeycloakBaseUrl(environment.keycloakUrl, window.location.origin);
     const authConfig: AuthConfig = {
-      issuer: window.location.origin + environment.keycloakUrl + `/realms/${environment.keycloakRealm}`,
+      issuer: `${keycloakBaseUrl}/realms/${environment.keycloakRealm}`,
       redirectUri: window.location.origin + '/',
       clientId: 'devapp-web',
       responseType: 'code',
@@ -43,8 +47,12 @@ export class AuthService {
       this.isLoggedInSubject.next(this.oauthService.hasValidAccessToken());
     });
     this.oauthService.loadDiscoveryDocumentAndTryLogin().then(() => {
-      this.isLoggedInSubject.next(this.oauthService.hasValidAccessToken());
+      const loggedIn = this.oauthService.hasValidAccessToken();
+      this.isLoggedInSubject.next(loggedIn);
       this.authStatusSubject.next('ready');
+      if (!loggedIn && environment.production) {
+        this.oauthService.initCodeFlow();
+      }
     }).catch((error: unknown) => {
       console.warn('OpenID Connect discovery failed', error);
       this.isLoggedInSubject.next(false);

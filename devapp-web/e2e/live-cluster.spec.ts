@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-const username = process.env['OIDC_USERNAME'] ?? 'user';
-const password = process.env['OIDC_PASSWORD'] ?? 'password';
+const targetsBmCluster = process.env['WEB_URL']?.includes('devapp.swirlit.dev') ?? false;
+const realm = process.env['OIDC_REALM'] ?? (targetsBmCluster ? 'swirlit' : 'devapp');
+const username = process.env['OIDC_USERNAME'] ?? (targetsBmCluster ? 'zaid' : 'user');
+const password = process.env['OIDC_PASSWORD'] ?? (targetsBmCluster ? '' : 'password');
 const exerciseWrites = process.env['E2E_EXERCISE_WRITES'] === 'true';
 
 interface CreatedOrder {
@@ -12,25 +14,39 @@ test('authenticates through Keycloak and loads both secured workflows', async (
   { page },
   testInfo,
 ) => {
+  if (!password) {
+    throw new Error('OIDC_PASSWORD is required for BM-cluster authentication');
+  }
   const discoveryResponse = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname.endsWith(
-        '/realms/devapp/.well-known/openid-configuration',
+        `/realms/${realm}/.well-known/openid-configuration`,
       ),
     { timeout: 15_000 },
   );
 
   await page.goto('/login');
-  await expect(page.getByText('One small app.')).toBeVisible();
   expect((await discoveryResponse).status()).toBe(200);
 
+  // Production starts OIDC immediately. Local environments retain the
+  // explicit button so the same test covers both supported entry paths.
   const loginButton = page.getByRole('button', { name: 'Login with SSO' });
-  await expect(loginButton).toBeEnabled();
-  await Promise.all([
-    page.waitForURL((url) => url.pathname.includes('/auth/realms/devapp/')),
-    loginButton.click(),
+  const redirectedAutomatically = await Promise.race([
+    page
+      .waitForURL((url) => url.pathname.includes(`/auth/realms/${realm}/`))
+      .then(() => true),
+    loginButton.waitFor({ state: 'visible' }).then(() => false),
   ]);
+  if (!redirectedAutomatically) {
+    await expect(page.getByText('One small app.')).toBeVisible();
+    await expect(loginButton).toBeEnabled();
+    await Promise.all([
+      page.waitForURL((url) => url.pathname.includes(`/auth/realms/${realm}/`)),
+      loginButton.click(),
+    ]);
+  }
 
+  await expect(page.locator('#username')).toBeVisible();
   await page.locator('#username').fill(username);
   await page.locator('#password').fill(password);
   await Promise.all([

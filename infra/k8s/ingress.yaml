@@ -10,6 +10,7 @@ metadata:
     gethomepage.dev/href: https://devapp.swirlit.dev
     gethomepage.dev/icon: mdi-application-braces-outline
     gethomepage.dev/name: DevApp
+    gethomepage.dev/weight: "20"
     gethomepage.dev/pod-selector: app=devapp-web
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"

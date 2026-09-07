@@ -66,7 +66,7 @@ The repository currently targets:
 
 - Java 25.0.4
 - Maven 3.9.16
-- Spring Boot 4.1.0
+- Spring Boot 4.1.1
 - Node.js 24 LTS
 - npm 12.0.2
 - Angular 22.1

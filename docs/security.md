@@ -388,3 +388,14 @@ Before merging a sensitive change:
 - [Operations](./operations.md)
 - [Testing](./testing.md)
 - [Architecture and ADRs](./architecture.md)
+
+### Runtime dependency maintenance
+
+Spring Boot 4.1.1 supplies patched Jackson, Netty, Log4j and PostgreSQL JDBC
+dependencies. The parent POM additionally pins Tomcat 11.0.25 for
+CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525, and Kafka's transitive
+`at.yawk.lz4:lz4-java` to 1.11.1 for CVE-2026-59949. Remove these overrides
+when the managed dependency versions include the fixes. Runtime Dockerfiles
+apply Alpine security updates before dropping privileges. Rebuild and scan
+the resulting images when updating these dependencies; a repository scan alone
+does not check the operating-system packages in a deployed image.

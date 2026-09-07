@@ -12,7 +12,8 @@ COPY order-app/src order-app/src
 RUN mvn -B -pl order-app -am package -DskipTests
 
 FROM docker.io/library/amazoncorretto:25-alpine@sha256:dc20d7066848919d19d2a7b5f1f4e2a48f8e32fc7328a5ae683d579bafa2f818
-RUN addgroup -S -g 10001 app && adduser -S -D -H -u 10001 -G app app
+RUN apk upgrade --no-cache \
+    && addgroup -S -g 10001 app && adduser -S -D -H -u 10001 -G app app
 WORKDIR /app
 COPY --from=build --chown=10001:10001 /workspace/order-app/target/order-app.jar ./order-app.jar
 USER 10001:10001

@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -21,7 +21,9 @@
     <properties>
         <java.version>25</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
-        <spring-boot.version>4.1.0</spring-boot.version>
+        <spring-boot.version>4.1.1</spring-boot.version>
+        <!-- Security fixes pending inclusion in the Spring Boot dependency BOM. -->
+        <tomcat.version>11.0.25</tomcat.version>
         <springdoc.version>3.1.0</springdoc.version>
         <logstash-logback-encoder.version>9.0</logstash-logback-encoder.version>
         <mockito.version>5.23.0</mockito.version>
@@ -35,6 +37,17 @@
         <module>order-app</module>
         <module>user-app</module>
     </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Kafka 4.2.1 still brings the vulnerable LZ4 1.10.1 runtime. -->
+            <dependency>
+                <groupId>at.yawk.lz4</groupId>
+                <artifactId>lz4-java</artifactId>
+                <version>1.11.1</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>

@@ -1,6 +1,6 @@
 {
   "name": "devapp-web",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "DevApp Web",
   "scripts": {
     "ng": "ng",

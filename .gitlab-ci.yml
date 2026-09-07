@@ -1,6 +1,7 @@
 workflow:
   name: "$CI_PROJECT_NAME: $PIPELINE_MODE pipeline"
   rules:
+    - if: '$SONAR_SCAN_ONLY == "true" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
       when: never
@@ -19,6 +20,7 @@ default:
 
 variables:
   GIT_DEPTH: "0"
+  SONAR_SCAN_ONLY: "false"
   PIPELINE_MODE:
     value: "standard"
     options:
@@ -139,6 +141,8 @@ variables:
   script:
     - infra/scripts/ci-container-build.sh verify
   rules:
+    - if: '$SONAR_SCAN_ONLY == "true"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH'
 
@@ -174,6 +178,8 @@ variables:
       - devapp-web/playwright-report/
   manual_confirmation: "Run the optional Playwright E2E tests for $CI_COMMIT_SHORT_SHA?"
   rules:
+    - if: '$SONAR_SCAN_ONLY == "true"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       when: manual
       allow_failure: true
@@ -190,6 +196,10 @@ variables:
     name: mcr.microsoft.com/playwright@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
     entrypoint: [""]
   cache:
+    - key: devapp-maven-v2
+      paths:
+        - .cache/maven/
+      policy: pull
     - key: devapp-sonar-v1
       paths:
         - .cache/sonar/cache/
@@ -198,6 +208,7 @@ variables:
     - export APP_VERSION="$("$CI_PROJECT_DIR/infra/scripts/current-version.sh")"
     - npm install --global @sonar/scan@5.0.0
   script:
+    - bash infra/scripts/test-quality.sh
     - bash infra/scripts/ci-quality.sh
   allow_failure: true
   artifacts:
@@ -209,6 +220,7 @@ variables:
     paths:
       - quality-reports/
   rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$PIPELINE_MODE == "full" && $CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$PIPELINE_MODE == "full" && $CI_COMMIT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -246,6 +258,8 @@ variables:
     paths:
       - security-reports/
   rules:
+    - if: '$SONAR_SCAN_ONLY == "true"'
+      when: never
     - if: '$PIPELINE_MODE == "full" && $CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$PIPELINE_MODE == "full" && $CI_COMMIT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -293,6 +307,8 @@ variables:
       - release.env
   manual_confirmation: "Release the successful DevApp build for $CI_COMMIT_SHORT_SHA?"
   rules:
+    - if: '$SONAR_SCAN_ONLY == "true"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $PIPELINE_MODE == "full"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual
@@ -320,6 +336,8 @@ variables:
     url: https://devapp.swirlit.dev
     deployment_tier: production
   rules:
+    - if: '$SONAR_SCAN_ONLY == "true"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
 set-major-version:
@@ -337,6 +355,8 @@ set-major-version:
     - infra/scripts/ci-set-major-version.sh
   manual_confirmation: "Set the next DevApp major version from NEW_MAJOR_VERSION?"
   rules:
+    - if: '$SONAR_SCAN_ONLY == "true"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual
       allow_failure: false

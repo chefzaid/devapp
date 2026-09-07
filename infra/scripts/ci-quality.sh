@@ -25,7 +25,6 @@ submit_sonar() {
   for attempt in 1 2 3; do
     if sonar-scanner-npm \
       -Dsonar.host.url="$SONAR_HOST_URL" \
-      -Dsonar.token="$SONAR_TOKEN" \
       -Dsonar.projectVersion="$sonar_version" \
       -Dsonar.qualitygate.wait=false; then
       return 0
@@ -62,3 +61,10 @@ fi
 printf 'SONAR_REPORT_STATUS=%s\nSECURITY_REPORT_STATUS=%s\n' \
   "$sonar_status" "$security_status" > "$quality_dir/quality.env"
 printf 'Quality reporting complete: sonar=%s security=%s.\n' "$sonar_status" "$security_status"
+
+if [[ "$sonar_status" == submitted && -f .scannerwork/report-task.txt ]]; then
+  cp .scannerwork/report-task.txt "$quality_dir/report-task.txt"
+fi
+
+# A submission failure must be visible even though quality does not gate delivery.
+[[ "$sonar_status" != failed ]]

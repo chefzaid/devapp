@@ -23,3 +23,12 @@ Keep Sonar, GitLab project metadata, labels, badges, branch protection, CI varia
 - Release reuses build outputs instead of compiling and scanning a second time.
 - Thirty-day registry-backed Kaniko layers and dependency/analyzer caches reduce repeated work.
 - SonarQube Community Build analyzes only `main`; branch and merge-request pipelines still retain local test, coverage, and dependency reports.
+
+## Amendment: automatic namespace coverage (2026-09-07)
+
+Default-branch `02-quality` is automatic in standard and full pipelines. The
+platform discovers repositories from Argo-owned workloads in `apps` and provisions
+Sonar credentials. `.sonar-auto.json` declares the `SONAR_SCAN_ONLY=true` contract:
+only build, test and quality run in scheduled analysis pipelines. Package, E2E,
+security, release, deploy and version jobs are absent. Failed scanner submissions
+fail the non-blocking quality job visibly; quality gates do not authorize release.

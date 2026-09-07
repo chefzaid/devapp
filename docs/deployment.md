@@ -80,7 +80,7 @@ registry.swirlit.dev/swirlit/devapp/order-app:<semantic-version>
 registry.swirlit.dev/swirlit/devapp/devapp-web:<semantic-version>
 ```
 
-`01-build` compiles Maven and Angular outputs, optional `02-test` publishes unit and coverage results, and required `03-package` performs daemonless image validation. Combined coverage below 80 percent fails only the optional test job. Standard mode leaves `02-quality` and `03-security` manual; full mode runs both non-blocking report branches automatically. Trivy security is ordered after quality but has no dependency on it. Optional manual `01-e2e` remains independent. `01-release` publishes versioned artifacts and images; `02-deploy` runs only after release succeeds.
+`01-build` compiles Maven and Angular outputs, optional `02-test` publishes unit and coverage results, and required `03-package` performs daemonless image validation. Combined coverage below 80 percent fails only the optional test job. Default-branch quality runs automatically. Standard mode leaves `03-security` manual; full mode runs both non-blocking report branches automatically. Trivy security is ordered after quality but has no dependency on it. Optional manual `01-e2e` remains independent. `01-release` publishes versioned artifacts and images; `02-deploy` runs only after release succeeds.
 
 ## One-Time GitLab Bootstrap
 
@@ -124,7 +124,7 @@ The database Secret is projected by `infra/k8s/external-secrets.yaml` from the c
 The dashboard exposes explicit jobs with these dependencies:
 
 1. `01-build → 02-test (optional) → 03-package` is the automatic build path.
-2. `01-e2e` is optional/manual; `02-quality` consumes test reports and `03-security` scans the repository independently, manually in standard mode and automatically in full mode. None gates release.
+2. `01-e2e` is optional/manual; `02-quality` consumes test reports and `03-security` scans the repository independently, with quality automatic on the default branch and security automatic in full mode. None gates release.
 3. `01-release → 02-deploy` requires the successful build path and a successful release.
 4. `set-major-version` is an independent manual job on `main`. Supply `NEW_MAJOR_VERSION` when starting the pipeline; the job prepares `<major>.0.0` and synchronizes Maven and npm manifests.
 
@@ -174,3 +174,14 @@ The Ansible playbook is an optional manual reconciliation of committed and pushe
 ```bash
 ansible-playbook -i infra/ansible/inventory.ini infra/ansible/site.yaml
 ```
+
+## Automatic Sonar coverage
+
+The platform discovers this repository through its Argo CD workloads in `apps`.
+`.sonar-auto.json` declares the CI contract. `SONAR_SCAN_ONLY=true` on the default
+branch runs only compilation, tests/coverage and `02-quality`; it excludes image
+packaging, browser/security jobs, release, deployment and version changes.
+The platform provisions the Sonar project and masked analysis token, and requests
+a scan when analysis is missing or more than 24 hours old. Normal default-branch
+pipelines also run quality automatically. Submission failures fail the quality
+job visibly; quality findings remain independent of deployment permission.

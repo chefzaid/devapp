@@ -401,3 +401,10 @@ also update the packages inherited from the pinned unprivileged NGINX image
 and restore UID/GID 101 for runtime. Rebuild and scan
 the resulting images when updating these dependencies; a repository scan alone
 does not check the operating-system packages in a deployed image.
+
+### Container configuration hardening
+
+The application workloads run with UID and GID 10001, above the host system-user
+range, with the existing read-only filesystem, dropped capabilities and runtime
+seccomp profile. Writable application data and temporary files use explicit
+volumes.

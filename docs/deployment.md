@@ -185,3 +185,6 @@ The platform provisions the Sonar project and masked analysis token, and request
 a scan when analysis is missing or more than 24 hours old. Normal default-branch
 pipelines also run quality automatically. Submission failures fail the quality
 job visibly; quality findings remain independent of deployment permission.
+
+The quality job uses the shared slim Node scanner image; browser images are only
+needed for explicitly requested E2E jobs.

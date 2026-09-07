@@ -396,6 +396,8 @@ dependencies. The parent POM additionally pins Tomcat 11.0.25 for
 CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525, and Kafka's transitive
 `at.yawk.lz4:lz4-java` to 1.11.1 for CVE-2026-59949. Remove these overrides
 when the managed dependency versions include the fixes. Runtime Dockerfiles
-apply Alpine security updates before dropping privileges. Rebuild and scan
+apply Alpine security updates before dropping privileges. Both web Dockerfiles
+also update the packages inherited from the pinned unprivileged NGINX image
+and restore UID/GID 101 for runtime. Rebuild and scan
 the resulting images when updating these dependencies; a repository scan alone
 does not check the operating-system packages in a deployed image.

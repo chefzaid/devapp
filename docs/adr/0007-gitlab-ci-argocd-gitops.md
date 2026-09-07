@@ -1,11 +1,13 @@
 # ADR 0007: Deliver Through GitLab CI, Immutable Images, And Argo CD
 
+> ADR 0009 supersedes this ADR's job topology. The GitOps, daemonless Kaniko, immutable-tag, and exact-revision decisions below remain active.
+
 - Status: Accepted
 - Date: 2026-08-28
 
 ## Context
 
-The platform provides GitLab CI Kubernetes agents, GitLab Container Registry, GitLab, Argo CD, K3s, Vault, and External Secrets. DevApp needs reproducible quality gates, artifact publication, desired-state updates, reconciliation, and post-rollout verification.
+The platform provides GitLab CI Kubernetes agents, GitLab Container Registry, GitLab, Argo CD, K3s, Vault, and External Secrets. DevApp needs reproducible verification, artifact publication, desired-state updates, reconciliation, and post-rollout checks.
 
 Allowing GitLab CI to mutate Deployments directly would make the cluster differ from Git and blur build versus runtime ownership.
 
@@ -17,12 +19,14 @@ Use this delivery split:
 - GitLab CI tests and builds applications
 - runtime images package already-verified artifacts
 - Kaniko pushes immutable `build-shortCommit` tags to GitLab Container Registry
-- GitLab CI reconciles the Argo CD Application source path before quality/build stages so repository layout changes do not strand the existing Application
+- Kaniko reuses registry-backed build layers for 30 days
+- CI retains downloadable job artifacts for seven days and publishes immutable JAR/SPA archives plus checksums to GitLab's Generic Package Registry
+- the repository keeps a stable Argo CD bootstrap path at `infra/argocd/application.yaml`
 - GitLab CI changes only Kustomize image tags after confirming `main` did not advance
 - the desired-version commit includes `[skip ci]`
 - Argo CD owns namespace creation, reconciliation, pruning, self-healing, and retry
 - GitLab CI waits for the exact GitOps commit to be synced/healthy
-- internal smoke tests and real Keycloak browser acceptance finish the release
+- internal smoke checks finish deploy; real Keycloak browser acceptance remains an explicit optional E2E job
 - GitHub is reconciled as a public mirror without force pushing
 
 ## Rationale
@@ -35,7 +39,7 @@ The advanced-main check prevents a stale pipeline from overwriting a newer desir
 
 Exact-revision waiting avoids declaring success for an unrelated healthy revision.
 
-Post-rollout browser tests verify ingress, Keycloak, both APIs, Kafka, persistence, and UI as one system.
+Optional post-rollout browser tests verify ingress, Keycloak, both APIs, Kafka, persistence, and UI as one system without becoming a delivery gate.
 
 ## Consequences
 

@@ -4,8 +4,6 @@ import dev.swirlit.devapp.common.domain.OrderStatus;
 import dev.swirlit.devapp.common.event.OrderEvent;
 import dev.swirlit.devapp.common.util.Constants;
 import dev.swirlit.devapp.order.repository.OrderRepository;
-import jakarta.persistence.EntityNotFoundException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
@@ -28,10 +26,14 @@ public class OrderResultListener {
     @KafkaListener(topics = Constants.ORDER_RESULT_TOPIC, groupId = "${spring.kafka.consumer.group-id}")
     public void consume(OrderEvent event) {
         validateResult(event);
-        var order = orderRepository.findById(event.orderId())
-                .orElseThrow(() -> new EntityNotFoundException("Order %d was not found".formatted(event.orderId())));
+        var order = orderRepository.findById(event.orderId()).orElse(null);
+        if (order == null) {
+            log.debug("Ignoring result for deleted order {}", event.orderId());
+            return;
+        }
         if (!order.getUserId().equals(event.userId()) || !order.getProductId().equals(event.productId())) {
-            throw new IllegalArgumentException("Order result does not match the persisted order");
+            log.debug("Ignoring superseded result for edited order {}", event.orderId());
+            return;
         }
         if (order.getStatus() == event.status()) {
             log.debug("Ignoring duplicate {} result for order {}", event.status(), event.orderId());

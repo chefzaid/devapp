@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { OrderService } from '../services/order.service';
 import { UserService } from '../services/user.service';
-import { CreateOrderRequest, Order } from '../models/order.model';
+import { CreateOrderRequest, Order, UpdateOrderRequest } from '../models/order.model';
 import { User } from '../models/user.model';
 
 @Component({
@@ -20,6 +20,11 @@ export class OrderComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly creating = signal(false);
   readonly loadingUsers = signal(false);
+  readonly editingOrderId = signal<number | null>(null);
+  editOrder: UpdateOrderRequest = this.initOrder();
+  readonly saving = signal(false);
+  readonly pendingDeleteOrderId = signal<number | null>(null);
+  readonly deletingOrderId = signal<number | null>(null);
 
   constructor(
     private readonly orderService: OrderService,
@@ -79,6 +84,68 @@ export class OrderComponent implements OnInit {
         this.error.set(String(error));
         this.creating.set(false);
         console.error('Error creating order:', error);
+      }
+    });
+  }
+
+  startEditing(order: Order): void {
+    this.editingOrderId.set(order.id);
+    this.editOrder = { userId: order.userId, productId: order.productId };
+    this.pendingDeleteOrderId.set(null);
+    this.error.set(null);
+  }
+
+  cancelEditing(): void {
+    this.editingOrderId.set(null);
+    this.editOrder = this.initOrder();
+  }
+
+  updateOrder(): void {
+    const orderId = this.editingOrderId();
+    if (orderId === null || this.editOrder.userId <= 0 || this.editOrder.productId <= 0) {
+      this.error.set('Please select a user and enter a positive product ID');
+      return;
+    }
+
+    this.saving.set(true);
+    this.error.set(null);
+    this.orderService.updateOrder(orderId, this.editOrder).subscribe({
+      next: (updated) => {
+        this.orders.update(orders => orders.map(order => order.id === updated.id ? updated : order));
+        this.saving.set(false);
+        this.cancelEditing();
+      },
+      error: (error) => {
+        this.error.set(String(error));
+        this.saving.set(false);
+      }
+    });
+  }
+
+  requestDelete(orderId: number): void {
+    this.pendingDeleteOrderId.set(orderId);
+    this.error.set(null);
+  }
+
+  cancelDelete(): void {
+    this.pendingDeleteOrderId.set(null);
+  }
+
+  deleteOrder(order: Order): void {
+    this.deletingOrderId.set(order.id);
+    this.error.set(null);
+    this.orderService.deleteOrder(order.id).subscribe({
+      next: () => {
+        this.orders.update(orders => orders.filter(candidate => candidate.id !== order.id));
+        if (this.editingOrderId() === order.id) {
+          this.cancelEditing();
+        }
+        this.pendingDeleteOrderId.set(null);
+        this.deletingOrderId.set(null);
+      },
+      error: (error) => {
+        this.error.set(String(error));
+        this.deletingOrderId.set(null);
       }
     });
   }

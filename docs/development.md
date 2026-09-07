@@ -10,9 +10,10 @@ user-app/            user REST API and order-validation consumer
 order-app/           order REST API and result consumer
 devapp-web/          Angular SPA, NGINX image, Vitest and Playwright tests
 infra/ansible/       optional manual Kustomize apply helper
+infra/argocd/        Argo CD Application bootstrap
 infra/compose/       complete local runtime and Playwright acceptance overlay
 infra/keycloak/      disposable Keycloak realm import
-infra/k8s/           Kubernetes, GitOps, CI bootstrap, and observability resources
+infra/k8s/           Kubernetes workloads, policies, secrets, and observability
 infra/scripts/       CI/CD, image-tag, and task-runner helpers
 .devcontainer/       VS Code application toolchain and optional infrastructure
 .gitlab-ci.yml          CI, image publication, GitOps update, and acceptance
@@ -65,7 +66,7 @@ The repository currently targets:
 
 - Java 25.0.4
 - Maven 3.9.16
-- Spring Boot 4.1.0
+- Spring Boot 4.1.1
 - Node.js 24 LTS
 - npm 12.0.2
 - Angular 22.1
@@ -164,7 +165,7 @@ Component selectors:
 - install/test/coverage/build: `back`, `front`, or `all`
 - run: `user`, `order`, `front`, or `all`
 
-Mask uses Java 25 when `infra/scripts/mask-common.sh` can locate it. Direct Maven/npm commands remain the authoritative fallback.
+Mask uses Java 25 when `infra/scripts/mask-helpers.sh` can locate it. Direct Maven/npm commands remain the authoritative fallback.
 
 ## VS Code Dev Container
 

@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: user-app
-        image: registry.swirlit.dev/root/devapp/user-app:v5
+        image: registry.swirlit.dev/swirlit/devapp/user-app:v5
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
@@ -71,9 +71,9 @@ spec:
         - name: REDIS_PORT
           value: "6379"
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
-          value: "https://keycloak.swirlit.dev/auth/realms/devapp"
+          value: "https://keycloak.swirlit.dev/auth/realms/swirlit"
         - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
-          value: "http://keycloak.swirlit.internal:8080/auth/realms/devapp/protocol/openid-connect/certs"
+          value: "http://keycloak.swirlit.internal:8080/auth/realms/swirlit/protocol/openid-connect/certs"
         startupProbe:
           httpGet:
             path: /actuator/health/liveness

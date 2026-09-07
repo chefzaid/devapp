@@ -1,18 +1,19 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: apps
 resources:
-  - devapp-secrets.yaml
-  - registry-secret.yaml
-  - user-app.yaml
-  - order-app.yaml
-  - devapp-web.yaml
+  - external-secrets.yaml
+  - registry-credentials.yaml
+  - user.yaml
+  - order.yaml
+  - web.yaml
   - network-policy.yaml
   - ingress.yaml
   - observability.yaml
 images:
-  - name: registry.swirlit.dev/root/devapp/user-app
-    newTag: 53-60d5d5d
-  - name: registry.swirlit.dev/root/devapp/order-app
-    newTag: 53-60d5d5d
-  - name: registry.swirlit.dev/root/devapp/devapp-web
-    newTag: 53-60d5d5d
+  - name: registry.swirlit.dev/swirlit/devapp/user-app
+    newTag: 1.4.1
+  - name: registry.swirlit.dev/swirlit/devapp/order-app
+    newTag: 1.4.1
+  - name: registry.swirlit.dev/swirlit/devapp/devapp-web
+    newTag: 1.4.1

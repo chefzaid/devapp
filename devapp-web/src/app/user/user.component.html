@@ -20,14 +20,43 @@
 
     <div class="users-layout">
         <aside class="panel create-panel">
-            <div class="panel-header">
-                <div>
-                    <span class="panel-kicker">New record</span>
-                    <h2>Create a user</h2>
-                    <p>Three fields, one secured API call.</p>
+            @if (editingUserId() !== null) {
+                <div class="panel-header">
+                    <div>
+                        <span class="panel-kicker">Edit record</span>
+                        <h2>Update user #{{ editingUserId() }}</h2>
+                        <p>Save the profile fields or cancel to keep the current record.</p>
+                    </div>
                 </div>
-            </div>
-            <form class="form-grid" (ngSubmit)="createUser()">
+                <form class="form-grid" (ngSubmit)="updateUser()">
+                    <div class="form-field">
+                        <label for="editDisplayName">Display name</label>
+                        <input id="editDisplayName" name="editDisplayName" [(ngModel)]="editUser.name" [disabled]="saving()" class="form-input" autocomplete="name">
+                    </div>
+                    <div class="form-field">
+                        <label for="editUsername">Username</label>
+                        <input id="editUsername" name="editUsername" [(ngModel)]="editUser.username" [disabled]="saving()" class="form-input" autocomplete="username">
+                    </div>
+                    <div class="form-field">
+                        <label for="editEmail">Email address</label>
+                        <input id="editEmail" name="editEmail" [(ngModel)]="editUser.email" type="email" [disabled]="saving()" class="form-input" autocomplete="email">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" [disabled]="saving() || !editUser.name.trim() || !editUser.username.trim() || !editUser.email.trim()" class="btn btn-primary">
+                            {{ saving() ? 'Saving…' : 'Save changes' }}
+                        </button>
+                        <button type="button" (click)="cancelEditing()" [disabled]="saving()" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </form>
+            } @else {
+                <div class="panel-header">
+                    <div>
+                        <span class="panel-kicker">New record</span>
+                        <h2>Create a user</h2>
+                        <p>Three fields, one secured API call.</p>
+                    </div>
+                </div>
+                <form class="form-grid" (ngSubmit)="createUser()">
                 <div class="form-field">
                     <label for="displayName">Display name</label>
                     <input id="displayName" name="displayName" [(ngModel)]="newUser.name" placeholder="e.g. Ada Lovelace" [disabled]="creating()" class="form-input" autocomplete="name">
@@ -48,7 +77,8 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     }
                 </button>
-            </form>
+                </form>
+            }
         </aside>
 
         <div class="panel directory-panel">
@@ -73,7 +103,7 @@
                     <strong>No users yet</strong><p>Create the first profile to start the flow.</p>
                 </div></div>
             } @else {
-                <div class="directory-labels" aria-hidden="true"><span>Profile</span><span>Username</span><span>Email</span><span>ID</span></div>
+                <div class="directory-labels" aria-hidden="true"><span>Profile</span><span>Username</span><span>Email</span><span>ID</span><span>Actions</span></div>
                 <ul class="users-list">
                     @for (user of users(); track user.id) {
                         <li class="user-item">
@@ -81,6 +111,17 @@
                             <span class="username">{{ '@' + user.username }}</span>
                             <a class="email" [href]="'mailto:' + user.email">{{ user.email }}</a>
                             <span class="user-id">#{{ user.id }}</span>
+                            <div class="record-actions">
+                                @if (pendingDeleteUserId() === user.id) {
+                                    <button type="button" class="action-btn danger" (click)="deleteUser(user)" [disabled]="deletingUserId() === user.id" [attr.aria-label]="'Confirm delete ' + user.name">
+                                        {{ deletingUserId() === user.id ? 'Deleting…' : 'Confirm' }}
+                                    </button>
+                                    <button type="button" class="action-btn" (click)="cancelDelete()" [disabled]="deletingUserId() === user.id" [attr.aria-label]="'Cancel deleting ' + user.name">Cancel</button>
+                                } @else {
+                                    <button type="button" class="action-btn" (click)="startEditing(user)" [disabled]="saving() || deletingUserId() !== null" [attr.aria-label]="'Edit ' + user.name">Edit</button>
+                                    <button type="button" class="action-btn danger" (click)="requestDelete(user.id)" [disabled]="saving() || deletingUserId() !== null" [attr.aria-label]="'Delete ' + user.name">Delete</button>
+                                }
+                            </div>
                         </li>
                     }
                 </ul>

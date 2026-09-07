@@ -1,7 +1,7 @@
 export type OrderStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
 
 export interface Order {
-  id?: number;
+  id: number;
   userId: number;
   userName?: string | null;
   productId: number;
@@ -9,3 +9,4 @@ export interface Order {
 }
 
 export type CreateOrderRequest = Pick<Order, 'userId' | 'productId'>;
+export type UpdateOrderRequest = CreateOrderRequest;

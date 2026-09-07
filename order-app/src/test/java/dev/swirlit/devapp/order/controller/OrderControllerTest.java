@@ -6,6 +6,7 @@ import dev.swirlit.devapp.common.domain.OrderStatus;
 import dev.swirlit.devapp.common.exception.GlobalExceptionHandler;
 import dev.swirlit.devapp.order.domain.Order;
 import dev.swirlit.devapp.order.dto.CreateOrderRequest;
+import dev.swirlit.devapp.order.dto.UpdateOrderRequest;
 import dev.swirlit.devapp.order.service.OrderService;
 
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -102,6 +105,34 @@ class OrderControllerTest {
         mockMvc.perform(get("/api/orders/-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation failed"));
+    }
+
+    @Test
+    void updateOrderValidatesAndReturnsPendingOrder() throws Exception {
+        Order updated = order(4L, 3L, null, 3001L, OrderStatus.PENDING);
+        when(orderService.updateOrder(any(Long.class), any(UpdateOrderRequest.class))).thenReturn(updated);
+
+        mockMvc.perform(put("/api/orders/4")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":3,\"productId\":3001}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(4))
+                .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    void updateOrderRejectsNonPositiveIdentifiers() throws Exception {
+        mockMvc.perform(put("/api/orders/4")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":0,\"productId\":-1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"));
+    }
+
+    @Test
+    void deleteOrderReturnsNoContent() throws Exception {
+        mockMvc.perform(delete("/api/orders/4"))
+                .andExpect(status().isNoContent());
     }
 
     private static Order order(Long id, Long userId, String userName, Long productId, OrderStatus status) {

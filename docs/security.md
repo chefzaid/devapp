@@ -79,7 +79,7 @@ Production browser flow:
 7. `authInterceptor` adds `Authorization: Bearer <token>` to API requests, excluding Keycloak `/auth/` requests.
 8. Each Spring resource server validates signature, issuer, time claims, and token structure through the configured JWK set.
 
-Keycloak realm controls in `infra/keycloak/devapp-realm.json`:
+Keycloak realm controls in `infra/keycloak/realm.json`:
 
 - `sslRequired: external`
 - registration disabled
@@ -175,7 +175,7 @@ Problem Details expose stable status/title/detail and validation maps. Unexpecte
 Configured behavior:
 
 - allowed origins from `app.cors.allowed-origins`
-- methods: `GET`, `POST`, `OPTIONS`
+- methods: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`
 - request headers: `Authorization`, `Content-Type`
 - credentials allowed
 - one-hour preflight cache
@@ -269,7 +269,7 @@ Auditing timestamps and principals are not a complete security audit trail. Sens
 
 ## Kafka And Event Security
 
-Consumers validate required identifiers, allowed statuses, persisted identity, and state transitions. Invalid events fail rather than silently mutating the wrong order.
+Consumers validate required identifiers, allowed statuses, persisted identity, and state transitions. Results superseded by an order edit or deletion are ignored; other invalid events fail rather than mutating the wrong order.
 
 Reliability controls such as idempotent production, retries, and DLT are not security controls by themselves.
 
@@ -322,14 +322,15 @@ Container hardening:
 
 Still required for a stronger supply-chain posture:
 
-- automated dependency and secret scanning
-- SBOM generation
+- published and signed SBOMs
 - image signing/verification and provenance
 - SAST/DAST
 - admission policy checks
 - base-image vulnerability policy
 
-SonarQube and OWASP Dependency-Check are not currently wired into Maven or GitLab CI, so the repository does not keep dormant analyzer configuration or broad suppressions. Add reviewed Java 25-aware configuration together with the active CI gate rather than allowing it to drift unused.
+SonarQube analysis runs automatically in full-mode `02-quality` on the default branch independently of optional manual `01-e2e`; standard mode exposes quality as an optional manual job. The scanner imports JaCoCo and LCOV coverage, submits without waiting for the quality gate, and authenticates with a masked project-scoped token. The reporting job retains dependency-audit output and is allowed to fail, so findings never block `01-release`. Compilation and package validation remain required; unit tests and the 80 percent coverage policy are visible, non-blocking jobs.
+
+`03-security` uses a digest-pinned Trivy image to scan dependency manifests, infrastructure-as-code, and the repository working tree for vulnerable packages, misconfigurations, and exposed secrets. It retains JSON and SARIF reports for seven days and exits nonzero for high/critical findings, while `allow_failure` keeps the signal optional. The job is numbered after quality but has no dependency on it: it is manually runnable in standard mode and runs automatically in full mode.
 
 ## Actuator And Observability
 
@@ -387,3 +388,23 @@ Before merging a sensitive change:
 - [Operations](./operations.md)
 - [Testing](./testing.md)
 - [Architecture and ADRs](./architecture.md)
+
+### Runtime dependency maintenance
+
+Spring Boot 4.1.1 supplies patched Jackson, Netty, Log4j and PostgreSQL JDBC
+dependencies. The parent POM additionally pins Tomcat 11.0.25 for
+CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525, and Kafka's transitive
+`at.yawk.lz4:lz4-java` to 1.11.1 for CVE-2026-59949. Remove these overrides
+when the managed dependency versions include the fixes. Runtime Dockerfiles
+apply Alpine security updates before dropping privileges. Both web Dockerfiles
+also update the packages inherited from the pinned unprivileged NGINX image
+and restore UID/GID 101 for runtime. Rebuild and scan
+the resulting images when updating these dependencies; a repository scan alone
+does not check the operating-system packages in a deployed image.
+
+### Container configuration hardening
+
+The application workloads run with UID and GID 10001, above the host system-user
+range, with the existing read-only filesystem, dropped capabilities and runtime
+seccomp profile. Writable application data and temporary files use explicit
+volumes.

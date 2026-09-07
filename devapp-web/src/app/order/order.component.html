@@ -21,12 +21,13 @@
     <div class="panel order-composer">
         <div class="panel-header">
             <div>
-                <span class="panel-kicker">Publish a workflow</span>
-                <h2>Create an order</h2>
-                <p>Choose an existing user and a demo product identifier.</p>
+                <span class="panel-kicker">{{ editingOrderId() === null ? 'Publish a workflow' : 'Edit workflow' }}</span>
+                <h2>{{ editingOrderId() === null ? 'Create an order' : 'Update order #' + editingOrderId() }}</h2>
+                <p>{{ editingOrderId() === null ? 'Choose an existing user and a demo product identifier.' : 'Changed references return to PENDING and run through Kafka validation again.' }}</p>
             </div>
             <div class="event-route" aria-label="Order event route"><span>API</span><i></i><span>Kafka</span><i></i><span>Consumer</span></div>
         </div>
+        @if (editingOrderId() === null) {
         <form class="form-grid order-form" (ngSubmit)="createOrder()">
             <div class="form-field">
                 <label for="userSelect">Order owner</label>
@@ -50,6 +51,27 @@
                 }
             </button>
         </form>
+        } @else {
+        <form class="form-grid order-form edit-order-form" (ngSubmit)="updateOrder()">
+            <div class="form-field">
+                <label for="editUserSelect">Order owner</label>
+                <select id="editUserSelect" name="editUserId" [(ngModel)]="editOrder.userId" [disabled]="saving() || loadingUsers()" class="form-select">
+                    <option [ngValue]="0">{{ loadingUsers() ? 'Loading users…' : 'Select a user' }}</option>
+                    @for (user of users(); track user.id) {
+                        <option [ngValue]="user.id">{{ user.name }} ({{ '@' + user.username }})</option>
+                    }
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="editProductInput">Product ID</label>
+                <input id="editProductInput" name="editProductId" [(ngModel)]="editOrder.productId" type="number" min="1" [disabled]="saving()" class="form-input">
+            </div>
+            <div class="edit-order-actions">
+                <button type="submit" [disabled]="saving() || editOrder.userId <= 0 || editOrder.productId <= 0" class="btn btn-primary">{{ saving() ? 'Saving…' : 'Save changes' }}</button>
+                <button type="button" (click)="cancelEditing()" [disabled]="saving()" class="btn btn-secondary">Cancel</button>
+            </div>
+        </form>
+        }
     </div>
 
     <div class="orders-heading">
@@ -83,6 +105,15 @@
                         <div><dt>Product</dt><dd>#{{ order.productId }}</dd></div>
                     </dl>
                     <div class="event-confirmation"><i></i><span>Event pipeline connected</span></div>
+                    <div class="order-actions">
+                        @if (pendingDeleteOrderId() === order.id) {
+                            <button type="button" class="card-action danger" (click)="deleteOrder(order)" [disabled]="deletingOrderId() === order.id" [attr.aria-label]="'Confirm delete order #' + order.id">{{ deletingOrderId() === order.id ? 'Deleting…' : 'Confirm delete' }}</button>
+                            <button type="button" class="card-action" (click)="cancelDelete()" [disabled]="deletingOrderId() === order.id" [attr.aria-label]="'Cancel deleting order #' + order.id">Cancel</button>
+                        } @else {
+                            <button type="button" class="card-action" (click)="startEditing(order)" [disabled]="saving() || deletingOrderId() !== null" [attr.aria-label]="'Edit order #' + order.id">Edit</button>
+                            <button type="button" class="card-action danger" (click)="requestDelete(order.id)" [disabled]="saving() || deletingOrderId() !== null" [attr.aria-label]="'Delete order #' + order.id">Delete</button>
+                        }
+                    </div>
                 </article>
             }
         </div>

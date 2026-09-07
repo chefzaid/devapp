@@ -8,11 +8,11 @@ DevApp is a technical template. Its user directory and order flow are intentiona
 
 The application has only two business concepts:
 
-1. `user-app` stores and retrieves users.
+1. `user-app` creates, retrieves, edits, and deletes users.
 2. `order-app` creates a `PENDING` order and publishes an event.
 3. `user-app` resolves the referenced user and publishes an `APPROVED` or `REJECTED` result.
 4. `order-app` validates the result and updates the order.
-5. The Angular UI shows both resources and can create one of each.
+5. The Angular UI shows both resources and can create, edit, or delete each one.
 
 This flow proves HTTP APIs, persistence, caching, asynchronous communication, authentication, UI integration, tests, observability, and delivery without requiring a large functional model.
 
@@ -38,11 +38,14 @@ Implemented API behavior:
 - `GET /api/users` and `GET /api/orders` with a bounded `limit` query parameter (`1..100`, default `100`)
 - `GET /api/users/{id}` and `GET /api/orders/{id}` with positive identifier validation
 - `POST /api/users` and `POST /api/orders` with Jakarta Bean Validation
+- `PUT /api/users/{id}` and `PUT /api/orders/{id}` for full resource edits
+- `DELETE /api/users/{id}` and `DELETE /api/orders/{id}` with `204 No Content` responses
 - `201 Created` responses and `Location` headers for created resources
 - explicit request and response DTOs instead of serializing JPA entities
 - response DTOs that hide audit principals and optimistic-lock versions
 - username and email normalization before persistence
 - fail-fast username and email conflict checks backed by database uniqueness constraints
+- conflict checks that exclude the user currently being edited
 - RFC 9457-style Spring `ProblemDetail` responses for validation, malformed input, missing resources, conflicts, unsupported methods/media types, and unexpected failures
 - structured field and parameter violation maps
 - generated or accepted safe `X-Request-Id` values on every response
@@ -101,6 +104,7 @@ Implemented Kafka behavior:
 - declarative topic creation when messaging is enabled
 - feature switch through `app.messaging.enabled` / `KAFKA_ENABLED`
 - producers configured with `acks=all`, idempotence, bounded delivery time, and retries
+- producer request and delivery timeouts validated together against Kafka client defaults
 - record-level listener acknowledgement
 - four consumer attempts by default with fixed retry delay
 - dead-letter publishing after retry exhaustion
@@ -110,6 +114,9 @@ Implemented Kafka behavior:
 - propagation of transient processing failures for retry instead of turning them into false business rejections
 - order-result identity and status validation
 - idempotent handling of duplicate final results
+- edited orders return to `PENDING` and publish a fresh validation request
+- order validation requests are published after the database transaction commits
+- late results for superseded edits or deleted orders are ignored safely
 - rejection of invalid order state transitions
 - local single-node Kafka 4.3 in KRaft mode
 
@@ -152,7 +159,7 @@ Implemented frontend behavior:
 - OAuth discovery, login, logout, token refresh setup, and auth-state observables
 - RxJS service layer for API calls and notifications
 - typed user and order models
-- create and list views for the two demonstration resources
+- create, list, edit, and confirmed-delete views for the two demonstration resources
 - visible API error handling and notification surface
 - `OnPush` change detection
 - semantic navigation and form labels used by browser tests
@@ -182,7 +189,7 @@ Implemented observability behavior:
 
 Distributed traces, SLO alerts, and event-specific metrics are future reusable capabilities.
 
-## Testing And Quality Gates
+## Testing And Quality Reporting
 
 Implemented verification layers:
 
@@ -190,12 +197,12 @@ Implemented verification layers:
 - focused controller, service, cache, filter, health-indicator, listener, and security tests
 - anonymous-versus-JWT integration tests using full Spring Security contexts
 - event success, duplicate, invalid-state, missing-resource, retryable-failure, and rejection scenarios
-- JaCoCo reports and a 60 percent instruction-coverage gate for service application logic
+- JaCoCo reports and a non-blocking 80 percent combined line-coverage policy
 - Vitest component, service, guard, interceptor, and authentication tests
 - frontend V8 coverage and JUnit-compatible CI output
 - Playwright browser tests for Chromium, Firefox, and WebKit
 - mocked local UI journeys and live Keycloak/API acceptance
-- containerized full-stack acceptance through `infra/compose/docker-compose.test.yml`
+- containerized full-stack acceptance through `infra/compose/compose.test.yaml`
 - production Angular build and Playwright TypeScript checks in GitLab CI
 - immutable JAR archiving after successful builds
 
@@ -228,15 +235,17 @@ Implemented platform features:
 - restrictive application pod security contexts
 - ingress NetworkPolicy for application pods, NGINX, Prometheus, and GitLab CI smoke tests
 - Vault-backed database and CI credentials through External Secrets
-- GitLab Container Registry Maven/npm proxies and private image registry integration
-- GitLab CI Kubernetes agents with dedicated Maven, Node, Playwright, Kaniko, kubectl, smoke-test, and Git containers
-- parallel backend and frontend quality gates and builds
-- Kaniko image publication with immutable build/commit tags
-- manifest-only GitOps commit after verified image publication
+- persistent Maven/npm dependency caches and private GitLab image registry integration
+- explicit GitLab jobs for build, optional tests, Docker validation, optional E2E/quality reports, release, deploy, and set-major-version
+- persistent Maven, npm, and Sonar analyzer caches plus 30-day registry-backed Kaniko layer caches
+- daemonless Kaniko image publication with immutable semantic-version tags
+- seven-day JUnit, Cobertura, Playwright, and verified-build artifacts plus immutable JAR/SPA archives in GitLab's Generic Package Registry
+- GitLab Releases, production Environment deployment history, enterprise project metadata, labels, templates, protected branches, and quality badges
+- semantic release/GitOps commit plus an automatically prepared next-minor version
 - Argo CD refresh, exact-revision wait, self-healing, and pruning
 - post-rollout service smoke tests and real browser acceptance
 - optional Ansible Kustomize apply helper and one-time CI/CD configuration script
-- GitHub Actions reconciliation between GitHub and GitLab without force pushing
+- push-triggered, bidirectional GitHub/GitLab reconciliation for branches and tags without force pushing
 
 GitLab is the CI/CD source of truth; GitHub is the public mirror.
 

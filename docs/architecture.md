@@ -23,12 +23,13 @@ Delivery:
 
 ```mermaid
 flowchart LR
-    source[GitLab main] --> pipeline[GitLab CI quality/build]
+    source[GitLab main] --> pipeline[GitLab CI build/verify/release]
     pipeline --> registry[GitLab Container Registry images]
     pipeline --> desired[GitOps image-tag commit]
+    pipeline -. optional .-> browserTest[Playwright E2E report]
     desired --> argo[Argo CD]
     argo --> k3s[K3s apps namespace]
-    k3s --> acceptance[Smoke + browser acceptance]
+    k3s --> smoke[Deploy smoke checks]
 ```
 
 ## Service Architecture
@@ -100,13 +101,12 @@ The initial database commit and Kafka publication are not atomic. This is a docu
 ### Deployment
 
 1. GitLab CI checks out GitLab `main`.
-2. backend and frontend quality gates run in parallel.
-3. verified artifacts are packaged into runtime images.
-4. Kaniko pushes immutable images to GitLab Container Registry.
-5. GitLab CI confirms Git did not advance, updates only Kustomize tags, and pushes a `[skip ci]` commit.
+2. `01-build`, optional `02-test`, and required `03-package` validate and package backend/frontend outputs.
+3. optional manual E2E runs Playwright followed by non-blocking dependency and Sonar reporting.
+4. release consumes the required build outputs and publishes semantic-version packages/images; deploy requires that release job, while full mode automates build, release, and deploy.
+5. GitLab CI confirms Git did not advance, commits the release version and Kustomize tags, creates a Git tag and Release, then prepares the next minor version.
 6. Argo CD reconciles that commit into K3s.
-7. GitLab CI waits for the exact revision to become healthy.
-8. internal smoke and real Keycloak browser acceptance run.
+7. GitLab CI waits for the exact revision to become healthy and runs internal smoke checks.
 
 ## Data Ownership Rules
 
@@ -161,6 +161,7 @@ Statuses:
 - [ADR 0006: Use Service-Owned Flyway Histories In The Shared PostgreSQL Schema](./adr/0006-service-owned-flyway.md)
 - [ADR 0007: Deliver Through GitLab CI, Immutable Images, And Argo CD](./adr/0007-gitlab-ci-argocd-gitops.md)
 - [ADR 0008: Keep Verification Layered And Continuous](./adr/0008-code-quality-and-verification.md)
+- [ADR 0009: Use Explicit Delivery Jobs And Non-Blocking Verification](./adr/0009-explicit-delivery-jobs.md)
 
 ## Proposed ADRs For Roadmap Work
 

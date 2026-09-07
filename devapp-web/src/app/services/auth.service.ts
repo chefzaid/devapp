@@ -47,8 +47,12 @@ export class AuthService {
       this.isLoggedInSubject.next(this.oauthService.hasValidAccessToken());
     });
     this.oauthService.loadDiscoveryDocumentAndTryLogin().then(() => {
-      this.isLoggedInSubject.next(this.oauthService.hasValidAccessToken());
+      const loggedIn = this.oauthService.hasValidAccessToken();
+      this.isLoggedInSubject.next(loggedIn);
       this.authStatusSubject.next('ready');
+      if (!loggedIn && environment.production) {
+        this.oauthService.initCodeFlow();
+      }
     }).catch((error: unknown) => {
       console.warn('OpenID Connect discovery failed', error);
       this.isLoggedInSubject.next(false);

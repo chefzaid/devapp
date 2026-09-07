@@ -20,7 +20,8 @@ use_java_25_if_available() {
 
   if command -v java >/dev/null 2>&1 && java -version 2>&1 | head -n 1 | grep -Eq '^(openjdk|java) version "25\.'; then
     JAVA_BIN="$(command -v java)"
-    export JAVA_HOME="$(dirname "$(dirname "$(readlink -f "$JAVA_BIN")")")"
+    JAVA_HOME="$(dirname "$(dirname "$(readlink -f "$JAVA_BIN")")")"
+    export JAVA_HOME
     export PATH="$JAVA_HOME/bin:$PATH"
     return
   fi
@@ -28,7 +29,8 @@ use_java_25_if_available() {
   if command -v update-alternatives >/dev/null 2>&1; then
     JAVA25_BIN="$(update-alternatives --list java 2>/dev/null | grep '25' | head -n 1)"
     if [ -n "${JAVA25_BIN:-}" ]; then
-      export JAVA_HOME="$(dirname "$(dirname "$JAVA25_BIN")")"
+      JAVA_HOME="$(dirname "$(dirname "$JAVA25_BIN")")"
+      export JAVA_HOME
       export PATH="$JAVA_HOME/bin:$PATH"
       return
     fi

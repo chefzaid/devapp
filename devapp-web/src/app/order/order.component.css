@@ -2,6 +2,7 @@
 .order-composer { overflow: hidden; }
 .order-composer .panel-header { align-items: center; }
 .order-form { grid-template-columns: minmax(220px, 1.5fr) minmax(160px, .8fr) auto; align-items: end; }
+.edit-order-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .event-route { display: flex; align-items: center; gap: 7px; color: #748681; font-size: 9px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
 .event-route span { padding: 7px 8px; background: #f0f3ed; border-radius: 7px; }
 .event-route i { width: 15px; height: 1px; background: #b4c2bd; }
@@ -27,6 +28,12 @@
 .order-details dd { overflow: hidden; margin: 6px 0 0; color: #334946; font-size: 12px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
 .event-confirmation { display: flex; align-items: center; gap: 8px; color: #6f817d; font-size: 9px; font-weight: 750; letter-spacing: .03em; }
 .event-confirmation i { width: 7px; height: 7px; background: var(--mint); border: 2px solid #bcebd2; border-radius: 50%; box-sizing: content-box; }
+.order-actions { position: relative; z-index: 1; display: flex; gap: 7px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #e6ebe5; }
+.card-action { flex: 1; min-height: 34px; padding: 0 10px; color: #405451; background: transparent; border: 1px solid #cbd5cf; border-radius: 9px; font-size: 10px; font-weight: 800; cursor: pointer; }
+.card-action:hover:not(:disabled) { background: #f0f4ef; }
+.card-action.danger { color: var(--danger); border-color: #e5bdc0; }
+.card-action.danger:hover:not(:disabled) { background: #fff0ef; }
+.card-action:disabled { opacity: .45; cursor: not-allowed; }
 @media (max-width: 900px) { .orders-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .order-form { grid-template-columns: 1fr 1fr; } .order-form .btn { grid-column: 1 / -1; } }
 @media (max-width: 680px) { .order-composer .panel-header { align-items: start; flex-direction: column; } .order-form { grid-template-columns: 1fr; } .order-form .btn { grid-column: auto; } .orders-grid { grid-template-columns: 1fr; } }
 @media (max-width: 420px) { .event-route { width: 100%; justify-content: space-between; } }

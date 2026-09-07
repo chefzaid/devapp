@@ -1,0 +1,121 @@
+---
+- name: Reconcile DevApp through Argo CD
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    application_name: devapp
+    argocd_namespace: infra
+    application_namespace: apps
+    application_manifest: "{{ playbook_dir }}/../argocd/application.yaml"
+    rollout_timeout: "{{ lookup('ansible.builtin.env', 'APP_ROLLOUT_TIMEOUT') | default('600s', true) }}"
+    rollout_retries: "{{ lookup('ansible.builtin.env', 'APP_ROLLOUT_RETRIES') | default('120', true) | int }}"
+    deployments:
+      - user-app
+      - order-app
+      - devapp-web
+
+  pre_tasks:
+    - name: Verify the Argo CD application manifest exists
+      ansible.builtin.stat:
+        path: "{{ application_manifest }}"
+      register: application_manifest_status
+
+    - name: Validate reconciliation inputs
+      ansible.builtin.assert:
+        that:
+          - application_manifest_status.stat.isreg | default(false)
+          - rollout_timeout is match('^[1-9][0-9]*[smh]$')
+          - rollout_retries | int > 0
+        fail_msg: "The application manifest or rollout settings are invalid."
+
+  tasks:
+    - name: Read the previous Argo CD reconciliation timestamp
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - get
+          - application
+          - "{{ application_name }}"
+          - --namespace
+          - "{{ argocd_namespace }}"
+          - --output
+          - "jsonpath={.status.reconciledAt}"
+      register: previous_reconciliation
+      changed_when: false
+      failed_when: previous_reconciliation.rc not in [0, 1]
+
+    - name: Apply the repository-owned Argo CD application
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - --filename
+          - "{{ application_manifest }}"
+      register: application_apply
+      changed_when: "'created' in application_apply.stdout or 'configured' in application_apply.stdout"
+
+    - name: Request a fresh Argo CD source reconciliation
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - annotate
+          - application
+          - "{{ application_name }}"
+          - --namespace
+          - "{{ argocd_namespace }}"
+          - argocd.argoproj.io/refresh=hard
+          - --overwrite
+      changed_when: true
+
+    - name: Wait for the refreshed application to become synced and healthy
+      ansible.builtin.shell: >-
+        set -o pipefail;
+        kubectl get application {{ application_name | quote }}
+        --namespace {{ argocd_namespace | quote }}
+        --output jsonpath='{.status.reconciledAt}{"|"}{.status.sync.status}{"|"}{.status.health.status}{"|"}{.status.operationState.phase}'
+      args:
+        executable: /bin/bash
+      register: application_status
+      changed_when: false
+      until:
+        - application_status.rc == 0
+        - application_status.stdout.split('|') | length == 4
+        - previous_reconciliation.rc != 0 or application_status.stdout.split('|')[0] != previous_reconciliation.stdout
+        - application_status.stdout.split('|')[1] == 'Synced'
+        - application_status.stdout.split('|')[2] == 'Healthy'
+        - application_status.stdout.split('|')[3] in ['', 'Succeeded']
+      retries: "{{ rollout_retries }}"
+      delay: 5
+
+    - name: Verify application deployment rollouts
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - rollout
+          - status
+          - "deployment/{{ item }}"
+          - --namespace
+          - "{{ application_namespace }}"
+          - "--timeout={{ rollout_timeout }}"
+      loop: "{{ deployments }}"
+      changed_when: false
+
+    - name: Display application status
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - get
+          - application
+          - "{{ application_name }}"
+          - --namespace
+          - "{{ argocd_namespace }}"
+          - --output
+          - wide
+      register: final_application_status
+      changed_when: false
+
+    - name: Report final application status
+      ansible.builtin.debug:
+        msg: "{{ final_application_status.stdout }}"

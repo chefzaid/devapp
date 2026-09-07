@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 
 APP_NAME=devapp
-GITLAB_PROJECT_PATH="${GITLAB_PROJECT_PATH:-root/$APP_NAME}"
+GITLAB_PROJECT_PATH="${GITLAB_PROJECT_PATH:-swirlit/$APP_NAME}"
 GITLAB_NAMESPACE="${GITLAB_NAMESPACE:-${GITLAB_PROJECT_PATH%/*}}"
 GITLAB_URL="${GITLAB_URL:-}"
 GITLAB_REGISTRY_HOST="${GITLAB_REGISTRY_HOST:-registry.swirlit.dev}"
@@ -70,8 +70,10 @@ case "$project_status" in
 esac
 
 project_id="$(jq -er '.id' "$work_dir/project.json")"
-jq -n \
-  '{visibility:"public",container_registry_access_level:"private",package_registry_access_level:"private",builds_access_level:"enabled",ci_push_repository_for_job_token_allowed:true,shared_runners_enabled:true}' \
+current_visibility="$(jq -er '.visibility' "$work_dir/project.json")"
+jq -n --arg current_visibility "$current_visibility" \
+  '{container_registry_access_level:"private",package_registry_access_level:"private",builds_access_level:"enabled",ci_push_repository_for_job_token_allowed:true,shared_runners_enabled:true}
+   + if $current_visibility == "public" then {} else {visibility:"public"} end' \
   > "$work_dir/update-project.json"
 api_json PUT "projects/$project_id" --header 'Content-Type: application/json' \
   --data-binary "@$work_dir/update-project.json" >/dev/null
@@ -127,10 +129,12 @@ fi
 unset registry_password
 
 git -C "$REPOSITORY_ROOT" show HEAD:.gitlab-ci.yml >/dev/null
-kubectl apply -f "$REPOSITORY_ROOT/infra/k8s/argocd-apps.yaml"
+GITLAB_URL="$GITLAB_URL" "$SCRIPT_DIR/configure-code-quality.sh"
+GITLAB_URL="$GITLAB_URL" "$SCRIPT_DIR/configure-repository-sync.sh"
+kubectl apply -f "$REPOSITORY_ROOT/infra/argocd/application.yaml"
 if kubectl get externalsecret devapp-registry-auth -n "$APP_NAMESPACE" >/dev/null 2>&1; then
   kubectl annotate externalsecret devapp-registry-auth -n "$APP_NAMESPACE" \
     force-sync="$(date +%s)" --overwrite >/dev/null
 fi
 
-info "$APP_NAME GitLab project, private registry pull secret, runner access, and Argo CD application are configured"
+info "$APP_NAME GitLab project, bidirectional GitHub sync, SonarQube reporting, registry pull secret, runner access, and Argo CD application are configured"

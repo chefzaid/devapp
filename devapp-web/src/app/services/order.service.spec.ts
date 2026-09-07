@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { OrderService } from './order.service';
-import { Order } from '../models/order.model';
+import { Order, UpdateOrderRequest } from '../models/order.model';
 
 describe('OrderService', () => {
     let service: OrderService;
@@ -55,6 +55,26 @@ describe('OrderService', () => {
         const req = http.expectOne('/api/orders/3');
         expect(req.request.method).toBe('GET');
         req.flush(order);
+    });
+
+    it('should update order', () => {
+        const update: UpdateOrderRequest = { userId: 2, productId: 20 };
+        const order: Order = { id: 3, userId: 2, userName: null, productId: 20, status: 'PENDING' };
+
+        service.updateOrder(3, update).subscribe(data => expect(data).toEqual(order));
+
+        const req = http.expectOne('/api/orders/3');
+        expect(req.request.method).toBe('PUT');
+        expect(req.request.body).toEqual(update);
+        req.flush(order);
+    });
+
+    it('should delete order', () => {
+        service.deleteOrder(3).subscribe();
+
+        const req = http.expectOne('/api/orders/3');
+        expect(req.request.method).toBe('DELETE');
+        req.flush(null);
     });
 
     it('should return server message when available', async () => {

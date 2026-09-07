@@ -64,7 +64,7 @@ services:
       KC_HOSTNAME: http://localhost:4200/auth
       KC_PROXY_HEADERS: xforwarded
     volumes:
-      - ../keycloak/devapp-realm.json:/opt/keycloak/data/import/devapp-realm.json:ro
+      - ../keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
     ports:
       - "8180:8080"
     healthcheck:

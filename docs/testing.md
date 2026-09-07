@@ -71,23 +71,23 @@ mask build all
 
 ### User service
 
-- `UserServiceTest`: bounded reads, not-found behavior, normalization, duplicate username/email rejection, persistence, and cache-oriented service behavior
+- `UserServiceTest`: bounded reads, not-found behavior, create/edit normalization, duplicate username/email rejection, deletion, persistence, and cache-oriented service behavior
 - `OrderListenerTest`: approved result, missing-user rejection, synchronous result publication, and propagation of transient failures
-- `UserControllerTest`: create/get/list responses, invalid bodies, invalid IDs/limits, malformed JSON, and private entity-field exclusion
+- `UserControllerTest`: create/get/list/edit/delete responses, invalid bodies, invalid IDs/limits, malformed JSON, and private entity-field exclusion
 - `CacheConfigTest`: Redis serialization and TTL configuration
 - `DatabaseHealthIndicatorTest`: healthy and failed repository access
-- `SecurityConfigTest`: anonymous API rejection and JWT-authenticated API access in a full application context
+- `SecurityConfigTest`: anonymous API rejection, JWT-authenticated API access, CORS preflight, and valid Kafka producer settings in a full application context
 
 ### Order service
 
-- `OrderServiceTest`: bounded reads, not-found behavior, create flow, feature-switched publishing, and publication failures
-- `OrderResultListenerTest`: approval/rejection, duplicate results, missing orders, invalid identity/status/state, and retryable behavior
-- `OrderControllerTest`: create/get/list responses and input/path/query error contracts
+- `OrderServiceTest`: bounded reads, not-found behavior, create/edit/delete flow, edit revalidation, feature-switched publishing, and publication failures
+- `OrderResultListenerTest`: approval/rejection, duplicate results, deleted orders, superseded edit results, invalid status/state, and retryable behavior
+- `OrderControllerTest`: create/get/list/edit/delete responses and input/path/query error contracts
 - `CacheConfigTest`: Redis serialization and TTL configuration
 - `DatabaseHealthIndicatorTest`: healthy and failed repository access
-- `SecurityConfigTest`: anonymous API rejection and JWT-authenticated API access in a full application context
+- `SecurityConfigTest`: anonymous API rejection, JWT-authenticated API access, CORS preflight, and valid Kafka producer settings in a full application context
 
-The current clean reactor run executes 46 tests: 4 in `devapp-common`, 21 in `order-app`, and 21 in `user-app`.
+The current clean reactor run executes 68 tests across `devapp-common`, `order-app`, and `user-app`.
 
 ## Direct Maven Workflows
 
@@ -151,7 +151,7 @@ Current Vitest specs:
 - `auth.guard.spec.ts`
 - `auth.interceptor.spec.ts`
 
-The current clean frontend run executes 40 tests across 9 files.
+The current clean frontend run executes 52 tests across 9 files.
 
 Coverage output:
 
@@ -180,16 +180,18 @@ npm run test:e2e
 3. authenticates through Keycloak
 4. loads the secured user directory
 5. loads the secured order workflow
-6. optionally creates a user and order
-7. waits for Kafka validation to approve the new order
+6. optionally creates and edits a disposable user
+7. creates and edits an order, waiting for Kafka validation after each change
+8. deletes the disposable order and user again
 
 Run against an environment:
 
 ```bash
 cd devapp-web
 WEB_URL=https://devapp.swirlit.dev \
-OIDC_USERNAME=user \
-OIDC_PASSWORD=password \
+OIDC_REALM=swirlit \
+OIDC_USERNAME=zaid \
+OIDC_PASSWORD='<from Vault/GitLab CI variable>' \
 npm run test:integration
 ```
 
@@ -218,7 +220,7 @@ Run the whole production-shaped local system plus Playwright:
 ```bash
 docker compose \
   -f infra/compose/compose.yaml \
-  -f infra/compose/docker-compose.test.yml up \
+  -f infra/compose/compose.test.yaml up \
   --build \
   --abort-on-container-exit \
   --exit-code-from test-runner
@@ -237,7 +239,7 @@ Clean it up after inspection:
 ```bash
 docker compose \
   -f infra/compose/compose.yaml \
-  -f infra/compose/docker-compose.test.yml down -v
+  -f infra/compose/compose.test.yaml down -v
 ```
 
 ## Production-Profile Smoke Testing
@@ -264,17 +266,7 @@ Render manifests without changing a cluster:
 kubectl kustomize infra/k8s
 ```
 
-The GitLab CI pipeline performs:
-
-1. Maven `clean verify`
-2. frontend Vitest CI coverage and Playwright type check
-3. backend and frontend production builds
-4. runtime image builds from the verified artifacts
-5. immutable image publication
-6. desired-version commit
-7. exact-revision Argo CD health wait
-8. internal service smoke tests
-9. real Keycloak browser acceptance in all three engines
+GitLab shows ordered jobs: required `01-build`, optional `02-test`, required `03-package`, optional manual `01-e2e`, non-blocking `02-quality`, independent non-blocking `03-security`, `01-release`, and `02-deploy`. Default-branch quality runs automatically. Standard mode leaves Trivy security manual; full mode runs both automatically. Security scans the repository for vulnerable dependencies, IaC misconfigurations, and exposed secrets, retains JSON/SARIF artifacts, and has no dependency on quality. Release requires the successful build path, and deployment requires successful release. `PIPELINE_MODE=full` also automates release and deploy; E2E remains manual.
 
 ## Test Design Rules
 
@@ -313,7 +305,7 @@ Not yet first-class:
 - durable DLT/replay and consumer restart tests
 - consumer-driven HTTP/event contracts
 - mutation, load, soak, chaos, visual-regression, and accessibility suites
-- active SonarQube and dependency-check stages in GitLab CI
+- automated container and secret scanning beyond the current dependency and SonarQube reports
 - policy-as-code checks for manifests
 
 Track these in [TODO.md](../TODO.md), not as existing coverage.

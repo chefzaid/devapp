@@ -58,6 +58,13 @@ blob-report/
 npm-debug.log
 yarn-error.log
 
+# CI-generated reports and release staging
+quality-reports/
+package-output/
+coverage-policy-junit.xml
+coverage-policy.env
+release.env
+
 # K8s temporary files
 k8s/tmp/
 

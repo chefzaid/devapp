@@ -1,6 +1,6 @@
 # Operations Runbook
 
-This runbook covers the DevApp application layer, including its public DNS record, registry-secret projection, Argo CD application, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring services are owned by [`bm-cluster`](https://github.com/chefzaid/bm-cluster); use its runbooks when the incident is platform-wide. All DevApp-specific configuration remains in this repository.
+This runbook covers the DevApp application layer, including its public DNS record, registry-credential projection, Argo CD application, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring services are owned by [`bm-cluster`](https://github.com/chefzaid/bm-cluster); use its runbooks when the incident is platform-wide. All DevApp-specific configuration remains in this repository.
 
 ## Runtime Surfaces
 
@@ -12,9 +12,10 @@ Public:
 | API documentation | <https://devapp.swirlit.dev/api/docs> |
 | Grafana dashboard | <https://grafana.swirlit.dev/d/devapp-overview> |
 | Kibana logs | <https://kibana.swirlit.dev/app/dashboards#/view/devapp-logs> |
-| GitLab | <https://gitlab.swirlit.dev/root/devapp> |
+| GitLab | <https://gitlab.swirlit.dev/swirlit/devapp> |
 | GitHub mirror | <https://github.com/chefzaid/devapp> |
-| GitLab CI | <https://gitlab.swirlit.dev/root/devapp/-/pipelines> |
+| GitLab CI | <https://gitlab.swirlit.dev/swirlit/devapp/-/pipelines> |
+| SonarQube | <https://sonarqube.swirlit.dev/dashboard?id=swirlit%3Adevapp> |
 | Argo CD | <https://argocd.swirlit.dev/applications/devapp> |
 
 Cluster-only:
@@ -37,7 +38,7 @@ Application services use canonical Kubernetes service DNS. The shared dependenci
 kubectl get application devapp -n infra
 kubectl get deploy,pods,svc,ingress -n apps
 kubectl get externalsecret devapp-db-credentials devapp-registry-auth -n apps
-kubectl get job devapp-kibana-bootstrap-v6 -n apps
+kubectl get configmap devapp-kibana-saved-objects -n apps
 ```
 
 Expected state:
@@ -45,6 +46,7 @@ Expected state:
 - Argo CD: `Synced` and `Healthy`
 - `user-app`, `order-app`, and `devapp-web`: desired replicas available
 - pods: ready with low/no restart growth
+- the latest Argo CD operation includes a successful `devapp-kibana-bootstrap` PostSync hook
 - ExternalSecret: `Ready=True`
 - observability bootstrap Job: completed
 - ingress host: `devapp.swirlit.dev`
@@ -108,7 +110,11 @@ Events:
 
 ## Logs And Request Correlation
 
-UAT/production services write structured JSON to stdout. The cluster log pipeline collects it into Elasticsearch and the provisioned Kibana dashboard filters the `apps` namespace.
+UAT/production services write structured JSON to stdout. The cluster log pipeline
+collects it into Elasticsearch. The **DevApp — Application Logs** Kibana
+dashboard filters only `user-app`, `order-app`, and `devapp-web`; its first
+panel contains warnings/errors and its second panel contains the complete recent
+stream. The default window is 24 hours with a 30-second refresh.
 
 Useful fields:
 
@@ -258,8 +264,8 @@ Symptoms:
 
 Checks:
 
-- public discovery: `https://keycloak.swirlit.dev/auth/realms/devapp/.well-known/openid-configuration`
-- token `iss` equals `https://keycloak.swirlit.dev/auth/realms/devapp`
+- public discovery: `https://keycloak.swirlit.dev/auth/realms/swirlit/.well-known/openid-configuration`
+- token `iss` equals `https://keycloak.swirlit.dev/auth/realms/swirlit`
 - backend public issuer setting matches exactly
 - internal JWK URL resolves from the app pod
 - canonical Keycloak ingress and the shared internal service are healthy
@@ -294,11 +300,14 @@ Do not add Actuator back to public ingress as a shortcut.
 
 ```bash
 kubectl get configmap devapp-kibana-saved-objects -n apps
-kubectl get job devapp-kibana-bootstrap-v6 -n apps
-kubectl logs -n apps job/devapp-kibana-bootstrap-v6
+kubectl get application devapp -n infra
 ```
 
-The Job waits for shared Kibana and imports the saved objects with overwrite. If the Job completed before a ConfigMap change, change the versioned Job name or delete/recreate only that known bootstrap Job through reviewed deployment automation.
+Argo CD runs `devapp-kibana-bootstrap` as a PostSync hook. The hook waits for
+shared Kibana, authenticates with the platform-managed least-privilege dashboard
+bootstrap credential, imports the saved objects with overwrite, and is deleted
+after a successful import. Inspect the Argo operation and hook logs while a
+failed sync is still retained.
 
 ### Argo CD reverts a manual change
 
@@ -306,11 +315,11 @@ This is expected: automated self-heal is enabled. Make the change under `infra/k
 
 ### GitLab CI published images but deployment did not advance
 
-Inspect these stages:
+Inspect the explicit delivery jobs:
 
-- **Commit Desired Version**: fails if `origin/main` advanced
-- **Argo CD Rollout**: waits for the exact GitOps commit
-- **Smoke Tests** and **Browser Acceptance**: can fail after a healthy rollout
+- `01-release`: publishes artifacts/images and fails safely if `origin/main` advanced
+- `02-deploy`: commits desired image tags, refreshes Argo CD, waits for the exact GitOps revision, and runs smoke checks
+- optional `01-e2e`: retains browser acceptance output but cannot suppress release or deploy
 
 Compare:
 
@@ -323,7 +332,7 @@ Never force push over an advanced GitOps commit. Reconcile histories and start t
 
 ### GitHub and GitLab differ
 
-The GitHub workflow normally fast-forwards or merges the mirrors without force pushing. Run **Sync GitHub and GitLab** manually after GitLab CI-originated commits when needed. A content conflict intentionally requires human resolution.
+GitHub pushes start the repository reconciler directly. GitLab branch and tag pushes invoke it through the managed repository-dispatch webhook, including GitLab CI commits marked `[skip ci]`. The workflow normally fast-forwards or merges the mirrors without force pushing, and its monthly schedule renews the GitLab credential before expiry. Inspect the **Sync GitHub and GitLab** workflow and the GitLab webhook delivery log if synchronization fails; a true content conflict or conflicting immutable tag intentionally stops instead of discarding repository history.
 
 ## Rate-Limit Incidents
 

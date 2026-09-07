@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { CreateOrderRequest, Order } from '../models/order.model';
+import { CreateOrderRequest, Order, UpdateOrderRequest } from '../models/order.model';
 import { environment } from '../../environments/environment';
 import { apiErrorMessage } from './api-error';
 
@@ -28,6 +28,18 @@ export class OrderService {
 
     createOrder(order: CreateOrderRequest): Observable<Order> {
         return this.http.post<Order>(this.baseUrl, order).pipe(
+            catchError(this.handleError)
+        );
+    }
+
+    updateOrder(id: number, order: UpdateOrderRequest): Observable<Order> {
+        return this.http.put<Order>(`${this.baseUrl}/${id}`, order).pipe(
+            catchError(this.handleError)
+        );
+    }
+
+    deleteOrder(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.baseUrl}/${id}`).pipe(
             catchError(this.handleError)
         );
     }

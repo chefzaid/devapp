@@ -21,13 +21,13 @@ spec:
         - name: devapp-registry-auth
       securityContext:
         runAsNonRoot: true
-        runAsUser: 101
-        runAsGroup: 101
+        runAsUser: 10001
+        runAsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
       containers:
       - name: devapp-web
-        image: registry.swirlit.dev/root/devapp/devapp-web:v3
+        image: registry.swirlit.dev/swirlit/devapp/devapp-web:v3
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false

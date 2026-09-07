@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "job": "02-quality",
+  "scanOnlyVariable": "SONAR_SCAN_ONLY"
+}

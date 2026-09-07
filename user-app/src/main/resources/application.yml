@@ -59,6 +59,7 @@ spring:
       properties:
         enable.idempotence: true
         delivery.timeout.ms: 30000
+        request.timeout.ms: 10000
         max.in.flight.requests.per.connection: 5
     listener:
       auto-startup: ${KAFKA_ENABLED:false}
@@ -159,8 +160,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${JWT_ISSUER_URI:https://keycloak.swirlit.dev/auth/realms/devapp}
-          jwk-set-uri: ${JWT_JWK_SET_URI:https://keycloak.swirlit.dev/auth/realms/devapp/protocol/openid-connect/certs}
+          issuer-uri: ${JWT_ISSUER_URI:https://keycloak.swirlit.dev/auth/realms/swirlit}
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://keycloak.swirlit.dev/auth/realms/swirlit/protocol/openid-connect/certs}
 
 app:
   security:

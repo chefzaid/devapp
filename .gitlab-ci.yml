@@ -193,7 +193,7 @@ variables:
     - job: 02-test
       artifacts: true
   image:
-    name: mcr.microsoft.com/playwright@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
+    name: node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
     entrypoint: [""]
   cache:
     - key: devapp-maven-v2
@@ -205,6 +205,8 @@ variables:
         - .cache/sonar/cache/
       policy: pull-push
   before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends git ca-certificates
     - export APP_VERSION="$("$CI_PROJECT_DIR/infra/scripts/current-version.sh")"
     - npm install --global @sonar/scan@5.0.0
   script:

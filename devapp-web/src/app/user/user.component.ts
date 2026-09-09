@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { UserService } from '../services/user.service';
 import { NotificationService } from '../services/notification.service';
-import { CreateUserRequest, UpdateUserRequest, User } from '../models/user.model';
+import { CreateUserRequest, User } from '../models/user.model';
 
 @Component({
   selector: 'app-user',
@@ -18,7 +18,7 @@ export class UserComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly creating = signal(false);
   readonly editingUserId = signal<number | null>(null);
-  editUser: UpdateUserRequest = this.emptyUser();
+  editUser: CreateUserRequest = this.emptyUser();
   readonly saving = signal(false);
   readonly pendingDeleteUserId = signal<number | null>(null);
   readonly deletingUserId = signal<number | null>(null);
@@ -140,7 +140,7 @@ export class UserComponent implements OnInit {
     });
   }
 
-  private isValidUser(user: CreateUserRequest | UpdateUserRequest): boolean {
+  private isValidUser(user: CreateUserRequest): boolean {
     return Boolean(user.name.trim() && user.username.trim() && user.email.trim());
   }
 

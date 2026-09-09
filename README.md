@@ -17,6 +17,11 @@ DevApp is a deliberately small, production-shaped full-stack template. Two Java 
 
 GitLab exposes `build`, `verify`, `release`, and `version` stages. Their jobs are ordered as `01-build`, `02-test`, `03-package`; `01-e2e`, `02-quality`, `03-security`; `01-release`, `02-deploy`; and `set-major-version`. Build and package are required; tests and their 80 percent coverage rule are non-blocking. Quality runs automatically on the default branch. Standard mode leaves E2E, security, and release manual. `PIPELINE_MODE=full` runs non-blocking quality and Trivy security reporting automatically and automates release and deploy, while E2E remains manual.
 
+Sonar analyzes both the Java backend and Angular frontend. The platform discovers
+deployed repositories in `apps` and requests stale or missing analyses. When
+copying this template, follow the [code-quality onboarding guide](./docs/code-quality.md#adapting-the-template)
+to preserve source coverage, credentials and scan-only CI behavior.
+
 Application versions start at `1.0.0` and are owned by [`VERSION`](./VERSION). Each new commit advances the patch component for its build (`1.0.1`, `1.0.2`, ...). A successful release tags and deploys that exact version, then prepares the next minor cycle (`1.1.0`, `1.2.0`, ...). To change the major version, start a pipeline with `NEW_MAJOR_VERSION` set to the desired integer and play `set-major-version`; it prepares `<major>.0.0` and synchronizes the Maven and npm manifests.
 
 ## Documentation
@@ -26,6 +31,7 @@ Application versions start at `1.0.0` and are owned by [`VERSION`](./VERSION). E
 - [Data Model Reference](./docs/data-model.md)
 - [Development Guide](./docs/development.md)
 - [Testing Guide](./docs/testing.md)
+- [Code Quality And Template Onboarding](./docs/code-quality.md)
 - [Deployment Guide](./docs/deployment.md)
 - [Operations Runbook](./docs/operations.md)
 - [Security Reference](./docs/security.md)

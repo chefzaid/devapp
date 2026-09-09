@@ -72,7 +72,7 @@ DevApp is a reusable application template, not a product roadmap. New work shoul
 - [ ] Add REST-assured or full-context HTTP integration tests against packaged applications.
 - [ ] Add accessibility testing for the Angular critical path and automated checks for keyboard navigation and semantic labels.
 - [ ] Add visual regression tests for the deliberately small UI surface.
-- [ ] Add and wire Java 25-aware SonarQube and OWASP Dependency-Check configuration into CI with reviewed suppressions and enforceable quality gates.
+- [ ] Extend the existing automatic Sonar reporting with Java 25-specific analyzer validation, OWASP Dependency-Check, and opt-in enforcement of quality gates.
 - [ ] Add Markdown linting and internal-link validation for `README.md`, `TODO.md`, and `docs/`.
 
 ## Priority: Template Experience

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { CreateUserRequest, UpdateUserRequest, User } from '../models/user.model';
+import { CreateUserRequest, User } from '../models/user.model';
 import { environment } from '../../environments/environment';
 import { apiErrorMessage } from './api-error';
 
@@ -32,7 +32,7 @@ export class UserService {
         );
     }
 
-    updateUser(id: number, user: UpdateUserRequest): Observable<User> {
+    updateUser(id: number, user: CreateUserRequest): Observable<User> {
         return this.http.put<User>(`${this.baseUrl}/${id}`, user).pipe(
             catchError(this.handleError)
         );

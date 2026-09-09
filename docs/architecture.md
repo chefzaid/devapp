@@ -102,11 +102,16 @@ The initial database commit and Kafka publication are not atomic. This is a docu
 
 1. GitLab CI checks out GitLab `main`.
 2. `01-build`, optional `02-test`, and required `03-package` validate and package backend/frontend outputs.
-3. optional manual E2E runs Playwright followed by non-blocking dependency and Sonar reporting.
+3. optional manual E2E runs Playwright independently; automatic default-branch `02-quality` consumes test artifacts for non-blocking dependency and Sonar reporting.
 4. release consumes the required build outputs and publishes semantic-version packages/images; deploy requires that release job, while full mode automates build, release, and deploy.
 5. GitLab CI confirms Git did not advance, commits the release version and Kustomize tags, creates a Git tag and Release, then prepares the next minor version.
 6. Argo CD reconciles that commit into K3s.
 7. GitLab CI waits for the exact revision to become healthy and runs internal smoke checks.
+
+The platform also discovers Argo-owned repositories in `apps` and requests
+scan-only pipelines for missing or stale Sonar analyses. The
+[application contract](code-quality.md) keeps backend/frontend build and source
+configuration in the repository.
 
 ## Data Ownership Rules
 
@@ -208,6 +213,7 @@ What becomes easier, harder, riskier, or more constrained?
 - [Data Model](./data-model.md)
 - [Development](./development.md)
 - [Testing](./testing.md)
+- [Code Quality](./code-quality.md)
 - [Deployment](./deployment.md)
 - [Operations](./operations.md)
 - [Security](./security.md)

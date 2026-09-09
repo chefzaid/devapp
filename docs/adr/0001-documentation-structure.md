@@ -17,6 +17,7 @@ Keep `README.md` as the short project entry point and move detailed material int
 - `docs/data-model.md`
 - `docs/development.md`
 - `docs/testing.md`
+- `docs/code-quality.md`
 - `docs/deployment.md`
 - `docs/operations.md`
 - `docs/security.md`

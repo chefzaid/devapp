@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { UserService } from './user.service';
-import { UpdateUserRequest, User } from '../models/user.model';
+import { CreateUserRequest, User } from '../models/user.model';
 
 describe('UserService', () => {
     let service: UserService;
@@ -58,7 +58,7 @@ describe('UserService', () => {
     });
 
     it('should update user', () => {
-        const update: UpdateUserRequest = {
+        const update: CreateUserRequest = {
             name: 'Alice Updated',
             username: 'alice',
             email: 'alice@example.com'

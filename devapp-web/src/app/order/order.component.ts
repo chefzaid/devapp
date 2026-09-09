@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, signal } from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { OrderService } from '../services/order.service';
 import { UserService } from '../services/user.service';
-import { CreateOrderRequest, Order, UpdateOrderRequest } from '../models/order.model';
+import { CreateOrderRequest, Order } from '../models/order.model';
 import { User } from '../models/user.model';
 
 @Component({
@@ -21,7 +21,7 @@ export class OrderComponent implements OnInit {
   readonly creating = signal(false);
   readonly loadingUsers = signal(false);
   readonly editingOrderId = signal<number | null>(null);
-  editOrder: UpdateOrderRequest = this.initOrder();
+  editOrder: CreateOrderRequest = this.initOrder();
   readonly saving = signal(false);
   readonly pendingDeleteOrderId = signal<number | null>(null);
   readonly deletingOrderId = signal<number | null>(null);

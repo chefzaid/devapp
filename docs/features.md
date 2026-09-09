@@ -238,6 +238,7 @@ Implemented platform features:
 - persistent Maven/npm dependency caches and private GitLab image registry integration
 - explicit GitLab jobs for build, optional tests, Docker validation, optional E2E/quality reports, release, deploy, and set-major-version
 - persistent Maven, npm, and Sonar analyzer caches plus 30-day registry-backed Kaniko layer caches
+- [backend/frontend Sonar analysis](code-quality.md), manual scans, namespace discovery and a reusable scan-only onboarding contract
 - daemonless Kaniko image publication with immutable semantic-version tags
 - seven-day JUnit, Cobertura, Playwright, and verified-build artifacts plus immutable JAR/SPA archives in GitLab's Generic Package Registry
 - GitLab Releases, production Environment deployment history, enterprise project metadata, labels, templates, protected branches, and quality badges

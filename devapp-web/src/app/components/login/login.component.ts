@@ -11,7 +11,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 export class LoginComponent {
   readonly authStatus = toSignal(this.authService.authStatus$, { initialValue: 'loading' });
 
-  constructor(private authService: AuthService) {}
+  constructor(private readonly authService: AuthService) {}
 
   login() {
     this.authService.login();

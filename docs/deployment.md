@@ -177,7 +177,9 @@ ansible-playbook -i infra/ansible/inventory.ini infra/ansible/site.yaml
 
 ## Automatic Sonar coverage
 
-The platform discovers this repository through its Argo CD workloads in `apps`.
+The platform discovers this repository through its Argo CD workloads in `apps`
+every 15 minutes. One Sonar project includes the shared Java module, both backend
+services and the Angular frontend, as declared in `sonar-project.properties`.
 `.sonar-auto.json` declares the CI contract. `SONAR_SCAN_ONLY=true` on the default
 branch runs only compilation, tests/coverage and `02-quality`; it excludes image
 packaging, browser/security jobs, release, deployment and version changes.
@@ -188,3 +190,7 @@ job visibly; quality findings remain independent of deployment permission.
 
 The quality job uses the shared slim Node scanner image; browser images are only
 needed for explicitly requested E2E jobs.
+
+The [code-quality guide](code-quality.md) documents source and coverage inputs,
+[the contract to preserve when copying DevApp](code-quality.md#adapting-the-template),
+credentials, scheduling and troubleshooting.

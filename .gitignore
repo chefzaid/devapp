@@ -71,3 +71,6 @@ k8s/tmp/
 # OS specific
 .DS_Store
 Thumbs.db
+
+# Local analysis and browser reports
+.scannerwork/

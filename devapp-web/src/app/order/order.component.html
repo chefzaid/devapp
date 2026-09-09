@@ -100,10 +100,10 @@
                     </div>
                     <p class="order-label">Order</p>
                     <h3>#{{ order.id }}</h3>
-                    <dl class="order-details">
-                        <div><dt>Owner</dt><dd>{{ order.userName || ('User #' + order.userId) }}</dd></div>
-                        <div><dt>Product</dt><dd>#{{ order.productId }}</dd></div>
-                    </dl>
+                    <div class="order-details">
+                        <dl><dt>Owner</dt><dd>{{ order.userName || ('User #' + order.userId) }}</dd></dl>
+                        <dl><dt>Product</dt><dd>#{{ order.productId }}</dd></dl>
+                    </div>
                     <div class="event-confirmation"><i></i><span>Event pipeline connected</span></div>
                     <div class="order-actions">
                         @if (pendingDeleteOrderId() === order.id) {

@@ -11,7 +11,7 @@
 .header-actions, .app-nav { display: flex; align-items: center; gap: 8px; }
 .nav-link, .logout-button { min-height: 42px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; color: #afc0bd; font: 700 13px/1 var(--font); text-decoration: none; border: 1px solid transparent; border-radius: 12px; transition: color .2s, background .2s, border-color .2s, transform .2s; }
 .nav-link svg, .logout-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.nav-link:hover { color: white; background: rgb(255 255 255 / .06); }
+.nav-link:hover { color: white; background: #233236; }
 .nav-link.active { color: var(--ink); background: var(--mint); box-shadow: 0 6px 20px rgb(117 230 179 / .16); }
 .logout-button { margin-left: 4px; color: #e5ecea; background: transparent; border-color: rgb(255 255 255 / .14); cursor: pointer; }
 .logout-button:hover { color: white; border-color: rgb(255 255 255 / .28); transform: translateY(-1px); }

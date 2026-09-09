@@ -46,3 +46,41 @@ The later delivery decision standardizes an 80 percent reported coverage policy 
 Testcontainers, contracts, mutation, load, chaos, accessibility, supply-chain, and manifest policy tests remain roadmap work.
 
 New technical patterns must include configuration, failure, operations, and tests—not only a happy-path example.
+
+## Amendment: source analysis and discovery (2026-09-08)
+
+Use one Sonar project per application repository to analyze its backend,
+frontend and shared source together. Keep source paths, compiled inputs,
+coverage reports and the scanner job in the application repository so template
+adopters can adapt them to their stack.
+
+The shared platform discovers application repositories through Argo CD tracking
+of workloads in `apps`, provisions missing Sonar projects and analysis
+credentials, and requests a first scan when analysis is absent. It also requests
+refreshes when analysis is older than 24 hours, subject to the controller's
+concurrency and retry limits. Discovery runs every 15 minutes. The application
+declares its analysis inputs in `sonar-project.properties` and its scan-only CI
+contract in `.sonar-auto.json`.
+
+Keep manual scans available through a default-branch pipeline with
+`SONAR_SCAN_ONLY=true`. Normal default-branch pipelines also run quality
+automatically. Both manual and discovery-triggered scan-only pipelines run
+build, test and quality without publishing images, releasing, deploying or
+committing version changes. Completed analyses from any of these paths satisfy
+the discovery freshness check.
+
+This division keeps onboarding automatic without a central list of application
+names, while preserving the build knowledge that only the application owns.
+Periodic refreshes keep deployed repositories covered during periods without
+commits; manual scans let contributors request feedback when needed. Missing
+repository mappings or analysis contracts produce visible discovery errors and
+must be corrected by the application owner.
+
+Analysis remains non-blocking for release. Submission failures are visible in
+the quality job, and a successful upload must still be processed by Sonar before
+its findings and quality gate are available. The current Community Build setup
+submits analysis for the default branch only.
+
+See the [code-quality guide](../code-quality.md) for manual scan instructions,
+template adaptation and troubleshooting, and
+[ADR 0009](0009-explicit-delivery-jobs.md) for the delivery job rules.

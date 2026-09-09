@@ -20,7 +20,7 @@ export class AuthService {
   readonly authStatus$ = this.authStatusSubject.asObservable();
   readonly ready$ = this.readySubject.asObservable();
 
-  constructor(private oauthService: OAuthService) {
+  constructor(private readonly oauthService: OAuthService) {
     this.configure();
   }
 

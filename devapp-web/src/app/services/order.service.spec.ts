@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { OrderService } from './order.service';
-import { Order, UpdateOrderRequest } from '../models/order.model';
+import { Order, CreateOrderRequest } from '../models/order.model';
 
 describe('OrderService', () => {
     let service: OrderService;
@@ -58,7 +58,7 @@ describe('OrderService', () => {
     });
 
     it('should update order', () => {
-        const update: UpdateOrderRequest = { userId: 2, productId: 20 };
+        const update: CreateOrderRequest = { userId: 2, productId: 20 };
         const order: Order = { id: 3, userId: 2, userName: null, productId: 20, status: 'PENDING' };
 
         service.updateOrder(3, update).subscribe(data => expect(data).toEqual(order));

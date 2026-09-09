@@ -9,4 +9,3 @@ export interface Order {
 }
 
 export type CreateOrderRequest = Pick<Order, 'userId' | 'productId'>;
-export type UpdateOrderRequest = CreateOrderRequest;

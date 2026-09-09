@@ -2,6 +2,11 @@
 
 This guide covers DevApp's two local workflows: a fast dependency-free loop and a production-shaped authenticated stack.
 
+When creating an application from this template, follow the
+[code-quality onboarding instructions](code-quality.md#adapting-the-template) alongside the
+repository and service renames. Update both backend and frontend source paths,
+retain `.sonar-auto.json`, and preserve the scan-only CI rules.
+
 ## Repository Layout
 
 ```text

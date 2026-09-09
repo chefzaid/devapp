@@ -21,7 +21,8 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            @Value("${app.security.enabled:false}") boolean securityEnabled) throws Exception {
+            @Value("${app.security.enabled:false}") boolean securityEnabled) {
+        // APIs authenticate only Authorization bearer tokens, never browser cookies or sessions.
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));

@@ -28,6 +28,10 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final String VALIDATION_TITLE = "Validation failed";
+    private static final String INVALID_REQUEST = "The request is invalid";
+    private static final String VIOLATIONS_PROPERTY = "violations";
+
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(EntityNotFoundException.class)
@@ -43,8 +47,8 @@ public class GlobalExceptionHandler {
             violations.put(field, error.getDefaultMessage());
         }
 
-        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, "Validation failed", "The request is invalid");
-        detail.setProperty("violations", violations);
+        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, VALIDATION_TITLE, INVALID_REQUEST);
+        detail.setProperty(VIOLATIONS_PROPERTY, violations);
         return detail;
     }
 
@@ -59,8 +63,8 @@ public class GlobalExceptionHandler {
             violations.put(parameter == null ? "parameter" : parameter, message);
         });
 
-        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, "Validation failed", "The request is invalid");
-        detail.setProperty("violations", violations);
+        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, VALIDATION_TITLE, INVALID_REQUEST);
+        detail.setProperty(VIOLATIONS_PROPERTY, violations);
         return detail;
     }
 
@@ -70,8 +74,8 @@ public class GlobalExceptionHandler {
         exception.getConstraintViolations().forEach(violation ->
                 violations.put(violation.getPropertyPath().toString(), violation.getMessage()));
 
-        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, "Validation failed", "The request is invalid");
-        detail.setProperty("violations", violations);
+        ProblemDetail detail = problem(HttpStatus.BAD_REQUEST, VALIDATION_TITLE, INVALID_REQUEST);
+        detail.setProperty(VIOLATIONS_PROPERTY, violations);
         return detail;
     }
 

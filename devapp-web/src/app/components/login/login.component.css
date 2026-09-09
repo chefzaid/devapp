@@ -23,9 +23,9 @@
 .card-copy { margin: 18px 0 27px; color: var(--muted); font-size: 14px; line-height: 1.7; }
 .sso-button { width: 100%; min-height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 21px; color: var(--ink); background: var(--mint); border: 0; border-radius: 14px; box-shadow: 0 13px 28px rgb(39 161 125 / .19); font-weight: 850; cursor: pointer; transition: transform .2s, box-shadow .2s, background .2s; }
 .sso-button:hover { transform: translateY(-2px); background: #8befc2; box-shadow: 0 17px 34px rgb(39 161 125 / .26); }
-.sso-button:disabled { color: #7f918d; background: #dfe8e2; box-shadow: none; cursor: wait; transform: none; }
+.sso-button:disabled { color: #4d625c; background: #dfe8e2; box-shadow: none; cursor: wait; transform: none; }
 .sso-button svg { width: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
-.demo-hint { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin: 19px 0 0; padding: 13px 14px; color: #738580; background: #f3f3ec; border-radius: 11px; font-size: 11px; }
+.demo-hint { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin: 19px 0 0; padding: 13px 14px; color: #536960; background: #f3f3ec; border-radius: 11px; font-size: 11px; }
 .demo-hint code { color: var(--text); font: 800 12px/1 var(--font); }
 .security-note { display: flex; align-items: start; gap: 9px; margin: 22px 0 0; color: #879692; font-size: 10px; line-height: 1.5; }
 .security-note svg { flex: 0 0 15px; width: 15px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }

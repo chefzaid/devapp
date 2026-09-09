@@ -34,7 +34,7 @@ public class KafkaReliabilityConfig {
             @Value("${app.messaging.retry.max-attempts:4}") long maxAttempts) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
                 kafkaTemplate,
-                (record, exception) -> new TopicPartition(record.topic() + ".DLT", -1));
+                (consumerRecord, exception) -> new TopicPartition(consumerRecord.topic() + ".DLT", -1));
         recoverer.setFailIfSendResultIsError(true);
         DefaultErrorHandler handler = new DefaultErrorHandler(
                 recoverer,

@@ -187,7 +187,7 @@ Production must provide the exact allowed origin list. Do not introduce `*` whil
 
 ## CSRF And Sessions
 
-Backends use stateless bearer authentication and disable CSRF. They do not use a server-side browser session cookie for application APIs.
+Backends use stateless bearer authentication and disable CSRF. They do not use a server-side browser session cookie for application APIs. Both service security integration tests verify that cookies and a pre-authenticated HTTP session cannot authorize a write, while a bearer-authenticated write succeeds without a CSRF token or session cookie.
 
 This choice is correct only while API authentication remains in an `Authorization` header rather than an automatically attached application cookie. If the template moves to a backend-for-frontend or cookie session, revisit CSRF protection, SameSite, Secure, HttpOnly, and session fixation controls.
 
@@ -328,7 +328,13 @@ Still required for a stronger supply-chain posture:
 - admission policy checks
 - base-image vulnerability policy
 
-SonarQube analysis runs automatically in full-mode `02-quality` on the default branch independently of optional manual `01-e2e`; standard mode exposes quality as an optional manual job. The scanner imports JaCoCo and LCOV coverage, submits without waiting for the quality gate, and authenticates with a masked project-scoped token. The reporting job retains dependency-audit output and is allowed to fail, so findings never block `01-release`. Compilation and package validation remain required; unit tests and the 80 percent coverage policy are visible, non-blocking jobs.
+SonarQube analysis runs automatically in `02-quality` on the default branch in both standard and full mode, independently of optional manual `01-e2e`. The scanner imports JaCoCo and LCOV coverage, submits without waiting for the quality gate, and authenticates with a masked project-scoped token. The reporting job retains dependency-audit output and is allowed to fail, so findings never block `01-release`. Compilation and package validation remain required; unit tests and the 80 percent coverage policy are visible, non-blocking jobs.
+
+Platform discovery supplies a protected, masked analysis token when absent and
+requests scan-only pipelines for missing or stale analyses. Application scans
+use that project token; administrator credentials stay with provisioning
+automation. See the [code-quality template contract](code-quality.md#adapting-the-template)
+before changing authentication, source scope or CI job rules.
 
 `03-security` uses a digest-pinned Trivy image to scan dependency manifests, infrastructure-as-code, and the repository working tree for vulnerable packages, misconfigurations, and exposed secrets. It retains JSON and SARIF reports for seven days and exits nonzero for high/critical findings, while `allow_failure` keeps the signal optional. The job is numbered after quality but has no dependency on it: it is manually runnable in standard mode and runs automatically in full mode.
 

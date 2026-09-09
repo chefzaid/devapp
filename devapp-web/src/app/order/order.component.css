@@ -22,8 +22,8 @@
 .order-label { margin: 24px 0 4px; color: #899894; font-size: 9px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
 .order-card h3 { margin: 0; color: var(--ink); font-size: 31px; letter-spacing: -.04em; }
 .order-details { display: grid; grid-template-columns: 1fr auto; gap: 12px; margin: 21px 0; padding: 17px 0; border-top: 1px solid #e6ebe5; border-bottom: 1px solid #e6ebe5; }
-.order-details div { min-width: 0; }
-.order-details div:last-child { text-align: right; }
+.order-details dl { min-width: 0; margin: 0; }
+.order-details dl:last-child { text-align: right; }
 .order-details dt { color: #8a9995; font-size: 9px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
 .order-details dd { overflow: hidden; margin: 6px 0 0; color: #334946; font-size: 12px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
 .event-confirmation { display: flex; align-items: center; gap: 8px; color: #6f817d; font-size: 9px; font-weight: 750; letter-spacing: .03em; }

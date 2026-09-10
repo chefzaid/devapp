@@ -83,7 +83,56 @@ registry.swirlit.dev/swirlit/devapp/devapp-web:<semantic-version>
 
 `01-build` compiles Maven and Angular outputs, optional `02-test` publishes unit and coverage results, and required `03-package` performs daemonless image validation. Combined coverage below 80 percent fails only the optional test job. Default-branch quality runs automatically. Standard mode leaves `03-security` manual; full mode runs both non-blocking report branches automatically. Trivy security is ordered after quality but has no dependency on it. Optional manual `01-e2e` remains independent. `01-release` publishes versioned artifacts and images; `02-deploy` runs only after release succeeds.
 
-## One-Time GitLab Bootstrap
+## Add or reconfigure this repository
+
+Run `./add-repos.sh` from the platform checkout and select this repository.
+The platform reads [infra/onboarding.json](../infra/onboarding.json), prompts
+for the public subdomain (`@` selects the zone apex), and applies the declared
+service requests. It does not execute this repository's administrator scripts.
+
+The declaration owns the exact public configuration files, image locations,
+Keycloak client, registry credential path, DNS hostname and readiness checks.
+Selected settings are committed in `infra/onboarding-values.json` along with
+the rendered application files, so subsequent GitOps reconciliations and image
+releases keep them. Rerun the entry point to change a hostname; the Kubernetes
+names, database name, identity client ID and Vault paths remain stable.
+
+The platform provisions registry access and the declared identity/DNS settings,
+then starts an API pipeline for that exact pushed commit. `APP_ONBOARDING=true`
+allows its release job to run automatically. `ONBOARDING_EXPECTED_SHA` is checked
+before building or publishing; deployment also checks the generated release is
+a descendant of that commit and still the default branch tip. Ordinary release
+jobs remain manual unless the existing full-mode web pipeline is selected.
+Sonar scan-only pipelines cannot release or deploy. The first Argo CD apply
+happens after images are published.
+
+The final onboarding publication records `Onboarding-Pipeline` and
+`Onboarding-Source` commit trailers so a repeat run can identify the existing
+release. A failed deployment can retry that pipeline's deploy job. If publication
+fails after its Git push, repair the failed publication step before retrying:
+the guard refuses to publish another release from the old checkout.
+
+The app-owned `devapp-db-setup` sync hook runs before the APIs. It creates
+`devappdb` only when absent, using the existing `devapp-db-credentials` contract
+from `infra/postgres`. A PostgreSQL advisory lock serializes concurrent runs;
+existing owners, schemas and data are preserved. Flyway continues to own schema
+migrations. Registry and database ExternalSecrets reconcile in the preceding
+sync wave.
+
+Local checks for this contract:
+
+```sh
+python3 infra/scripts/test-onboarding.py
+docker pull postgres:18-alpine
+python3 infra/scripts/test-database-bootstrap.py
+```
+
+The first command needs Python with PyYAML, Git and kubectl and checks rendered
+custom domains, project paths, root/subdomain changes, image releases and stale
+pipeline refusal. The database test uses only its own temporary Docker container
+and removes that container and its data when finished.
+
+## Individual GitLab bootstrap
 
 Prerequisites:
 

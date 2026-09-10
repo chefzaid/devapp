@@ -27,7 +27,7 @@ Uses the published HA Tunnel when configured, otherwise the direct ingress IP.
 
 Options:
   --zone DOMAIN       Cloudflare zone (default: swirlit.dev)
-  --host-label LABEL  DevApp hostname label (default: devapp)
+  --host-label LABEL  DevApp hostname label, or @ for the apex (default: devapp)
   --origin-ip IP      Direct-mode NGINX IPv4; discovered when omitted
   -h, --help          Show this help
 
@@ -78,7 +78,7 @@ ZONE_NAME="${ZONE_NAME,,}"
 HOST_LABEL="${HOST_LABEL,,}"
 [[ "$ZONE_NAME" =~ ^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$ ]] || \
     fail "Invalid zone name: $ZONE_NAME"
-[[ "$HOST_LABEL" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || \
+[[ "$HOST_LABEL" == @ || "$HOST_LABEL" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || \
     fail "Invalid hostname label: $HOST_LABEL"
 
 for command_name in curl jq kubectl; do
@@ -170,7 +170,8 @@ zone_count="$(jq '.result | length' <<< "$zone_response")"
 ((zone_count == 1)) || fail "Expected exactly one Cloudflare zone named $ZONE_NAME; found $zone_count"
 zone_id="$(jq -r '.result[0].id' <<< "$zone_response")"
 
-fqdn="$HOST_LABEL.$ZONE_NAME"
+fqdn="$ZONE_NAME"
+[[ "$HOST_LABEL" == @ ]] || fqdn="$HOST_LABEL.$ZONE_NAME"
 record_response="$(cf_request GET "/zones/$zone_id/dns_records?name=$fqdn&per_page=100")"
 require_success "$record_response" "Looking up DNS record $fqdn"
 address_record_count="$(jq '[.result[] | select(.type == "A" or .type == "AAAA" or .type == "CNAME")] | length' \

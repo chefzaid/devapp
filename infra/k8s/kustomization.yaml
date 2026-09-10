@@ -4,6 +4,7 @@ namespace: apps
 resources:
   - external-secrets.yaml
   - registry-credentials.yaml
+  - database-setup-job.yaml
   - user.yaml
   - order.yaml
   - web.yaml
@@ -17,3 +18,6 @@ images:
     newTag: 1.4.1
   - name: registry.swirlit.dev/swirlit/devapp/devapp-web
     newTag: 1.4.1
+  - name: postgres
+    newName: registry.swirlit.dev/swirlit/bm-cluster/security/postgres-client
+    digest: sha256:0fbebd30e2814439e79bf53ca0187f2bfd9ff593edbb8a15a5b001daad698bdb

@@ -79,7 +79,7 @@ class CloudflareTests(unittest.TestCase):
         (self.root / "state.json").write_text(json.dumps(state or {}))
         (self.root / "calls.jsonl").write_text("")
         result = subprocess.run(["bash", *( ["-x"] if trace else []), str(SCRIPT),
-                                 "--zone", "example.com", *args], env=self.env,
+                                 "--zone", "example.com", "--host-label", "devapp", *args], env=self.env,
                                 capture_output=True, text=True, timeout=15)
         self.calls = [json.loads(line) for line in (self.root / "calls.jsonl").read_text().splitlines()]
         self.assertNotIn(self.env["CLOUDFLARE_API_TOKEN"], result.stdout + result.stderr)
@@ -168,6 +168,12 @@ class CloudflareTests(unittest.TestCase):
         result = self.run_script(args=("--origin-ip", "198.51.100.999"))
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(any(call["tool"] == "curl" for call in self.calls))
+
+    def test_apex_hostname_uses_zone_without_a_subdomain(self):
+        result = self.run_script(args=("--host-label", "@"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        write, = self.mutations()
+        self.assertEqual(write["body"]["name"], "example.com")
 
     def test_api_errors_redact_reflected_token_and_cleanup_credentials(self):
         result = self.run_script({"api_error": "Fixture rejects " + TOKEN})

@@ -11,6 +11,8 @@ prepare_sources() {
 }
 
 build_application() {
+  infra/scripts/check-onboarding-revision.sh build
+  python3 infra/scripts/test-onboarding.py
   python3 infra/scripts/test-keycloak.py
   python3 infra/scripts/test-cloudflare.py
   kubectl kustomize infra/k8s >/dev/null

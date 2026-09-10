@@ -9,6 +9,10 @@ DevApp is a deliberately small, production-shaped full-stack template. Two Java 
 
 ## GitLab Delivery
 
+Use the platform's `add-repos.sh` entry point to install or reconfigure this
+repository through its [declarative onboarding contract](docs/deployment.md#add-or-reconfigure-this-repository).
+This repository owns its hostname, identity client, database bootstrap and delivery configuration.
+
 - [Run a pipeline](https://gitlab.swirlit.dev/swirlit/devapp/-/pipelines/new?ref=main)
 - [Pipelines and delivery jobs](https://gitlab.swirlit.dev/swirlit/devapp/-/pipelines)
 - [Versioned application packages](https://gitlab.swirlit.dev/swirlit/devapp/-/packages)

@@ -114,7 +114,7 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(api.assignments["default"], set(self.desired["defaultClientScopes"]))
         self.assertEqual(api.assignments["optional"], {"groups", "offline_access"})
         self.assertNotIn("secret", api.clients[1])
-        self.assertEqual(api.clients[1]["webOrigins"], ["https://devapp.swirlit.dev"])
+        self.assertEqual(api.clients[1]["webOrigins"], self.desired["webOrigins"])
         module.reconcile(api, "swirlit", self.desired)
         self.assertEqual(api.assignments["optional"], {"groups", "offline_access"})
 

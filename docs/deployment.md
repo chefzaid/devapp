@@ -11,7 +11,7 @@ DevApp follows the shared application-repository convention used by Thoughty and
 | `infra/ansible/` | optional manual reconciliation of committed GitOps state |
 | `infra/argocd/` | the single Argo CD `Application` bootstrap at `application.yaml` |
 | `infra/compose/` | local Compose base and purpose-specific overrides |
-| `infra/keycloak/` | disposable local identity configuration |
+| `infra/keycloak/` | production browser client and disposable local realm |
 | `infra/k8s/` | application-owned Kubernetes desired state |
 | `infra/scripts/` | idempotent configuration and repository helpers |
 
@@ -41,6 +41,7 @@ Local and manual entry points:
 | Kubernetes workloads, ingress, policies, and observability | `infra/k8s/` |
 | DevApp registry pull credential contract | `infra/k8s/registry-credentials.yaml` and Vault `apps/devapp/registry` |
 | public DNS record | `infra/scripts/configure-cloudflare.sh` |
+| production OIDC client | `infra/keycloak/production-client.json` and `infra/scripts/configure-keycloak.py` |
 | generic cluster services | `bm-cluster` |
 
 Runtime namespaces:
@@ -110,7 +111,7 @@ The app-owned scripts:
 4. install a least-privilege GitLab push credential as encrypted GitHub Actions secrets and register the GitLab push/tag webhook that dispatches the same repository reconciler;
 5. enable the instance runner and CI job-token pushes;
 6. create a read-only registry deploy token and write it to Vault at `apps/devapp/registry`;
-7. apply the repository-owned Argo CD `Application`; and
+7. reconcile the production Keycloak browser client, then apply the repository-owned Argo CD `Application`; and
 8. request an External Secrets refresh when the resource already exists.
 
 Every GitHub push starts `.github/workflows/sync-gitlab.yml` directly. Every GitLab branch or tag push calls GitHub's repository-dispatch endpoint and starts that same workflow, including commits marked `[skip ci]`. The reconciler fast-forwards whichever side is behind, merges divergent branches without force pushing, and refuses to rewrite a conflicting tag. A monthly schedule checks the managed GitLab token and self-rotates it into the encrypted GitHub secret before the mandatory expiry window.
@@ -118,6 +119,40 @@ Every GitHub push starts `.github/workflows/sync-gitlab.yml` directly. Every Git
 The GitLab project is public for source browsing, while its container registry and package registry remain private. The registry deploy token is never committed to Git.
 
 The database Secret is projected by `infra/k8s/external-secrets.yaml` from the cluster's PostgreSQL credential contract. Kubernetes Secret base64 values are encoding, not encryption; do not replace the Vault flows with committed values.
+
+## Production Identity
+
+This repository owns the `devapp-web` public client in the existing `swirlit`
+realm. The platform manages the realm and its users. The production client
+requires Authorization Code with PKCE `S256`, restricts redirects and origins
+to this application's host, and disables password and implicit grants.
+`infra/keycloak/realm.json` is a separate disposable local realm; never import
+its demonstration users or secrets into production.
+
+The GitLab bootstrap above reconciles the production client before deploying.
+For direct Argo CD onboarding or a changed client configuration, run:
+
+```sh
+python3 infra/scripts/configure-keycloak.py --render
+python3 infra/scripts/configure-keycloak.py
+```
+
+The second command requires `kubectl` access to `infra/keycloak-admin-secret`
+and permission to port-forward the Keycloak Service. It authenticates through
+a temporary loopback-only Kubernetes port-forward, keeps credentials in memory,
+and updates only this client, its scope assignments and managed claim mappers. An existing client
+keeps its UUID. No administrator credential is copied into `apps` or CI.
+Rerun it after editing `infra/keycloak/production-client.json`; keep frontend
+issuer/realm configuration, ingress hosts and allowed origins aligned when
+adapting the template. Use `--realm` and `--namespace` for a different existing
+realm or platform namespace. The realm and shared scopes must exist first.
+Scope assignments are checked after reconciliation: `groups` is optional and
+the default `roles` scope is removed to keep realm management roles out of
+browser tokens. Unrelated optional scopes are preserved.
+
+Removing the application does not delete shared identities. Retire its client
+explicitly in Keycloak when the application is permanently decommissioned.
+The reconciler uses the [Keycloak Admin REST API](https://www.keycloak.org/docs-api/latest/rest-api/index.html).
 
 ## Delivery Flow
 
@@ -145,6 +180,10 @@ CLOUDFLARE_API_TOKEN=<zone-token> ./infra/scripts/configure-cloudflare.sh
 ```
 
 The token needs `Zone:Read` and `DNS:Edit` for `swirlit.dev`. Generic zone, wildcard TLS, proxy, and ingress configuration remains in the platform.
+
+See [application-owned DNS](dns.md) for direct ingress and HA Tunnel setup.
+The helper uses an HA Tunnel only after the platform's published checkpoint
+confirms that the ingress path is ready.
 
 ## Verification And Rollback
 
@@ -194,3 +233,40 @@ needed for explicitly requested E2E jobs.
 The [code-quality guide](code-quality.md) documents source and coverage inputs,
 [the contract to preserve when copying DevApp](code-quality.md#adapting-the-template),
 credentials, scheduling and troubleshooting.
+
+## Future multi-node HA profile
+
+`infra/overlays/ha` composes the normal Kubernetes resources and runs two copies
+of each API and the web frontend. It requires at least two eligible hosts,
+spreads matching Pods across hostnames, and adds a disruption budget per
+Deployment. Rolling updates keep an available replica while starting its
+replacement. Leave `infra/k8s` selected on a single host.
+
+To opt in, persist `spec.source.path: infra/overlays/ha` in this repository's
+`infra/argocd/application.yaml` before reconciling that Application. Bootstrap
+and release helpers can reapply the file, so a live-only path override is not
+durable. Image release scripts continue updating `infra/k8s/kustomization.yaml`;
+the HA overlay inherits those exact image tags.
+
+Render both profiles before changing selection:
+
+```sh
+kubectl kustomize infra/k8s >/dev/null
+kubectl kustomize infra/overlays/ha >/dev/null
+```
+
+This is application redundancy, with shared-service availability still required:
+PostgreSQL needs a replicated primary service, Redis needs failover, Kafka needs
+replicated brokers/topics, and Keycloak/ingress must remain reachable after a
+node fails. Use the same JWT issuer and shared consumer group per service on
+every replica; sticky sessions are unnecessary. Flyway coordinates each
+service's schema history, and schema changes must remain compatible with the
+previous application revision during a rollout.
+
+Rate limits remain per API process. The current database commit and Kafka
+publish are also separate operations, so interruption between them can leave
+an order pending; an outbox is needed for durable publication. Additional
+replicas do not resolve those limits. Before enabling this profile, verify
+JWT requests across replicas, shared-cache invalidation, Kafka rebalance and
+duplicate handling, then drain one eligible node while exercising both APIs.
+A PDB governs voluntary eviction; it cannot prevent hardware failures.

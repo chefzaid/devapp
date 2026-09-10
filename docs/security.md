@@ -79,7 +79,12 @@ Production browser flow:
 7. `authInterceptor` adds `Authorization: Bearer <token>` to API requests, excluding Keycloak `/auth/` requests.
 8. Each Spring resource server validates signature, issuer, time claims, and token structure through the configured JWK set.
 
-Keycloak realm controls in `infra/keycloak/realm.json`:
+The production browser client is owned by this repository in
+`infra/keycloak/production-client.json`; the [deployment guide](deployment.md#production-identity)
+describes its idempotent provisioning. The platform supplies the shared realm
+and user lifecycle.
+
+Disposable local realm controls in `infra/keycloak/realm.json`:
 
 - `sslRequired: external`
 - registration disabled

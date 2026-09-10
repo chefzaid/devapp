@@ -11,7 +11,10 @@ prepare_sources() {
 }
 
 build_application() {
+  python3 infra/scripts/test-keycloak.py
+  python3 infra/scripts/test-cloudflare.py
   kubectl kustomize infra/k8s >/dev/null
+  kubectl kustomize infra/overlays/ha >/dev/null
   kubectl apply --dry-run=client --validate=false \
     -f infra/argocd/application.yaml >/dev/null
   mvn --batch-mode clean package -DskipTests \

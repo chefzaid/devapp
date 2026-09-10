@@ -131,6 +131,7 @@ unset registry_password
 git -C "$REPOSITORY_ROOT" show HEAD:.gitlab-ci.yml >/dev/null
 GITLAB_URL="$GITLAB_URL" "$SCRIPT_DIR/configure-code-quality.sh"
 GITLAB_URL="$GITLAB_URL" "$SCRIPT_DIR/configure-repository-sync.sh"
+python3 "$SCRIPT_DIR/configure-keycloak.py"
 kubectl apply -f "$REPOSITORY_ROOT/infra/argocd/application.yaml"
 if kubectl get externalsecret devapp-registry-auth -n "$APP_NAMESPACE" >/dev/null 2>&1; then
   kubectl annotate externalsecret devapp-registry-auth -n "$APP_NAMESPACE" \

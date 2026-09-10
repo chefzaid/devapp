@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+set +x
 
 umask 077
 
@@ -22,11 +23,12 @@ Usage: infra/scripts/configure-cloudflare.sh [options]
 
 Reconciles the proxied public DNS record owned by DevApp. Shared zone, TLS,
 ingress, and Cloudflare security configuration remain platform responsibilities.
+Uses the published HA Tunnel when configured, otherwise the direct ingress IP.
 
 Options:
   --zone DOMAIN       Cloudflare zone (default: swirlit.dev)
   --host-label LABEL  DevApp hostname label (default: devapp)
-  --origin-ip IP      NGINX public IPv4; discovered from Kubernetes when omitted
+  --origin-ip IP      Direct-mode NGINX IPv4; discovered when omitted
   -h, --help          Show this help
 
 Secret input:
@@ -83,18 +85,42 @@ for command_name in curl jq kubectl; do
     command -v "$command_name" >/dev/null 2>&1 || fail "$command_name is required"
 done
 
-if [[ -z "$ORIGIN_IP" ]]; then
-    kubectl cluster-info >/dev/null 2>&1 || fail "Cannot reach the Kubernetes cluster"
-    ORIGIN_IP="$(kubectl get service "$INGRESS_SERVICE" -n "$INGRESS_NAMESPACE" \
-        -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+ingress_state="$(kubectl get configmap bm-cluster-public-ingress -n "$INGRESS_NAMESPACE" \
+    --ignore-not-found --request-timeout=15s -o json)" || fail "Cannot verify the platform ingress mode"
+if [[ -n "$ingress_state" ]]; then
+    ingress_mode="$(jq -er '.data.mode | select(type == "string" and length > 0)' <<< "$ingress_state")" || \
+        fail "Existing platform ingress state has no valid mode"
+else
+    ingress_mode=direct
 fi
-if ! [[ "$ORIGIN_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
-    fail "Could not discover a valid public IPv4; use --origin-ip"
-fi
-IFS=. read -r octet1 octet2 octet3 octet4 <<< "$ORIGIN_IP"
-for octet in "$octet1" "$octet2" "$octet3" "$octet4"; do
-    ((10#$octet <= 255)) || fail "Invalid IPv4 address: $ORIGIN_IP"
-done
+case "$ingress_mode" in
+    tunnel)
+        [[ -z "$ORIGIN_IP" ]] || fail "--origin-ip cannot override HA Tunnel routing"
+        tunnel_id="$(jq -r '.data.tunnelID // ""' <<< "$ingress_state")"
+        [[ "$tunnel_id" =~ ^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$ ]] || \
+            fail "Invalid platform Tunnel ID"
+        jq -e --arg id "$tunnel_id" --arg domain "$ZONE_NAME" \
+            '.data.publishedTunnelID == $id and .data.domain == $domain' \
+            <<< "$ingress_state" >/dev/null || fail "The HA Tunnel is not published for this zone yet"
+        record_type=CNAME
+        record_content="$tunnel_id.cfargotunnel.com"
+        ;;
+    direct)
+        if [[ -z "$ORIGIN_IP" ]]; then
+            ORIGIN_IP="$(kubectl get service "$INGRESS_SERVICE" -n "$INGRESS_NAMESPACE" \
+                -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+        fi
+        [[ "$ORIGIN_IP" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || \
+            fail "Could not discover a valid public IPv4; use --origin-ip"
+        IFS=. read -r octet1 octet2 octet3 octet4 <<< "$ORIGIN_IP"
+        for octet in "$octet1" "$octet2" "$octet3" "$octet4"; do
+            ((10#$octet <= 255)) || fail "Invalid IPv4 address: $ORIGIN_IP"
+        done
+        record_type=A
+        record_content="$ORIGIN_IP"
+        ;;
+    *) fail "Unknown platform ingress mode: $ingress_mode" ;;
+esac
 
 if [[ -z "$API_TOKEN" ]]; then
     [[ -t 0 ]] || fail "Set CLOUDFLARE_API_TOKEN for non-interactive use"
@@ -102,6 +128,8 @@ if [[ -z "$API_TOKEN" ]]; then
     printf '\n' >&2
 fi
 [[ "$API_TOKEN" == cfut_* ]] || fail "Expected a Cloudflare User API Token beginning with cfut_"
+[[ "$API_TOKEN" =~ ^cfut_[[:graph:]]+$ && "$API_TOKEN" != *\"* && "$API_TOKEN" != *\\* ]] || \
+    fail "Token must be a single value without whitespace, quotes, or backslashes"
 
 WORK_DIR="$(mktemp -d /tmp/devapp-cloudflare.XXXXXX)"
 CURL_CONFIG="$WORK_DIR/curl.conf"
@@ -131,6 +159,7 @@ require_success() {
         local details
         details="$(jq -r '[.errors[]?.message, .messages[]?.message] | map(select(. != null and . != "")) | join("; ")' \
             <<< "$response" 2>/dev/null || true)"
+        details="${details//"$API_TOKEN"/[redacted]}"
         fail "$operation failed${details:+: $details}"
     fi
 }
@@ -149,21 +178,21 @@ address_record_count="$(jq '[.result[] | select(.type == "A" or .type == "AAAA" 
 ((address_record_count <= 1)) || fail "$fqdn has multiple address records; reconcile them before rerunning"
 
 record_file="$WORK_DIR/dns.json"
-jq -n --arg name "$fqdn" --arg content "$ORIGIN_IP" \
-    '{type:"A",name:$name,content:$content,ttl:1,proxied:true,comment:"Managed by devapp/infra/scripts/configure-cloudflare.sh"}' \
+jq -n --arg name "$fqdn" --arg content "$record_content" --arg type "$record_type" \
+    '{type:$type,name:$name,content:$content,ttl:1,proxied:true,comment:"Managed by devapp/infra/scripts/configure-cloudflare.sh"}' \
     > "$record_file"
 
 if ((address_record_count == 0)); then
     update_response="$(cf_request POST "/zones/$zone_id/dns_records" "$record_file")"
     require_success "$update_response" "Creating DNS record $fqdn"
-    info "Created $fqdn -> $ORIGIN_IP (proxied)"
+    info "Created $fqdn -> $record_content (proxied)"
     exit 0
 fi
 
 current_record="$(jq -c '[.result[] | select(.type == "A" or .type == "AAAA" or .type == "CNAME")][0]' \
     <<< "$record_response")"
-if jq -e --arg content "$ORIGIN_IP" \
-    '.type == "A" and .content == $content and .proxied == true and .ttl == 1' \
+if jq -e --arg content "$record_content" --arg type "$record_type" \
+    '.type == $type and .content == $content and .proxied == true and .ttl == 1' \
     <<< "$current_record" >/dev/null; then
     info "DNS record already correct: $fqdn"
     exit 0
@@ -172,4 +201,4 @@ fi
 record_id="$(jq -r '.id' <<< "$current_record")"
 update_response="$(cf_request PUT "/zones/$zone_id/dns_records/$record_id" "$record_file")"
 require_success "$update_response" "Updating DNS record $fqdn"
-info "Updated $fqdn -> $ORIGIN_IP (proxied)"
+info "Updated $fqdn -> $record_content (proxied)"

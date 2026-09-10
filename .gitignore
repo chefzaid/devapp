@@ -1,6 +1,9 @@
 # Compiled class file
 *.class
 
+# Python helper bytecode
+__pycache__/
+
 # Log file
 *.log
 

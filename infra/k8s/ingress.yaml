@@ -12,12 +12,11 @@ metadata:
     gethomepage.dev/name: DevApp
     gethomepage.dev/weight: "20"
     gethomepage.dev/pod-selector: app=devapp-web
-    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: apps-devapp-upload-limit@kubernetescrd
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   tls:
   - hosts:
     - devapp.swirlit.dev
@@ -72,3 +71,21 @@ spec:
             name: devapp-web
             port:
               number: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: devapp-upload-limit
+  namespace: apps
+spec:
+  buffering:
+    maxRequestBodyBytes: 10485760
+---
+apiVersion: traefik.io/v1alpha1
+kind: ServersTransport
+metadata:
+  name: devapp-backend
+  namespace: apps
+spec:
+  forwardingTimeouts:
+    responseHeaderTimeout: 60s

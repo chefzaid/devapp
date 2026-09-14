@@ -77,6 +77,7 @@ class RenderingTests(unittest.TestCase):
             shutil.copy2(source, target)
         self.context = {
             "PUBLIC_DOMAIN": "example.test", "INTERNAL_DNS_ZONE": "services.test",
+            "POD_CIDR": "10.60.0.0/16", "TRUSTED_PROXY_CIDRS": "10.60.0.0/16",
             "APP_SUBDOMAIN": "portal", "APP_HOST": "portal.example.test",
             "TLS_SECRET_NAME": "example-test-tls",
             "GITLAB_PROJECT_PATH": "teams/testing/" + APP + "-copy", "GITLAB_PROJECT_ID": "735",
@@ -86,7 +87,6 @@ class RenderingTests(unittest.TestCase):
             "REGISTRY_HOST": "registry.example.test", "REGISTRY_PUSH_HOST": "gitlab-registry.services.test:5050",
             "GITHUB_OWNER": "example-org", "GITHUB_REPOSITORY": APP + "-copy",
             "DEFAULT_BRANCH": "trunk", "KEYCLOAK_REALM": "people",
-            "PLATFORM_SECURITY_PROJECT_PATH": "platform/security",
             "SONAR_PROJECT_KEY": "teams:testing:" + APP + "-copy",
         }
 
@@ -101,6 +101,9 @@ class RenderingTests(unittest.TestCase):
             if resource.get("kind") == "Deployment":
                 for container in resource["spec"]["template"]["spec"]["containers"]:
                     self.assertTrue(container["image"].startswith(expected_prefix), container["image"])
+                    if container["name"] in {"user-app", "order-app"}:
+                        env = {item["name"]: item for item in container["env"]}
+                        self.assertEqual(env["APP_RATE_LIMIT_TRUSTED_PROXY_CIDRS"]["value"], context["TRUSTED_PROXY_CIDRS"])
         self.assertIn(CONTRACT["registry"]["path"], json.dumps(resources))
         self.assertIn(context["SONAR_PROJECT_KEY"], (self.root / "sonar-project.properties").read_text())
         workflow = yaml.safe_load((self.root / ".github/workflows/sync-gitlab.yml").read_text())

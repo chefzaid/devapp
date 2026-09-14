@@ -7,6 +7,12 @@
       "label": "Public subdomain (@ for the zone apex)",
       "type": "subdomain",
       "default": "devapp"
+    },
+    {
+      "name": "TRUSTED_PROXY_CIDRS",
+      "label": "Trusted ingress pod CIDRs",
+      "type": "cidrs",
+      "default": "{{POD_CIDR}}"
     }
   ],
   "files": [
@@ -37,8 +43,8 @@
   ],
   "replacements": [
     {
-      "from": "registry.swirlit.dev/swirlit/bm-cluster/security",
-      "to": "{{REGISTRY_HOST}}/{{PLATFORM_SECURITY_PROJECT_PATH}}"
+      "from": "10.42.0.0/16",
+      "to": "{{TRUSTED_PROXY_CIDRS}}"
     },
     {
       "from": "registry.swirlit.dev/swirlit/devapp",

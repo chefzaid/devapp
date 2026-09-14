@@ -58,7 +58,7 @@ flowchart LR
 
 Security assumptions:
 
-- Cloudflare and NGINX Ingress provide the public edge and TLS path.
+- Cloudflare and Traefik Ingress provide the public edge and TLS path.
 - Keycloak is authoritative for authentication and credential policy.
 - APIs independently validate access tokens; frontend guards are not a security boundary.
 - PostgreSQL is authoritative for application data.
@@ -202,12 +202,23 @@ Keycloak maintains its own login session and has separate cookie/security respon
 
 Production enables a fixed 60-second window:
 
-- key: authenticated principal, otherwise remote IP visible to the service
+- key: authenticated principal, otherwise the validated visitor IP
 - default: 120 API requests per minute
 - scope: `/api/**`, excluding OPTIONS and documentation paths
 - bounded client map with expired-entry cleanup and overflow protection
 - response budget headers on accepted requests
 - `429` Problem Details plus `Retry-After` after exhaustion
+
+Both API Deployments set `APP_RATE_LIMIT_TRUSTED_PROXY_CIDRS` to the ingress pod
+network. Onboarding renders this from `TRUSTED_PROXY_CIDRS` (default: the platform
+pod CIDR); other deployments trust no proxy by default. The rate filter reads
+the original socket and forwarding chain before Spring's request-wrapper view.
+For a trusted ingress, Cloudflare appends the visitor and Traefik appends its
+edge or Tunnel loopback peer, so the penultimate address identifies the visitor.
+A single sanitized address also supports direct and legacy ingress requests.
+Visitor-supplied prefixes, `Forwarded`, `X-Real-IP` and `CF-Connecting-IP` cannot
+select the rate bucket. Malformed chain tails fall back to the original socket.
+Keep Traefik's XFF appending enabled; review this contract for other proxy paths.
 
 Limitations:
 
@@ -221,7 +232,7 @@ Use Cloudflare/API-gateway or a shared distributed limiter for global enforcemen
 
 ## HTTPS And Browser Headers
 
-NGINX Ingress:
+Traefik Ingress:
 
 - terminates TLS for `devapp.swirlit.dev`
 - forces SSL redirect

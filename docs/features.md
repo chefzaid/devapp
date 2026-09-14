@@ -140,7 +140,7 @@ Implemented security behavior:
 - production H2 console disabled and not security-allowlisted
 - CSRF disabled for stateless bearer-token APIs
 - narrow CORS configuration
-- HTTPS redirect and TLS termination at NGINX Ingress
+- HTTPS redirect and TLS termination at Traefik Ingress
 - default Spring security headers, with frame embedding relaxed only for the local H2 console
 - public ingress removed for Actuator; Prometheus scrapes cluster services through NetworkPolicy
 - Kubernetes containers run as non-root with a read-only root filesystem, dropped capabilities, and runtime-default seccomp
@@ -228,7 +228,7 @@ Implemented developer and packaging support:
 Implemented platform features:
 
 - Kustomize-managed user, order, web, ingress, secret, network, and observability resources
-- ClusterIP services and path-based NGINX Ingress routing
+- ClusterIP services and path-based Traefik Ingress routing
 - TLS-only public ingress
 - startup, liveness, and readiness probes
 - requests and limits for application and CI containers

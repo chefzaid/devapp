@@ -1,14 +1,19 @@
 package dev.swirlit.devapp.common.web;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.security.Principal;
 import java.time.Clock;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.MDC;
@@ -31,6 +36,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final int requestsPerMinute;
     private final int maxTrackedClients;
     private final Clock clock;
+    private final List<Subnet> trustedProxies;
     private final ConcurrentHashMap<String, ClientWindow> clients = new ConcurrentHashMap<>();
     private final AtomicInteger cleanupCounter = new AtomicInteger();
 
@@ -38,15 +44,23 @@ public class RateLimitFilter extends OncePerRequestFilter {
     public RateLimitFilter(
             @Value("${app.rate-limit.enabled:false}") boolean enabled,
             @Value("${app.rate-limit.requests-per-minute:120}") int requestsPerMinute,
-            @Value("${app.rate-limit.max-tracked-clients:10000}") int maxTrackedClients) {
-        this(enabled, requestsPerMinute, maxTrackedClients, Clock.systemUTC());
+            @Value("${app.rate-limit.max-tracked-clients:10000}") int maxTrackedClients,
+            @Value("${app.rate-limit.trusted-proxy-cidrs:}") String trustedProxyCidrs) {
+        this(enabled, requestsPerMinute, maxTrackedClients, Clock.systemUTC(), trustedProxyCidrs);
     }
 
     RateLimitFilter(boolean enabled, int requestsPerMinute, int maxTrackedClients, Clock clock) {
+        this(enabled, requestsPerMinute, maxTrackedClients, clock, "");
+    }
+
+    RateLimitFilter(boolean enabled, int requestsPerMinute, int maxTrackedClients, Clock clock,
+            String trustedProxyCidrs) {
         this.enabled = enabled;
         this.requestsPerMinute = Math.max(1, requestsPerMinute);
         this.maxTrackedClients = Math.max(100, maxTrackedClients);
         this.clock = clock;
+        this.trustedProxies = Arrays.stream(trustedProxyCidrs.split(","))
+                .map(String::trim).filter(value -> !value.isEmpty()).map(Subnet::parse).toList();
     }
 
     @Override
@@ -108,9 +122,70 @@ public class RateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private static String clientKey(HttpServletRequest request) {
+    private String clientKey(HttpServletRequest request) {
         Principal principal = request.getUserPrincipal();
-        return principal == null ? "ip:" + request.getRemoteAddr() : "user:" + principal.getName();
+        if (principal != null) {
+            return "user:" + principal.getName();
+        }
+        // Spring's ForwardedHeaderFilter hides headers and replaces remoteAddr
+        // with the leftmost XFF value. Read only the original socket/header here
+        // so an Internet-supplied prefix cannot choose the anonymous rate bucket.
+        HttpServletRequest original = request;
+        while (original instanceof HttpServletRequestWrapper wrapper
+                && wrapper.getRequest() instanceof HttpServletRequest wrapped) {
+            original = wrapped;
+        }
+        InetAddress direct = literalAddress(original.getRemoteAddr());
+        if (direct != null && trustedProxies.stream().anyMatch(subnet -> subnet.contains(direct))) {
+            String forwarded = String.join(",", Collections.list(original.getHeaders("X-Forwarded-For")));
+            String[] chain = forwarded.split(",", -1);
+            InetAddress peer = literalAddress(chain[chain.length - 1].trim());
+            InetAddress visitor = literalAddress(chain[Math.max(0, chain.length - 2)].trim());
+            // Cloudflare appends the visitor; Traefik appends the edge/loopback
+            // peer. A single sanitized address covers direct and legacy ingress.
+            if (peer != null && visitor != null) {
+                return "ip:" + visitor.getHostAddress();
+            }
+        }
+        return "ip:" + (direct == null ? original.getRemoteAddr() : direct.getHostAddress());
+    }
+
+    private static InetAddress literalAddress(String value) {
+        try {
+            return InetAddress.ofLiteral(value);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private record Subnet(byte[] address, int prefix) {
+        static Subnet parse(String value) {
+            String[] parts = value.split("/", -1);
+            InetAddress address = literalAddress(parts[0]);
+            if (address == null || parts.length > 2) {
+                throw new IllegalArgumentException("Trusted proxy CIDRs must use literal IP addresses");
+            }
+            int bits = address.getAddress().length * 8;
+            int prefix = parts.length == 1 ? bits : Integer.parseInt(parts[1]);
+            if (prefix < 1 || prefix > bits) {
+                throw new IllegalArgumentException("Trusted proxy CIDRs must be bounded networks");
+            }
+            return new Subnet(address.getAddress(), prefix);
+        }
+
+        boolean contains(InetAddress candidate) {
+            byte[] other = candidate.getAddress();
+            if (other.length != address.length) {
+                return false;
+            }
+            for (int offset = 0; offset < prefix; offset += 8) {
+                int mask = 0xff << (8 - Math.min(8, prefix - offset));
+                if (((address[offset / 8] ^ other[offset / 8]) & mask) != 0) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     private record ClientWindow(long window, AtomicInteger requests) {

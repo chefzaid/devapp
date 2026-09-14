@@ -23,7 +23,7 @@ Use Keycloak OpenID Connect Authorization Code flow with PKCE `S256`:
 - health/metrics/docs use an explicit allowlist
 - production H2 console is disabled/disallowed
 - local default profile may disable auth for development
-- public TLS terminates at NGINX Ingress with forwarded headers understood by Spring
+- public TLS terminates at Traefik Ingress with forwarded headers understood by Spring
 
 Keep credentials out of application tables. The example `User` is directory data, not the Keycloak identity record.
 

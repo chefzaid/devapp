@@ -25,7 +25,7 @@ spec:
               kubernetes.io/metadata.name: infra
           podSelector:
             matchLabels:
-              app.kubernetes.io/name: ingress-nginx
+              app.kubernetes.io/name: traefik
       ports:
         - protocol: TCP
           port: 8080

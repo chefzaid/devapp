@@ -12,7 +12,7 @@ above with the public ingress IPv4. Obtain the address from the platform operato
 or the ingress Service:
 
 ```sh
-kubectl get service ingress-nginx-controller -n infra \
+kubectl get service traefik -n infra \
   -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 ```
 

@@ -52,6 +52,16 @@ Runtime namespaces:
 
 The public endpoint is `https://devapp.swirlit.dev`. Ingress routes `/api/users` to `user-app`, `/api/orders` to `order-app`, the API documentation paths to the user service, and `/` to `devapp-web`. The backends use the shared PostgreSQL, Redis, Kafka, and Keycloak endpoints supplied by the cluster.
 
+Traefik serves the native Ingress and the platform redirects HTTP to HTTPS.
+The app-owned Middleware in `infra/k8s/ingress.yaml` limits requests to 10 MiB;
+its ServersTransport gives backends 60 seconds to return response headers.
+Traefik's platform entrypoint controls connection timeouts. NetworkPolicy permits
+the platform's Traefik pods. Database setup uses the public PostgreSQL 18.6
+client image pinned by digest in Kustomize, without platform registry credentials.
+Both API Deployments also trust the configured ingress pod CIDR for anonymous
+rate limiting; onboarding adjusts it through `TRUSTED_PROXY_CIDRS`. See the
+[client IP contract](security.md#rate-limiting) before changing proxy topology.
+
 ## Kubernetes Desired State
 
 `infra/k8s/kustomization.yaml` composes:

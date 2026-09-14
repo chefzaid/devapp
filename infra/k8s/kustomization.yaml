@@ -13,11 +13,11 @@ resources:
   - observability.yaml
 images:
   - name: registry.swirlit.dev/swirlit/devapp/user-app
-    newTag: 1.4.1
+    newTag: 1.5.18
   - name: registry.swirlit.dev/swirlit/devapp/order-app
-    newTag: 1.4.1
+    newTag: 1.5.18
   - name: registry.swirlit.dev/swirlit/devapp/devapp-web
-    newTag: 1.4.1
+    newTag: 1.5.18
   - name: postgres
     newName: docker.io/library/postgres
     newTag: 18.6-bookworm

@@ -149,7 +149,7 @@ visibly. `SONAR_REPORT_STATUS=submitted` means the report was uploaded; check
 Sonar's completed analysis timestamp and quality gate separately. The job does
 not wait for or enforce the quality gate, and its findings do not block release.
 
-The platform's [Sonar discovery guide](https://github.com/chefzaid/bm-cluster/blob/main/docs/sonar-discovery.md)
+The platform's [source-analysis guide](https://github.com/chefzaid/bm-cluster/blob/main/docs/observability.md#source-analysis)
 documents controller installation, credentials, permissions and tests. See also
 the [deployment guide](deployment.md#automatic-sonar-coverage),
 [ADR 0008](adr/0008-code-quality-and-verification.md) and the CI job contract in

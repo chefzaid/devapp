@@ -1,10 +1,11 @@
 # Operations Runbook
 
-Application commands in this guide run against the selected target cluster's
-kubeconfig. Central Argo CD, GitLab, Vault and datastore commands run against the
-platform kubeconfig. Keep those contexts distinct; `devapp-int`, `devapp-uat` and
-`devapp-prod` are Applications in central `infra`, while their Deployments live
-in `apps` on separate clusters. See [deployment](deployment.md#ownership-and-topology).
+Application commands use the selected environment's namespace and kubeconfig.
+For the shared cluster, use the platform context and `apps-int`, `apps-uat` or
+`apps-prod`. Remote targets use their registered context and namespace. Central
+Argo CD Applications remain in `infra`. The examples below select local `int`;
+change `APP_NAMESPACE` and `KUBECONFIG` for another target. See
+[deployment](deployment.md#ownership-and-topology).
 
 This runbook covers the DevApp application layer, including its public DNS record, registry-credential projection, Argo CD application, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring services are owned by [`bm-cluster`](https://github.com/chefzaid/bm-cluster); use its runbooks when the incident is platform-wide. All DevApp-specific configuration remains in this repository.
 
@@ -17,7 +18,7 @@ Public addresses use the settings saved by
 |---|---|
 | application | `https://<APP_HOST>` |
 | API documentation | `https://<APP_HOST>/api/docs` |
-| Grafana dashboard, after telemetry integration | `https://grafana.<PUBLIC_DOMAIN>/d/devapp-overview` |
+| Grafana dashboard, after telemetry integration | `https://grafana.<PUBLIC_DOMAIN>/d/devapp-<env>-overview` |
 | Kibana logs, after telemetry integration | `https://kibana.<PUBLIC_DOMAIN>` |
 | GitLab source, CI and releases | `<GITLAB_PUBLIC_URL>/<GITLAB_PROJECT_PATH>` |
 | SonarQube | `https://sonarqube.<PUBLIC_DOMAIN>`, project `<SONAR_PROJECT_KEY>` |
@@ -27,22 +28,23 @@ Cluster-only:
 
 | Surface | Address |
 |---|---|
-| user service | `user-app.apps.svc.cluster.local:8080` |
-| order service | `order-app.apps.svc.cluster.local:8081` |
-| web service | `devapp-web.apps.svc.cluster.local:80` |
+| user service | `user-app.<namespace>.svc.cluster.local:8080` |
+| order service | `order-app.<namespace>.svc.cluster.local:8081` |
+| web service | `devapp-web.<namespace>.svc.cluster.local:80` |
 
 Application services use target-cluster Kubernetes DNS. Shared PostgreSQL,
-Redis and Kafka use the registered private gateway; Keycloak uses its shared
-public URL. Inspect the selected environment's generated
+Redis and Kafka use Kubernetes Services locally or the registered private gateway
+remotely; Keycloak uses its shared public URL. Inspect the selected environment's generated
 `infra/environments/<env>/backend-runtime.properties` for resolved addresses.
 
 ## First Checks After A Rollout
 
 ```bash
 kubectl --kubeconfig /secure/platform.yaml get application devapp-int -n infra
-export KUBECONFIG=/secure/apps-int.yaml
-kubectl get deploy,pods,svc,ingress -n apps
-kubectl get externalsecret devapp-runtime-credentials devapp-registry-auth -n apps
+export KUBECONFIG=/secure/platform.yaml
+export APP_NAMESPACE=apps-int
+kubectl get deploy,pods,svc,ingress -n "$APP_NAMESPACE"
+kubectl get externalsecret devapp-runtime-credentials devapp-registry-auth -n "$APP_NAMESPACE"
 ```
 
 Expected state:
@@ -56,9 +58,9 @@ Expected state:
 Rollout checks:
 
 ```bash
-kubectl rollout status deployment/user-app -n apps
-kubectl rollout status deployment/order-app -n apps
-kubectl rollout status deployment/devapp-web -n apps
+kubectl rollout status deployment/user-app -n "$APP_NAMESPACE"
+kubectl rollout status deployment/order-app -n "$APP_NAMESPACE"
+kubectl rollout status deployment/devapp-web -n "$APP_NAMESPACE"
 ```
 
 ## Health And Readiness
@@ -78,10 +80,10 @@ The release smoke check also validates the runtime JSON fields. Browser startup
 validates their values before authentication; see the
 [configuration contract](deployment.md#add-or-reconfigure-this-repository).
 
-Actuator is not exposed through public ingress. Inspect safely through the service or a temporary port-forward:
+Public ingress exposes only the two health summaries. Inspect other Actuator endpoints through the service or a temporary port-forward:
 
 ```bash
-kubectl port-forward -n apps svc/user-app 18080:8080
+kubectl port-forward -n "$APP_NAMESPACE" svc/user-app 18080:8080
 curl http://127.0.0.1:18080/actuator/health
 ```
 
@@ -138,17 +140,17 @@ Useful fields:
 Direct logs:
 
 ```bash
-kubectl logs -n apps deployment/user-app --since=15m
-kubectl logs -n apps deployment/order-app --since=15m
-kubectl logs -n apps deployment/devapp-web --since=15m
+kubectl logs -n "$APP_NAMESPACE" deployment/user-app --since=15m
+kubectl logs -n "$APP_NAMESPACE" deployment/order-app --since=15m
+kubectl logs -n "$APP_NAMESPACE" deployment/devapp-web --since=15m
 ```
 
 Follow a specific pod when diagnosing restart or concurrency behavior:
 
 ```bash
-kubectl get pods -n apps -l app=order-app
-kubectl logs -n apps <order-pod-name> -f
-kubectl logs -n apps <order-pod-name> --previous
+kubectl get pods -n "$APP_NAMESPACE" -l app=order-app
+kubectl logs -n "$APP_NAMESPACE" <order-pod-name> -f
+kubectl logs -n "$APP_NAMESPACE" <order-pod-name> --previous
 ```
 
 Start with the request ID returned to the caller and search `requestId` in the
@@ -191,9 +193,9 @@ Symptoms:
 Checks:
 
 ```bash
-kubectl describe externalsecret devapp-runtime-credentials -n apps
-kubectl get secret devapp-runtime-credentials -n apps
-kubectl get clustersecretstore vault-backend
+kubectl describe externalsecret devapp-runtime-credentials -n "$APP_NAMESPACE"
+kubectl get secret devapp-runtime-credentials -n "$APP_NAMESPACE"
+kubectl get clustersecretstore vault-backend-int
 ```
 
 Confirm central Vault health, target External Secrets health and the selected
@@ -209,8 +211,8 @@ Symptoms:
 Checks:
 
 ```bash
-kubectl logs -n apps deployment/user-app --previous
-kubectl logs -n apps deployment/order-app --previous
+kubectl logs -n "$APP_NAMESPACE" deployment/user-app --previous
+kubectl logs -n "$APP_NAMESPACE" deployment/order-app --previous
 ```
 
 Identify the owning service and its history table:
@@ -293,7 +295,7 @@ Do not log or paste the full access token. Decode only non-sensitive header/clai
 Check ingress path ordering/routing and the rendered manifest:
 
 ```bash
-kubectl describe ingress devapp-ingress -n apps
+kubectl describe ingress devapp-ingress -n "$APP_NAMESPACE"
 kubectl kustomize infra/k8s | less
 ```
 

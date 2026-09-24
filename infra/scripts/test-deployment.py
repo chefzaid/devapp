@@ -45,6 +45,19 @@ RELEASE = {"version": 1, "releaseVersion": "1.0.1", "sourceRevision": "a" * 40, 
                       for index, name in enumerate(RENDER.IMAGES, 1)}}
 
 
+def shared_inventory():
+    inventory = copy.deepcopy(INVENTORY)
+    services = copy.deepcopy(inventory["platform"]["services"])
+    services["postgres"] = {"host": "postgres.infra.svc.cluster.local", "port": 5432}
+    services["redis"] = {"host": "redis-master.infra.svc.cluster.local", "port": 6379}
+    services["kafka"]["bootstrapServers"] = "kafka.infra.svc.cluster.local:9094"
+    for environment, entry in inventory["environments"].items():
+        entry.update(mode="local", clusterName="in-cluster", server="https://kubernetes.default.svc",
+                     namespace="apps-" + environment, ingressAddress="203.0.113.10",
+                     secretStoreName="vault-backend-" + environment, services=copy.deepcopy(services))
+    return inventory
+
+
 def copy_base(destination, source=ROOT):
     for name in ("k8s", "argocd", "overlays"):
         shutil.copytree(source / "infra" / name, destination / "infra" / name, dirs_exist_ok=True)
@@ -138,6 +151,98 @@ class RenderingTests(unittest.TestCase):
         self.assertEqual(snapshot, {p: p.read_bytes() for p in settings.parent.iterdir()})
         rendered = subprocess.run(["kubectl", "kustomize", str(settings.parent)], text=True, capture_output=True, check=True)
         self.assertTrue(all(item["spec"]["replicas"] == 2 for item in yaml.safe_load_all(rendered.stdout) if item["kind"] == "Deployment"))
+
+    def test_shared_cluster_resources_and_references_are_isolated_by_namespace(self):
+        inventory = shared_inventory()
+        identities, dashboard_ids, dashboard_files = set(), set(), set()
+        for environment in RENDER.ENVIRONMENTS:
+            namespace = "apps-" + environment
+            metadata = RENDER.render(self.root, inventory, environment, RELEASE, "a" * 40)
+            self.assertEqual(metadata["destination"], {"name": "in-cluster", "namespace": namespace})
+            rendered = subprocess.run(["kubectl", "kustomize", str(self.root / "infra/environments" / environment)],
+                                      text=True, capture_output=True, check=True)
+            resources = list(yaml.safe_load_all(rendered.stdout))
+            self.assertFalse(any(item["kind"] == "NetworkPolicy" for item in resources))
+            for item in resources:
+                self.assertEqual(item["metadata"]["namespace"], namespace)
+                identity = (item["apiVersion"], item["kind"], namespace, item["metadata"]["name"])
+                self.assertNotIn(identity, identities)
+                identities.add(identity)
+                annotations = item["metadata"].get("annotations", {})
+                for key in ("traefik.ingress.kubernetes.io/router.middlewares",
+                            "traefik.ingress.kubernetes.io/service.serverstransport"):
+                    if key in annotations:
+                        self.assertTrue(annotations[key].startswith(namespace + "-devapp-"))
+                if item["kind"] == "ExternalSecret":
+                    self.assertEqual(item["spec"]["secretStoreRef"]["name"], "vault-backend-" + environment)
+                if item["kind"] == "Ingress":
+                    self.assertTrue(item["spec"]["tls"][0]["secretName"])
+                if item["kind"] == "ConfigMap" and "DB_HOST" in item.get("data", {}):
+                    self.assertEqual(item["data"]["DB_HOST"], "postgres.infra.svc.cluster.local")
+                    self.assertEqual(item["data"]["DB_NAME"], "devapp_" + environment)
+                if item["kind"] == "ConfigMap" and item["metadata"]["name"] == "devapp-grafana-dashboard":
+                    filename, content = next(iter(item["data"].items()))
+                    dashboard = json.loads(content)
+                    self.assertNotIn(filename, dashboard_files)
+                    self.assertNotIn(dashboard["uid"], dashboard_ids)
+                    dashboard_files.add(filename)
+                    dashboard_ids.add(dashboard["uid"])
+                    self.assertNotIn(r'namespace=\"apps\"', content)
+                    self.assertIn(rf'namespace=\"{namespace}\"', content)
+
+    def test_remote_clusters_can_mix_with_local_environments(self):
+        inventory = shared_inventory()
+        for index, environment in enumerate(("uat", "prod"), 1):
+            inventory["environments"][environment].update(mode="remote", clusterName="release-" + environment,
+                                                          server=f"https://100.100.0.{index}:6443")
+        for environment in RENDER.ENVIRONMENTS:
+            RENDER.render(self.root, inventory, environment, RELEASE, "a" * 40)
+        inventory["environments"]["uat"]["server"] = inventory["environments"]["prod"]["server"]
+        with self.assertRaisesRegex(ValueError, "distinct registered clusters"):
+            RENDER.render(self.root, inventory, "prod", RELEASE, "a" * 40)
+        inventory = shared_inventory()
+        inventory["environments"]["uat"]["namespace"] = "apps-prod"
+        with self.assertRaisesRegex(ValueError, "distinct namespaces"):
+            RENDER.render(self.root, inventory, "prod", RELEASE, "a" * 40)
+
+    def test_shared_cluster_cannot_target_platform_or_legacy_namespaces(self):
+        for namespace in ("apps", "infra", "corp", "default", "gitlab-runners", "kube-system", "longhorn-system"):
+            inventory = shared_inventory()
+            inventory["environments"]["int"]["namespace"] = namespace
+            with self.subTest(namespace=namespace), self.assertRaisesRegex(ValueError, "dedicated application namespace"):
+                RENDER.render(self.root, inventory, "int", RELEASE, "a" * 40)
+
+    def test_suffix_hostnames_preserve_app_labels_on_rerun_and_support_apex_selection(self):
+        inventory = shared_inventory()
+        inventory["platform"]["hostnameStyle"] = "suffix"
+        for environment, selected in inventory["environments"].items():
+            selected["domain"] = "example.test"
+            selected["hostnameSuffix"] = "-" + environment if environment != "prod" else ""
+            path = self.root / "infra/environments" / environment / "settings.json"
+            for _ in range(2):
+                result = RENDER.render(self.root, inventory, environment, RELEASE, "a" * 40)
+                self.assertEqual(result["host"], "devapp" + selected["hostnameSuffix"] + ".example.test")
+                self.assertEqual(json.loads(path.read_text())["appSubdomain"], "devapp")
+            rendered = subprocess.run(["kubectl", "kustomize", str(path.parent)], text=True, capture_output=True, check=True)
+            resources = list(yaml.safe_load_all(rendered.stdout))
+            ingresses = [item for item in resources if item["kind"] == "Ingress"]
+            self.assertEqual(len(ingresses), 2)
+            self.assertTrue(all(item["spec"]["tls"] == [{"hosts": [result["host"]]}] for item in ingresses))
+            self.assertFalse(any(item["kind"] == "Secret" and item.get("type") == "kubernetes.io/tls" for item in resources))
+            path.write_text(json.dumps({"appSubdomain": "@"}))
+            for _ in range(2):
+                result = RENDER.render(self.root, inventory, environment, RELEASE, "a" * 40)
+                self.assertEqual(result["host"], (environment + "." if environment != "prod" else "") + "example.test")
+                self.assertEqual(json.loads(path.read_text())["appSubdomain"], "@")
+        inventory["environments"]["uat"].update(mode="remote", clusterName="remote-uat", server="https://100.100.0.20:6443")
+        RENDER.render(self.root, inventory, "uat", RELEASE, "a" * 40)
+        rendered = subprocess.run(["kubectl", "kustomize", str(self.root / "infra/environments/uat")],
+                                  text=True, capture_output=True, check=True)
+        self.assertTrue(all(item["spec"]["tls"][0]["secretName"] for item in yaml.safe_load_all(rendered.stdout)
+                            if item["kind"] == "Ingress"))
+        inventory["environments"]["int"]["hostnameSuffix"] = "-prod"
+        with self.assertRaisesRegex(ValueError, "hostname suffix"):
+            RENDER.render(self.root, inventory, "int", RELEASE, "a" * 40)
 
     def test_invalid_target_and_foreign_image_are_rejected_before_output(self):
         for change in ("environment", "local", "namespace", "digest", "registry"):
@@ -287,6 +392,28 @@ state_path =''', 1)
         self.assertEqual(tip, self.fixture.git("rev-parse", "origin/trunk").stdout)
         self.assertEqual(self.fixture.builds.read_text(), "build\n")
 
+    def test_shared_cluster_promotion_updates_only_the_selected_namespace(self):
+        fixture = self.fixture
+        inventory = shared_inventory()
+        fixture.write("infra/deployment-environments.json", json.dumps(inventory))
+        fixture.git("add", "infra/deployment-environments.json")
+        fixture.git("commit", "-qm", "Select shared cluster environments")
+        fixture.git("push", "-q", "origin", "trunk")
+        self.state(inventory=inventory)
+        previous = {}
+        for index, environment in enumerate(RENDER.ENVIRONMENTS):
+            result = self.deploy(DEPLOYMENT_ENVIRONMENT=environment, RELEASE_VERSION="1.0.1", APP_ONBOARDING="false",
+                                CI_PIPELINE_SOURCE="web", CI_PIPELINE_ID=str(90 + index),
+                                CI_COMMIT_SHA=fixture.git("rev-parse", "origin/trunk").stdout.strip())
+            self.assertEqual(result.returncode, 0, result.stderr)
+            applications = self.state()["applications"]
+            self.assertEqual(applications["devapp-" + environment]["spec"]["destination"],
+                             {"name": "in-cluster", "namespace": "apps-" + environment})
+            for name, application in previous.items():
+                self.assertEqual(applications[name], application)
+            previous = copy.deepcopy(applications)
+        self.assertEqual(fixture.builds.read_text(), "build\n")
+
     def test_reassigned_cluster_and_unregistered_environment_never_apply(self):
         changed = copy.deepcopy(INVENTORY)
         changed["environments"]["int"]["clusterName"] = "foreign-cluster"
@@ -336,6 +463,7 @@ class SnapshotTests(PromotionTests):
     test_advanced_branch_and_invalid_environment_never_apply = None
     test_wrong_live_destination_cannot_report_success = None
     test_unfinalized_release_is_rejected_by_delivery_and_direct_live_renderer = None
+    test_shared_cluster_promotion_updates_only_the_selected_namespace = None
 
     def prepare_branch(self, branch="feature/é;$(example)", pipeline="84"):
         fixture = self.fixture

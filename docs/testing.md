@@ -271,7 +271,12 @@ Render manifests without changing a cluster:
 kubectl kustomize infra/k8s
 ```
 
-GitLab shows ordered jobs: required `01-build`, optional `02-test`, required `03-package`, optional manual `01-e2e`, non-blocking `02-quality`, independent non-blocking `03-security`, `01-release`, and `02-deploy`. Default-branch quality runs automatically. Standard mode leaves Trivy security manual; full mode runs both automatically. Security scans the repository for vulnerable dependencies, IaC misconfigurations, and exposed secrets, retains JSON/SARIF artifacts, and has no dependency on quality. Release requires the successful build path, and deployment requires successful release. `PIPELINE_MODE=full` also automates release and deploy; E2E remains manual.
+The [delivery flow](deployment.md#delivery-flow) defines CI job dependencies and
+release gates. `infra/scripts/test-deployment.py` verifies real Kustomize output
+for local, remote and mixed targets, namespace-specific ingress and secret
+references, and Git promotion that leaves other environments unchanged. Run it
+with the [deployment checks](deployment.md#verification-and-rollback) when
+changing deployment configuration.
 
 ## Test Design Rules
 

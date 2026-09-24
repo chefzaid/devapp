@@ -1,9 +1,10 @@
 # Deployment Guide
 
 One shared `bm-cluster` platform provides GitLab, its runner and registry, Argo CD,
-Vault, PostgreSQL, Redis, Kafka and Keycloak. DevApp runs on separately registered
-`int`, `uat` and `prod` application clusters. One GitLab project publishes images;
-central Argo CD deploys the selected environment.
+Vault, PostgreSQL, Redis, Kafka and Keycloak. DevApp's `int`, `uat` and `prod`
+environments can run in separate namespaces on that same cluster or on optional
+remote clusters. One GitLab project publishes images; central Argo CD deploys
+the selected environment.
 
 ## Infrastructure Layout
 
@@ -27,10 +28,19 @@ shared-service connectivity and platform credentials belong to `bm-cluster`.
 ## Ownership And Topology
 
 Each environment has an Application named `devapp-<env>` in the central `infra`
-namespace. It uses AppProject `applications-<env>`, the registered destination
-cluster name, and namespace `apps` on that remote cluster. Shared CI jobs continue
-running on the central runner; application clusters do not need their own GitLab,
-registry or Argo CD installation.
+namespace. It uses AppProject `applications-<env>` and the registered cluster and
+namespace. Shared-cluster targets use destination `in-cluster` and namespaces
+`apps-int`, `apps-uat` and `apps-prod` by default. An environment may instead use
+its own registered remote cluster; local and remote targets can coexist. Remote
+targets need distinct cluster registrations. All use the same GitLab, registry
+and Argo CD installation.
+
+Subdomains route to separate Deployments; they do not create isolation by
+themselves. Environment namespaces have their own Secrets and platform-managed
+access controls, network policies and resource limits. Shared-cluster environments
+also share capacity, outages and cluster maintenance. Existing workloads in
+`apps` remain there until an explicit migration; local environments cannot reuse
+that legacy namespace.
 
 The central `infra/deployment-environments` ConfigMap supplies the authoritative
 cluster and shared-service endpoints. The registrar publishes this checkpoint
@@ -39,21 +49,25 @@ CI reads that public record without access to cluster credentials. Rerun platfor
 registration after credential or target maintenance. For a newly registered
 environment, rerun application onboarding to prepare its data, identity and DNS;
 then select it without changing application source. Reassigning an existing environment
-to another cluster requires an explicit migration.
+to another cluster or namespace requires an explicit migration.
 
 Each environment has separate database credentials/database, Redis cache prefix
 and credentials, Kafka topic prefix and credentials, and browser client
 `devapp-<env>-web`. Runtime credentials come from Vault paths
 `apps/devapp/<env>/{database,redis,kafka}`. The registry credential at
-`apps/devapp/registry` is shared read access to this project's images. Cluster
-provisioning must establish private connectivity and environment-scoped secret
-access before deployment.
+`apps/devapp/registry` is shared read access to this project's images. The
+registered `secretStoreName` selects each environment's scoped Vault store.
+Shared-cluster workloads use Kubernetes Service endpoints; remote workloads use
+the platform's private gateway. Registration supplies these endpoint choices,
+connectivity and secret access before deployment.
 
 ## Kubernetes Desired State
 
 The shared base contains the user, order and web Deployments and Services,
-ingress, network policy, observability resources, ExternalSecrets and generated
-ConfigMaps. It uses non-root containers, read-only root filesystems, explicit
+ingress, observability resources, ExternalSecrets and generated ConfigMaps.
+Remote deployments also include the application's ingress NetworkPolicy; local
+deployments use platform-owned network policies that application CI cannot relax.
+The workloads use non-root containers, read-only root filesystems, explicit
 resources, health probes and restricted Linux capabilities.
 
 Environment overlays replace public runtime configuration and select images by
@@ -109,9 +123,12 @@ Public choices are stored in `infra/environments/<env>/settings.json`:
 | `databaseName` | Defaults to `devapp_<env>`; production alone can explicitly retain legacy `devappdb` after the ownership/credential migration below. |
 
 The shared platform supplies registry/project paths, service endpoints and the
-Keycloak realm. Environment registration supplies its domain, TLS Secret,
-namespace and destination. For example, the default app label produces
-`devapp.int.example.com`, `devapp.uat.example.com` and `devapp.example.com`.
+Keycloak realm. Environment registration supplies its domain and TLS policy,
+namespace, hostname style and destination. The `suffix` style produces
+`devapp-int.example.com`, `devapp-uat.example.com` and `devapp.example.com`, covered
+by the parent zone wildcard. The optional `nested` style retains
+`devapp.int.example.com` and `devapp.uat.example.com` when deeper TLS coverage is
+available.
 Onboarding applies one app label across all registered environments; proxy CIDRs
 and HA selection remain specific to each environment.
 
@@ -171,8 +188,8 @@ pointer to that exact runtime commit. Both commits are pushed before CI applies
 only the selected central Application. CI verifies its destination, source path,
 pinned revision, three image digests, `Synced`/`Healthy` status and Deployment
 health. Public checks verify the SPA, exact runtime identity configuration and
-both API health routes. Local `*.svc.cluster.local` checks are not used for remote
-environments.
+both API health routes. These checks use the selected public hostname for both
+shared-cluster and remote environments.
 
 Snapshot deployment writes its runtime configuration and Application pointer to
 `gitops/int/<pipeline-id>`, based on the selected source commit. It reads current
@@ -207,14 +224,15 @@ Inspect the selected Application through the central Kubernetes context:
 
 ```sh
 kubectl --kubeconfig /secure/platform.yaml -n infra get application devapp-int -o json | jq '{source:.spec.source,destination:.spec.destination,status:.status}'
-curl --fail https://devapp.int.example.com/runtime-config.json
-curl --fail https://devapp.int.example.com/health/user
-curl --fail https://devapp.int.example.com/health/order
+curl --fail https://devapp-int.example.com/runtime-config.json
+curl --fail https://devapp-int.example.com/health/user
+curl --fail https://devapp-int.example.com/health/order
 ```
 
 The health routes expose only application health; actuator metrics are not
-published by those routes. Inspect Pods and ExternalSecrets with the selected
-application cluster's kubeconfig, rather than the central context.
+published by those routes. Inspect Pods and ExternalSecrets in the selected
+namespace: use the platform kubeconfig for local targets and the registered
+target's kubeconfig for remote targets.
 
 If GitLab release registration fails after publication, retry that pipeline's
 release job. It verifies its tag, source/pipeline receipts and image manifest,
@@ -255,9 +273,9 @@ retire only the intended environment's resources after verifying ownership.
 
 ## Public DNS
 
-Follow [application DNS ownership](dns.md). Onboarding targets each registered
-application cluster's ingress address. DNS changes do not select the Argo CD
-cluster or provide private shared-service connectivity.
+Follow [application DNS ownership](dns.md). Onboarding targets each environment's
+registered ingress address. Shared-cluster environments use the same address
+with different hostnames. DNS changes do not select the Argo CD target.
 
 ## Local And Manual Paths
 

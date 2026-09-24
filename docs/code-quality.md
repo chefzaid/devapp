@@ -8,15 +8,15 @@ contract to preserve when creating an application from this template. See the
 for the source-analysis decision and rationale.
 
 Each repository owns its source paths, build commands, tests and scanner job.
-The scheduled platform discovery below covers workloads in its local `apps`
-namespace. It does not yet discover remote application clusters; those use
+The scheduled platform discovery below covers managed local application
+namespaces, including `apps` and registered shared-cluster environments. It does not yet discover remote application clusters; those use
 normal CI or manual scans. See the
 [platform discovery scope](https://github.com/chefzaid/bm-cluster/blob/main/docs/observability.md#namespace-and-discovery).
 
 ## How It Runs
 
 The platform's `infra/sonar-apps-discovery` CronJob runs every 15 minutes. It
-follows Argo CD tracking annotations from workloads in `apps` to their source
+follows Argo CD tracking annotations from managed local workloads to their source
 repositories and deduplicates components from the same repository. DevApp's web,
 user and order Deployments therefore share one Sonar project, `swirlit:devapp`.
 Repositories must belong to the platform's configured GitLab hosts and group.

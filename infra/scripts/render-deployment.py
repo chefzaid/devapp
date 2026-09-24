@@ -18,6 +18,7 @@ SHA = re.compile(r"[0-9a-f]{40}")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)")
 LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
+RESERVED_NAMESPACES = {"default", "infra", "corp", "gitlab-runners", "longhorn-system", "external-secrets"}
 
 
 def require(condition, message):
@@ -43,16 +44,38 @@ def target(inventory, environment):
     require(inventory.get("version") == 1, "Unsupported deployment inventory version")
     selected = inventory.get("environments", {}).get(environment)
     require(isinstance(selected, dict), f"Environment {environment} is not registered")
+    hostname_style = inventory.get("platform", {}).get("hostnameStyle", "nested")
+    require(hostname_style in ("nested", "suffix"), "Hostname style must be nested or suffix")
+    hostname_suffix = "-" + environment if hostname_style == "suffix" and environment != "prod" else ""
+    require(selected.get("hostnameSuffix", hostname_suffix) == hostname_suffix, "Environment hostname suffix differs from its registered style")
     require(LABEL.fullmatch(selected.get("clusterName", "")) is not None, "Invalid registered cluster name")
+    mode = selected.get("mode", "remote")
+    require(mode in ("local", "remote"), "Environment mode must be local or remote")
     api = urlparse(selected.get("server", ""))
     require(api.scheme == "https" and api.hostname and not api.username and not api.password
             and api.path in ("", "/") and not api.query and not api.fragment
-            and api.hostname not in ("kubernetes.default.svc", "localhost", "127.0.0.1", "::1"),
-            "Environment needs its registered remote HTTPS Kubernetes API")
-    require(selected.get("namespace") == "apps", "Environment namespace must be apps")
+            and api.hostname not in ("localhost", "127.0.0.1", "::1"),
+            "Environment needs its registered HTTPS Kubernetes API")
+    if mode == "local":
+        require(selected["server"] == "https://kubernetes.default.svc" and selected["clusterName"] == "in-cluster",
+                "Local environments must use the shared in-cluster Kubernetes API")
+    else:
+        require(api.hostname != "kubernetes.default.svc", "A shared-cluster environment must explicitly select local mode")
+    namespace = selected.get("namespace", "")
+    require(LABEL.fullmatch(namespace) and namespace not in RESERVED_NAMESPACES and not namespace.startswith("kube-")
+            and not (mode == "local" and namespace == "apps"), "Environment needs a dedicated application namespace")
+    store = selected.get("secretStoreName", "vault-backend-" + environment if mode == "local" else "vault-backend")
+    require(LABEL.fullmatch(store), "Invalid environment secret store name")
+    for other, entry in inventory.get("environments", {}).items():
+        if other != environment:
+            same_cluster = entry.get("server") == selected["server"] or entry.get("clusterName") == selected["clusterName"]
+            require(not same_cluster or mode == "local" and entry.get("mode", "remote") == "local",
+                    "Remote environments require distinct registered clusters")
+            require(not (same_cluster and entry.get("namespace") == namespace),
+                    "Environments on one cluster need distinct namespaces")
     domain(selected.get("domain"))
     ipaddress.ip_network(selected["podCIDR"], strict=False)
-    return selected
+    return {**selected, "hostnameSuffix": hostname_suffix, "secretStoreName": store}
 
 
 def kubectl(*arguments):
@@ -69,8 +92,9 @@ def verify_live(inventory, environment):
     require(live.get("platform") == inventory.get("platform"),
             "Central platform settings differ from this project's onboarding inventory; rerun onboarding")
     previous = inventory.get("environments", {}).get(environment)
-    require(previous is None or all(previous.get(key) == selected[key] for key in ("clusterName", "server", "namespace")),
-            "The selected environment was assigned to another cluster; explicit migration is required")
+    require(previous is None or (all(previous.get(key) == selected[key] for key in ("clusterName", "server", "namespace"))
+                                and previous.get("mode", "remote") == selected.get("mode", "remote")),
+            "The selected environment was assigned to another cluster or namespace; explicit migration is required")
     # Registration publishes this record only after verifying the actual Argo
     # Secret, target identity and foundation. CI never reads cluster credentials.
     return {**inventory, "environments": {**inventory.get("environments", {}), environment: selected}}
@@ -103,7 +127,9 @@ def settings(root, selected, environment):
     label = value.get("appSubdomain", "devapp")
     require(label == "@" or isinstance(label, str) and LABEL.fullmatch(label), "Invalid application subdomain")
     require(environment != "prod" or label not in ("int", "uat"), "Production cannot own another environment's hostname")
-    host = selected["domain"] if label == "@" else label + "." + selected["domain"]
+    suffix = selected.get("hostnameSuffix", "")
+    host = ((environment + "." if suffix else "") + selected["domain"] if label == "@"
+            else label + suffix + "." + selected["domain"])
     cidrs = value.get("trustedProxyCIDRs", selected["podCIDR"])
     public_string(cidrs, "trustedProxyCIDRs")
     require(all(part.strip() for part in cidrs.split(",")), "Trusted proxy CIDRs cannot be empty")
@@ -113,7 +139,7 @@ def settings(root, selected, environment):
     database = value.get("databaseName", "devapp_" + environment)
     require(database == "devapp_" + environment or environment == "prod" and database == "devappdb",
             "databaseName must be this environment's database; only prod can explicitly adopt legacy devappdb")
-    return host, cidrs, value.get("highAvailability", False), database
+    return host, cidrs, value.get("highAvailability", False), database, label
 
 
 def output_file(root, name, content):
@@ -136,10 +162,15 @@ def render(root, inventory, environment, release, revision, repository_url=None,
             "Invalid central GitLab project path")
     require(not os.environ.get("CI_PROJECT_PATH") or os.environ["CI_PROJECT_PATH"] == project,
             "Application repository does not match the running GitLab project")
-    services = inventory["platform"]["services"]
+    services = selected.get("services", inventory["platform"]["services"])
+    namespace = selected["namespace"]
     registry = public_string(services["registry"]["host"], "registry host")
     release_manifest(release, registry, project, environment)
-    host, cidrs, ha, database = settings(root, selected, environment)
+    host, cidrs, ha, database, app_label = settings(root, selected, environment)
+    central_tls = selected.get("mode", "remote") == "local" and inventory["platform"].get("hostnameStyle", "nested") == "suffix"
+    tls = {"hosts": [host]}
+    if not central_tls:
+        tls["secretName"] = selected.get("tlsSecretName", selected["domain"].replace(".", "-") + "-tls")
     keycloak = services["keycloak"]
     identity_url = public_string(keycloak["url"], "Keycloak URL").rstrip("/")
     require(urlparse(identity_url).scheme == "https", "Browser identity must use HTTPS")
@@ -150,7 +181,7 @@ def render(root, inventory, environment, release, revision, repository_url=None,
     metadata = {"environment": environment, "application": f"devapp-{environment}", "host": host,
                 "repository": repository_url, "project": f"applications-{environment}",
                 "url": "https://" + host, "runtimeConfig": web, "revision": revision, "databaseName": database,
-                "destination": {"name": selected["clusterName"], "namespace": "apps"},
+                "destination": {"name": selected["clusterName"], "namespace": namespace},
                 "images": [release["images"][name]["repository"] + "@" + release["images"][name]["digest"] for name in IMAGES]}
     if check_only:
         return metadata
@@ -173,9 +204,34 @@ def render(root, inventory, environment, release, revision, repository_url=None,
     patches = [{"target": {"kind": "Ingress", "name": "devapp-ingress"}, "patch": yaml.safe_dump([
         {"op": "replace", "path": "/spec/rules/0/host", "value": host},
         {"op": "replace", "path": "/spec/tls/0/hosts", "value": [host]},
-        {"op": "replace", "path": "/spec/tls/0/secretName", "value": selected.get("tlsSecretName", selected["domain"].replace(".", "-") + "-tls")},
+        ({"op": "remove", "path": "/spec/tls/0/secretName"} if central_tls else
+         {"op": "replace", "path": "/spec/tls/0/secretName", "value": tls["secretName"]}),
         {"op": "replace", "path": "/metadata/annotations/gethomepage.dev~1href", "value": "https://" + host},
+        {"op": "replace", "path": "/metadata/annotations/gethomepage.dev~1name", "value": f"DevApp ({environment})"},
+        {"op": "replace", "path": "/metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares",
+         "value": f"{namespace}-devapp-upload-limit@kubernetescrd"},
     ], sort_keys=False)}]
+    for service in IMAGES:
+        patches.append({"target": {"kind": "Service", "name": service}, "patch": yaml.safe_dump([
+            {"op": "replace", "path": "/metadata/annotations/traefik.ingress.kubernetes.io~1service.serverstransport",
+             "value": f"{namespace}-devapp-backend@kubernetescrd"}], sort_keys=False)})
+    patches.append({"target": {"kind": "ExternalSecret"}, "patch": yaml.safe_dump([
+        {"op": "replace", "path": "/spec/secretStoreRef/name", "value": selected.get("secretStoreName", "vault-backend")}
+    ], sort_keys=False)})
+    dashboard_resource = yaml.safe_load((root / "infra/k8s/observability.yaml").read_text())
+    dashboard = json.loads(dashboard_resource["data"]["devapp-overview.json"].replace(
+        r'namespace=\"apps\"', rf'namespace=\"{namespace}\"'))
+    dashboard["uid"] = f"devapp-{environment}-overview"
+    dashboard["title"] = f"DevApp {environment.upper()} Overview"
+    patches.append({"target": {"kind": "ConfigMap", "name": "devapp-grafana-dashboard"}, "patch": yaml.safe_dump([
+        {"op": "replace", "path": "/data", "value": {f"devapp-{environment}-overview.json": json.dumps(dashboard, indent=2) + "\n"}}
+    ], sort_keys=False)})
+    if selected.get("mode", "remote") == "local":
+        # The platform owns shared-cluster network boundaries; app delivery cannot
+        # add an allow-all policy that defeats environment isolation.
+        patches.append({"target": {"kind": "NetworkPolicy"}, "patch": yaml.safe_dump({
+            "apiVersion": "networking.k8s.io/v1", "kind": "NetworkPolicy",
+            "metadata": {"name": "platform-owned"}, "$patch": "delete"}, sort_keys=False)})
     secrets = list(yaml.safe_load_all((root / "infra/k8s/external-secrets.yaml").read_text()))
     runtime_secret = next(item for item in secrets if item and item.get("kind") == "ExternalSecret"
                           and item["metadata"]["name"] == "devapp-runtime-credentials")
@@ -187,7 +243,7 @@ def render(root, inventory, environment, release, revision, repository_url=None,
                              "value": f"apps/devapp/{environment}/{service}"})
     patches.append({"target": {"kind": "ExternalSecret", "name": "devapp-runtime-credentials"},
                     "patch": yaml.safe_dump(secret_patch, sort_keys=False)})
-    kustomization = {"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "namespace": "apps",
+    kustomization = {"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "namespace": namespace,
                     "resources": ["../../overlays/ha" if ha else "../../k8s", "health-ingress.yaml"],
                     "configMapGenerator": [
                         {"name": "devapp-backend-config", "behavior": "replace", "envs": ["backend-runtime.properties"],
@@ -207,20 +263,19 @@ def render(root, inventory, environment, release, revision, repository_url=None,
                     "syncPolicy": template["spec"]["syncPolicy"]}}
     health_ingress = {
         "apiVersion": "networking.k8s.io/v1", "kind": "Ingress", "metadata": {
-            "name": "devapp-health", "namespace": "apps", "annotations": {
+            "name": "devapp-health", "namespace": namespace, "annotations": {
                 "traefik.ingress.kubernetes.io/router.entrypoints": "websecure",
                 "traefik.ingress.kubernetes.io/router.tls": "true",
-                "traefik.ingress.kubernetes.io/router.middlewares": "apps-devapp-health@kubernetescrd"}},
-        "spec": {"ingressClassName": "traefik", "tls": [{"hosts": [host], "secretName":
-            selected.get("tlsSecretName", selected["domain"].replace(".", "-") + "-tls")}],
+                "traefik.ingress.kubernetes.io/router.middlewares": f"{namespace}-devapp-health@kubernetescrd"}},
+        "spec": {"ingressClassName": "traefik", "tls": [tls],
             "rules": [{"host": host, "http": {"paths": [{"path": "/health/" + name, "pathType": "Exact",
                 "backend": {"service": {"name": name + "-app", "port": {"number": port}}}}
                 for name, port in (("user", 8080), ("order", 8081))]}}]}}
     health_middleware = {"apiVersion": "traefik.io/v1alpha1", "kind": "Middleware",
-                         "metadata": {"name": "devapp-health", "namespace": "apps"},
+                         "metadata": {"name": "devapp-health", "namespace": namespace},
                          "spec": {"replacePath": {"path": "/actuator/health"}}}
     output_file(root, relative / "settings.json", json.dumps({
-        "appSubdomain": "@" if host == selected["domain"] else host.removesuffix("." + selected["domain"]),
+        "appSubdomain": app_label,
         "trustedProxyCIDRs": cidrs, "highAvailability": ha, "databaseName": database}, indent=2) + "\n")
     output_file(root, relative / "health-ingress.yaml", yaml.safe_dump_all([health_ingress, health_middleware], sort_keys=False))
     output_file(root, relative / "backend-runtime.properties", "# Public environment settings; credentials come from Vault.\n" +

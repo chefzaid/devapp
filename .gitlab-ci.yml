@@ -27,7 +27,7 @@ variables:
   DEPLOYMENT_ENVIRONMENT:
     value: "int"
     options: ["int", "uat", "prod"]
-    description: "Application cluster managed by central Argo CD. Only the selected environment is deployed."
+    description: "Application environment managed by Argo CD, on the shared cluster or a remote cluster. Only this environment is deployed."
   RELEASE_VERSION:
     value: ""
     description: "Existing finalized release to promote (for example 1.2.3). Empty builds a branch snapshot for int, or a default-branch release for uat/prod."

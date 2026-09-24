@@ -357,6 +357,13 @@ before changing authentication, source scope or CI job rules.
 
 ## Deployment Environment Isolation
 
+Environments can share a cluster while retaining distinct namespaces. The
+platform owns local namespace network policies and quotas; application delivery
+cannot replace or bypass them with its own NetworkPolicy. Each generated
+ExternalSecret uses the registered environment's scoped Vault store. Shared
+cluster environments still share the Kubernetes control plane, nodes and maintenance
+boundary; use remote clusters when that separation is required.
+
 All deployment targets use the same central PostgreSQL, Redis, Kafka and Keycloak
 services. Each has a separate logical database/login, Redis ACL user/key prefix,
 and Kafka SCRAM principal/topic/group prefix. Target Vault policies expose only

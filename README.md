@@ -20,7 +20,8 @@ In the one GitLab project, open **New pipeline** and choose `PIPELINE_MODE=full`
 Select any branch and `DEPLOYMENT_ENVIRONMENT=int` to deploy a snapshot. `uat`
 and `prod` require a release: publish from the default branch, or set
 `RELEASE_VERSION` to promote an existing release without rebuilding. Central
-Argo CD deploys only the selected environment's registered cluster. See the
+Argo CD deploys only the selected environment's namespace. All three environments
+can share the platform cluster; remote clusters are optional. See the
 [delivery flow](docs/deployment.md#delivery-flow) for prerequisites and verification.
 
 CI submits Sonar analysis for both the Java backend and Angular frontend. The

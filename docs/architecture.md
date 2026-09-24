@@ -28,7 +28,7 @@ flowchart LR
     pipeline --> desired[GitOps image-digest commit]
     pipeline -. optional .-> browserTest[Playwright E2E report]
     desired --> argo[Argo CD]
-    argo --> k3s[K3s apps namespace]
+    argo --> k3s[K3s environment namespace]
     k3s --> smoke[Deploy smoke checks]
 ```
 
@@ -102,9 +102,9 @@ The initial database commit and Kafka publication are not atomic. This is a docu
 
 One shared GitLab project builds integration snapshots and immutable releases.
 `int` accepts any branch; `uat` and `prod` require a finalized release. Central
-Argo CD reconciles that environment's pinned revision on its
-registered application cluster. Each environment consumes separate credentials
-and logical data resources from the shared platform. See the
+Argo CD reconciles that environment's pinned revision in its registered namespace,
+on the shared cluster or an optional remote cluster. Each environment consumes
+separate credentials and logical data resources from the shared platform. See the
 [delivery flow](deployment.md#delivery-flow) for publication, promotion and health
 checks, and [code quality](code-quality.md) for analysis ownership and discovery scope.
 

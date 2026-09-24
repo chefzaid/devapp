@@ -17,7 +17,14 @@ spec:
   ingress:
     # Keep internal application communication available.
     - from:
-        - podSelector: {}
+        - podSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - devapp-web
+                  - user-app
+                  - order-app
     # Public requests arrive only through the cluster ingress controller.
     - from:
         - namespaceSelector:
@@ -39,19 +46,6 @@ spec:
           podSelector:
             matchLabels:
               app: prometheus
-      ports:
-        - protocol: TCP
-          port: 8080
-        - protocol: TCP
-          port: 8081
-    # GitLab CI jobs perform post-rollout smoke checks from the runner namespace.
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: gitlab-runners
-          podSelector:
-            matchLabels:
-              app: gitlab-ci-job
       ports:
         - protocol: TCP
           port: 8080

@@ -164,7 +164,7 @@ Implemented frontend behavior:
 - `OnPush` change detection
 - semantic navigation and form labels used by browser tests
 - development proxy for both APIs and Keycloak
-- production, UAT, and development environment configurations
+- runtime public configuration shared across `int`, `uat` and `prod` image deployments
 - production build served by unprivileged NGINX
 - SPA fallback, compression, immutable static-asset caching, and basic browser security headers
 
@@ -179,14 +179,15 @@ Implemented observability behavior:
 - custom database health indicators with record counts
 - Micrometer Prometheus registry
 - pod scrape annotations and NetworkPolicy access for Prometheus
-- provisioned Grafana dashboard for target health, request rate, 5xx rate, response time, JVM heap, CPU, database connections, pod memory, and restarts
+- Grafana dashboard definition for target health, request rate, 5xx rate, response time, JVM heap, CPU, database connections, pod memory, and restarts
 - readable development logs
 - structured JSON stdout logs in UAT and production
 - application name, level, logger, thread, message, arguments, MDC, and stack trace fields
 - request-ID correlation through MDC
-- provisioned Kibana data view, saved search, and log dashboard
 - post-deployment backend and frontend smoke checks
 
+Remote application clusters require separate collector and central dashboard
+integration; see [operational observability scope](operations.md#logs-and-request-correlation).
 Distributed traces, SLO alerts, and event-specific metrics are future reusable capabilities.
 
 ## Testing And Quality Reporting

@@ -17,6 +17,7 @@ Frontend layers:
 - Vitest service tests with Angular HTTP testing support
 - component tests for login, users, and orders
 - auth guard and interceptor tests
+- public runtime-configuration validation and startup failures
 - notification and error behavior tests
 - Playwright smoke journey against the development UI
 - Playwright live/full-stack journey through Keycloak and both secured APIs
@@ -27,6 +28,9 @@ Deployment layers:
 - post-rollout backend/frontend HTTP smoke tests
 - exact Argo CD revision and health wait
 - Chromium, Firefox, and WebKit acceptance against the deployed ingress
+
+Run the [onboarding and release checks](deployment.md#add-or-reconfigure-this-repository)
+when changing deployment configuration or publication behavior.
 
 ## Quick Commands
 
@@ -86,8 +90,6 @@ mask build all
 - `CacheConfigTest`: Redis serialization and TTL configuration
 - `DatabaseHealthIndicatorTest`: healthy and failed repository access
 - `SecurityConfigTest`: anonymous API rejection, JWT-authenticated API access, CORS preflight, and valid Kafka producer settings in a full application context
-
-The current clean reactor run executes 68 tests across `devapp-common`, `order-app`, and `user-app`.
 
 ## Direct Maven Workflows
 
@@ -188,12 +190,15 @@ Run against an environment:
 
 ```bash
 cd devapp-web
-WEB_URL=https://devapp.swirlit.dev \
-OIDC_REALM=swirlit \
-OIDC_USERNAME=zaid \
+WEB_URL=https://devapp.example.com \
+OIDC_USERNAME=example-user \
 OIDC_PASSWORD='<from Vault/GitLab CI variable>' \
 npm run test:integration
 ```
+
+The test reads the realm from `/runtime-config.json`. Remote targets require both
+`OIDC_USERNAME` and `OIDC_PASSWORD`; only `localhost`, `127.0.0.1`, `[::1]` and the
+Compose `web` host use disposable demo defaults.
 
 Set `E2E_EXERCISE_WRITES=true` only for disposable environments where creating demonstration records is acceptable.
 

@@ -41,45 +41,44 @@ spec:
             drop: ["ALL"]
         ports:
         - containerPort: 8081
+        envFrom:
+        - configMapRef:
+            name: devapp-backend-config
         env:
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
-        - name: APP_RATE_LIMIT_TRUSTED_PROXY_CIDRS
-          value: "10.42.0.0/16"
-        - name: DB_HOST
-          value: "postgres.swirlit.internal"
-        - name: DB_PORT
-          value: "5432"
-        - name: DB_NAME
-          value: "devappdb"
         - name: DB_USERNAME
           valueFrom:
             secretKeyRef:
-              name: devapp-db-credentials
+              name: devapp-runtime-credentials
               key: DB_USERNAME
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: devapp-db-credentials
+              name: devapp-runtime-credentials
               key: DB_PASSWORD
-        - name: KAFKA_BOOTSTRAP_SERVERS
-          value: "kafka.swirlit.internal:9092"
-        - name: KAFKA_CONSUMER_GROUP
-          value: "order-service-group"
+        - name: REDIS_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: devapp-runtime-credentials
+              key: REDIS_USERNAME
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: devapp-runtime-credentials
+              key: REDIS_PASSWORD
+        - name: KAFKA_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: devapp-runtime-credentials
+              key: KAFKA_USERNAME
+        - name: KAFKA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: devapp-runtime-credentials
+              key: KAFKA_PASSWORD
         - name: KAFKA_ENABLED
           value: "true"
-        - name: REDIS_HOST
-          value: "redis.swirlit.internal"
-        - name: REDIS_PORT
-          value: "6379"
-        - name: SPRING_DATA_REDIS_HOST
-          value: "redis.swirlit.internal"
-        - name: SPRING_DATA_REDIS_PORT
-          value: "6379"
-        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
-          value: "https://keycloak.swirlit.dev/auth/realms/swirlit"
-        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
-          value: "http://keycloak.swirlit.internal:8080/auth/realms/swirlit/protocol/openid-connect/certs"
         startupProbe:
           httpGet:
             path: /actuator/health/liveness

@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -45,6 +46,18 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         orderService = new OrderService(orderRepository, kafkaTemplate, true);
+    }
+
+    @Test
+    void publishesOnlyToSelectedEnvironment() {
+        ReflectionTestUtils.setField(orderService, "orderTopic", "devapp.uat.order_topic");
+        Order order = new Order(1L, 2L);
+        order.setId(7L);
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(kafkaTemplate.send(eq("devapp.uat.order_topic"), eq("7"), any(OrderEvent.class)))
+                .thenReturn(new java.util.concurrent.CompletableFuture<>());
+        orderService.createOrder(new CreateOrderRequest(1L, 2L));
+        verify(kafkaTemplate).send(eq("devapp.uat.order_topic"), eq("7"), any(OrderEvent.class));
     }
 
     @Test

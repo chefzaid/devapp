@@ -7,8 +7,11 @@ contract to preserve when creating an application from this template. See the
 [ADR 0008](adr/0008-code-quality-and-verification.md#amendment-source-analysis-and-discovery-2026-09-08)
 for the source-analysis decision and rationale.
 
-The platform discovers repositories from workloads in `apps`, while each
-repository owns the source paths, build commands, tests and scanner job.
+Each repository owns its source paths, build commands, tests and scanner job.
+The scheduled platform discovery below covers workloads in its local `apps`
+namespace. It does not yet discover remote application clusters; those use
+normal CI or manual scans. See the
+[platform discovery scope](https://github.com/chefzaid/bm-cluster/blob/main/docs/observability.md#namespace-and-discovery).
 
 ## How It Runs
 
@@ -131,7 +134,7 @@ failure and missing-token behavior without contacting live services:
 bash infra/scripts/test-quality.sh
 ```
 
-With cluster access, inspect discovery:
+For platform-local workloads, inspect discovery with the central kubeconfig:
 
 ```bash
 kubectl -n infra get cronjob sonar-apps-discovery

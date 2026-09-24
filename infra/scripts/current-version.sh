@@ -11,6 +11,11 @@ else
   anchor="$(git -C "$repository_root" rev-parse "$revision")"
 fi
 
+snapshot_suffix=""
+case "$base_version" in
+  *-SNAPSHOT) snapshot_suffix="-SNAPSHOT"; base_version="${base_version%-SNAPSHOT}" ;;
+esac
+
 case "$base_version" in
   [0-9]*.[0-9]*.[0-9]*) ;;
   *) echo "VERSION must contain a numeric semantic version, got: $base_version" >&2; exit 1 ;;
@@ -31,4 +36,4 @@ test -n "$anchor" || {
   exit 1
 }
 commit_increment="$(git -C "$repository_root" rev-list --count --first-parent "$anchor..$revision")"
-printf '%s.%s.%s\n' "$major" "$minor" "$((patch + commit_increment))"
+printf '%s.%s.%s%s\n' "$major" "$minor" "$((patch + commit_increment))" "$snapshot_suffix"

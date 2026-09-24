@@ -94,6 +94,7 @@ class RateLimitFilterTest {
         assertEquals(429, secondResponse.getStatus());
         assertEquals("30", secondResponse.getHeader("Retry-After"));
         assertTrue(secondResponse.getContentAsString().contains("Too many requests"));
+        assertTrue(secondResponse.getContentAsString().contains("\"type\":\"/problems/429\""));
     }
 
     @Test

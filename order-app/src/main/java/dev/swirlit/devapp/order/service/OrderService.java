@@ -34,6 +34,9 @@ public class OrderService {
     private final KafkaTemplate<Object, Object> kafkaTemplate;
     private final boolean messagingEnabled;
 
+    @Value("${app.messaging.topics.order:order_topic}")
+    private String orderTopic = Constants.ORDER_TOPIC;
+
     public OrderService(
             OrderRepository orderRepository,
             KafkaTemplate<Object, Object> kafkaTemplate,
@@ -112,7 +115,7 @@ public class OrderService {
 
     private void sendPendingOrder(OrderEvent event) {
         try {
-            kafkaTemplate.send(Constants.ORDER_TOPIC, event.orderId().toString(), event)
+            kafkaTemplate.send(orderTopic, event.orderId().toString(), event)
                     .whenComplete((result, error) -> {
                         if (error == null) {
                             log.info("Published order event id={} partition={}",

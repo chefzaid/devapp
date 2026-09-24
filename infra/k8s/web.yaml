@@ -45,7 +45,7 @@ spec:
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /
+            path: /runtime-config.json
             port: 8080
           initialDelaySeconds: 3
           periodSeconds: 5
@@ -58,9 +58,16 @@ spec:
             cpu: 250m
             memory: 128Mi
         volumeMounts:
+          - name: runtime-config
+            mountPath: /usr/share/nginx/html/runtime-config.json
+            subPath: runtime-config.json
+            readOnly: true
           - name: tmp
             mountPath: /tmp
       volumes:
+        - name: runtime-config
+          configMap:
+            name: devapp-web-config
         - name: tmp
           emptyDir: {}
 ---

@@ -8,6 +8,7 @@ import jakarta.persistence.EntityNotFoundException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,9 @@ public class OrderListener {
     private final NotificationService notificationService;
     private final KafkaTemplate<Object, Object> kafkaTemplate;
 
+    @Value("${app.messaging.topics.result:order_result_topic}")
+    private String resultTopic = Constants.ORDER_RESULT_TOPIC;
+
     public OrderListener(
             UserService userService,
             NotificationService notificationService,
@@ -30,7 +34,7 @@ public class OrderListener {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    @KafkaListener(topics = Constants.ORDER_TOPIC, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${app.messaging.topics.order:order_topic}", groupId = "${spring.kafka.consumer.group-id}")
     public void consume(OrderEvent event) {
         OrderEvent result;
         try {
@@ -41,6 +45,6 @@ public class OrderListener {
             log.warn("Rejecting order {} because user {} does not exist", event.orderId(), event.userId());
             result = event.withResult(null, OrderStatus.REJECTED);
         }
-        kafkaTemplate.send(Constants.ORDER_RESULT_TOPIC, event.orderId().toString(), result).join();
+        kafkaTemplate.send(resultTopic, event.orderId().toString(), result).join();
     }
 }

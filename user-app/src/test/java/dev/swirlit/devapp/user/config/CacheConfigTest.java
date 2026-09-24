@@ -10,11 +10,18 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 class CacheConfigTest {
 
     @Test
+    void environmentsUseDistinctCacheKeys() {
+        var mapper = JsonMapper.builder().findAndAddModules().build();
+        assertEquals("devapp:int:users::", CacheConfig.cacheConfiguration(mapper, "devapp:int:").getKeyPrefixFor("users"));
+        assertEquals("devapp:prod:users::", CacheConfig.cacheConfiguration(mapper, "devapp:prod:").getKeyPrefixFor("users"));
+    }
+
+    @Test
     void cacheValuesRetainTheirUserType() {
         User user = new User("Grace Hopper", "grace", "grace@example.test");
         user.setId(17L);
 
-        var serialization = CacheConfig.cacheConfiguration(JsonMapper.builder().findAndAddModules().build())
+        var serialization = CacheConfig.cacheConfiguration(JsonMapper.builder().findAndAddModules().build(), "")
                 .getValueSerializationPair();
 
         User restored = assertInstanceOf(User.class, serialization.read(serialization.write(user)));

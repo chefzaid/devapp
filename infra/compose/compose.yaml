@@ -137,6 +137,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "4200:8080"
+    volumes:
+      - ./web-runtime-config.json:/usr/share/nginx/html/runtime-config.json:ro
+      - ./nginx-proxies.conf:/etc/nginx/devapp/proxies.conf:ro
     depends_on:
       user-app:
         condition: service_healthy
@@ -145,7 +148,7 @@ services:
       keycloak:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/runtime-config.json"]
       interval: 10s
       timeout: 5s
       retries: 10

@@ -29,7 +29,7 @@ describe('authInterceptor', () => {
             return of({} as HttpEvent<unknown>);
         };
 
-        const req = new HttpRequest('GET', '/api/test');
+        const req = new HttpRequest('GET', '/api/users');
 
         await firstValueFrom(TestBed.runInInjectionContext(() => authInterceptor(req, next)));
     });
@@ -42,7 +42,7 @@ describe('authInterceptor', () => {
             return of({} as HttpEvent<unknown>);
         };
 
-        const req = new HttpRequest('GET', '/api/test');
+        const req = new HttpRequest('GET', '/api/users');
 
         await firstValueFrom(TestBed.runInInjectionContext(() => authInterceptor(req, next)));
     });
@@ -59,4 +59,34 @@ describe('authInterceptor', () => {
         expect(authServiceSpy.getToken).not.toHaveBeenCalled();
         expect(next).toHaveBeenCalledOnce();
     });
+
+    it.each([
+        'https://unrelated.example.test/api/users',
+        '//unrelated.example.test/api/orders',
+        '/runtime-config.json',
+        '/api/users-other',
+        '/api/docs',
+        '/realms/example/.well-known/openid-configuration'
+    ])('does not resolve authentication or send tokens to %s', async (url) => {
+        authServiceSpy.getToken.mockReturnValue('private-token');
+        const next: HttpHandlerFn = req => {
+            expect(req.headers.has('Authorization')).toBe(false);
+            return of({} as HttpEvent<unknown>);
+        };
+        await firstValueFrom(TestBed.runInInjectionContext(() =>
+            authInterceptor(new HttpRequest('GET', url), next)));
+        expect(authServiceSpy.getToken).not.toHaveBeenCalled();
+    });
+
+    it('authenticates a nested same-origin order API request', async () => {
+        authServiceSpy.getToken.mockReturnValue('private-token');
+        const next: HttpHandlerFn = req => {
+            expect(req.headers.get('Authorization')).toBe('Bearer private-token');
+            return of({} as HttpEvent<unknown>);
+        };
+        const url = window.location.origin + '/api/orders/12';
+        await firstValueFrom(TestBed.runInInjectionContext(() =>
+            authInterceptor(new HttpRequest('GET', url), next)));
+    });
+
 });

@@ -23,6 +23,7 @@ case "$mode" in
       '{auths:{($registry):{username:$username,password:$password}}}' \
       > /kaniko/.docker/config.json
     export DOCKER_CONFIG=/kaniko/.docker
+    mkdir -p package-output/image-digests
     ;;
   *)
     printf 'Usage: %s [verify|publish]\n' "$0" >&2
@@ -40,11 +41,15 @@ build_image() {
     --insecure-registry "$REGISTRY_PUSH_HOST"
   )
   if [[ "$mode" == publish ]]; then
-    options+=(--cache=true --cache-repo "$repository/cache" --cache-ttl=720h)
+    options+=(--cache=true --cache-repo "$repository/cache" --cache-ttl=720h
+      --digest-file "$repository_root/package-output/image-digests/$name")
   else
     options+=("${kaniko_options[@]}")
   fi
   "$KANIKO_EXECUTOR" "${options[@]}"
+  if [[ "$mode" == publish ]]; then
+    grep -Eq '^sha256:[0-9a-f]{64}$' "$repository_root/package-output/image-digests/$name"
+  fi
 }
 
 build_image user-app "$repository_root" "$repository_root/user-app/Dockerfile.runtime"

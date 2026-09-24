@@ -5,6 +5,8 @@ import { provideOAuthClient } from 'angular-oauth2-oidc';
 import { AppComponent } from './app/app.component';
 import { authGuard } from './app/guards/auth.guard';
 import { authInterceptor } from './app/interceptors/auth.interceptor';
+import { loadRuntimeConfig, RUNTIME_CONFIG } from './app/runtime-config';
+import { environment } from './environments/environment';
 
 const routes: Routes = [
   {
@@ -24,10 +26,25 @@ const routes: Routes = [
   { path: '', redirectTo: '/users', pathMatch: 'full' }
 ];
 
-bootstrapApplication(AppComponent, {
-  providers: [
-    provideRouter(routes),
-    provideHttpClient(withXhr(), withInterceptors([authInterceptor])),
-    provideOAuthClient()
-  ]
-}).catch(err => console.error(err));
+async function startApplication(): Promise<void> {
+  const runtimeConfig = environment.authEnabled
+    ? await loadRuntimeConfig(window.location.origin)
+    : null;
+  await bootstrapApplication(AppComponent, {
+    providers: [
+      { provide: RUNTIME_CONFIG, useValue: runtimeConfig },
+      provideRouter(routes),
+      provideHttpClient(withXhr(), withInterceptors([authInterceptor])),
+      provideOAuthClient()
+    ]
+  });
+}
+
+startApplication().catch((error: unknown) => {
+  console.error('DevApp startup failed', error);
+  const root = document.querySelector('app-root');
+  if (root) {
+    root.setAttribute('role', 'alert');
+    root.textContent = 'DevApp could not start. Please reload or contact your administrator.';
+  }
+});

@@ -1,6 +1,7 @@
 package dev.swirlit.devapp.order.config;
 
 import dev.swirlit.devapp.order.domain.Order;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -22,14 +23,16 @@ import java.time.Duration;
 public class CacheConfig {
 
     @Bean
-    public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory, JsonMapper jsonMapper) {
+    public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory, JsonMapper jsonMapper,
+            @Value("${REDIS_CACHE_PREFIX:}") String keyPrefix) {
         return RedisCacheManager.builder(redisConnectionFactory)
-                .cacheDefaults(cacheConfiguration(jsonMapper))
+                .cacheDefaults(cacheConfiguration(jsonMapper, keyPrefix))
                 .build();
     }
 
-    static RedisCacheConfiguration cacheConfiguration(JsonMapper jsonMapper) {
+    static RedisCacheConfiguration cacheConfiguration(JsonMapper jsonMapper, String keyPrefix) {
         return RedisCacheConfiguration.defaultCacheConfig()
+                .prefixCacheNameWith(keyPrefix)
                 .entryTtl(Duration.ofMinutes(10))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(

@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-const targetsBmCluster = process.env['WEB_URL']?.includes('devapp.swirlit.dev') ?? false;
-const realm = process.env['OIDC_REALM'] ?? (targetsBmCluster ? 'swirlit' : 'devapp');
-const username = process.env['OIDC_USERNAME'] ?? (targetsBmCluster ? 'zaid' : 'user');
-const password = process.env['OIDC_PASSWORD'] ?? (targetsBmCluster ? '' : 'password');
+const target = new URL(process.env['WEB_URL'] ?? 'http://127.0.0.1:4200');
+const localDemo = ['localhost', '127.0.0.1', '[::1]', 'web'].includes(target.hostname);
+const username = process.env['OIDC_USERNAME'] ?? (localDemo ? 'user' : '');
+const password = process.env['OIDC_PASSWORD'] ?? (localDemo ? 'password' : '');
 const exerciseWrites = process.env['E2E_EXERCISE_WRITES'] === 'true';
 
 interface CreatedOrder {
@@ -20,9 +20,14 @@ test('authenticates through Keycloak and loads both secured workflows', async (
   { page },
   testInfo,
 ) => {
-  if (!password) {
-    throw new Error('OIDC_PASSWORD is required for BM-cluster authentication');
+  if (!username || !password) {
+    throw new Error('OIDC_USERNAME and OIDC_PASSWORD are required outside the local demo');
   }
+  const configuration = await page.request.get('/runtime-config.json');
+  expect(configuration.ok()).toBeTruthy();
+  const { keycloakRealm: realm } = await configuration.json();
+  expect(typeof realm).toBe('string');
+  expect(realm).not.toBe('');
   const discoveryResponse = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname.endsWith(

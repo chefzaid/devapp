@@ -22,10 +22,13 @@ case "$phase" in
     ;;
   deploy)
     [[ "${DEPLOY_REVISION:-}" =~ ^[0-9a-f]{40}$ &&
-       "$remote_revision" == "$DEPLOY_REVISION" ]] ||
+       "${DEPLOY_COMMIT:-$DEPLOY_REVISION}" =~ ^[0-9a-f]{40}$ &&
+       "$remote_revision" == "${DEPLOY_COMMIT:-$DEPLOY_REVISION}" ]] ||
       fail 'The released revision is no longer the default branch tip.'
     git merge-base --is-ancestor "$ONBOARDING_EXPECTED_SHA" "$DEPLOY_REVISION" ||
       fail 'The release does not descend from the configured onboarding commit.'
+    git merge-base --is-ancestor "$DEPLOY_REVISION" "${DEPLOY_COMMIT:-$DEPLOY_REVISION}" ||
+      fail 'The committed deployment pointer does not contain its runtime source.'
     ;;
   *) fail 'Expected build, publish or deploy.' ;;
 esac

@@ -131,11 +131,4 @@ unset registry_password
 git -C "$REPOSITORY_ROOT" show HEAD:.gitlab-ci.yml >/dev/null
 GITLAB_URL="$GITLAB_URL" "$SCRIPT_DIR/configure-code-quality.sh"
 GITLAB_URL="$GITLAB_URL" "$SCRIPT_DIR/configure-repository-sync.sh"
-python3 "$SCRIPT_DIR/configure-keycloak.py"
-kubectl apply -f "$REPOSITORY_ROOT/infra/argocd/application.yaml"
-if kubectl get externalsecret devapp-registry-auth -n "$APP_NAMESPACE" >/dev/null 2>&1; then
-  kubectl annotate externalsecret devapp-registry-auth -n "$APP_NAMESPACE" \
-    force-sync="$(date +%s)" --overwrite >/dev/null
-fi
-
-info "$APP_NAME GitLab project, bidirectional GitHub sync, SonarQube reporting, registry pull secret, runner access, and Argo CD application are configured"
+info "$APP_NAME shared GitLab, registry and repository settings are configured. Use bm-cluster/add-repos.sh for environment provisioning and select the deployment target in GitLab CI."

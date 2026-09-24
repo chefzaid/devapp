@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -67,6 +68,16 @@ class OrderListenerTest {
         assertThrows(IllegalStateException.class, () -> orderListener.consume(event(12L, 3L)));
 
         verify(kafkaTemplate, never()).send(any(), any(), any());
+    }
+
+    @Test
+    void publishesResultOnlyToSelectedEnvironment() {
+        ReflectionTestUtils.setField(orderListener, "resultTopic", "devapp.int.order_result_topic");
+        when(userService.getUser(1L)).thenReturn(new User("Ada", "ada", "ada@example.test"));
+        successfulPublish();
+        orderListener.consume(event(10L, 1L));
+        verify(kafkaTemplate).send(eq("devapp.int.order_result_topic"), eq("10"), any(OrderEvent.class));
+        verify(kafkaTemplate, never()).send(eq(Constants.ORDER_RESULT_TOPIC), any(), any());
     }
 
     private void assertPublishedStatus(Long orderId, OrderStatus status, String userName) {

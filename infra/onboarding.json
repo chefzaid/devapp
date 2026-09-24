@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "application": "infra/argocd/application.yaml",
   "inputs": [
     {
@@ -7,12 +7,6 @@
       "label": "Public subdomain (@ for the zone apex)",
       "type": "subdomain",
       "default": "devapp"
-    },
-    {
-      "name": "TRUSTED_PROXY_CIDRS",
-      "label": "Trusted ingress pod CIDRs",
-      "type": "cidrs",
-      "default": "{{POD_CIDR}}"
     }
   ],
   "files": [
@@ -22,30 +16,18 @@
     "infra/argocd/application.yaml",
     "infra/k8s/kustomization.yaml",
     "infra/k8s/ingress.yaml",
-    "infra/k8s/observability.yaml",
-    "infra/k8s/database-setup-job.yaml",
     "infra/scripts/configure-gitlab.sh",
     "infra/scripts/configure-code-quality.sh",
     "infra/scripts/configure-repository-sync.sh",
-    "infra/scripts/ci-release.sh",
-    "infra/scripts/ci-set-major-version.sh",
     "infra/k8s/user.yaml",
     "infra/k8s/order.yaml",
     "infra/k8s/web.yaml",
     "infra/keycloak/production-client.json",
     "infra/scripts/configure-keycloak.py",
-    "infra/scripts/configure-cloudflare.sh",
-    "devapp-web/src/environments/environment.prod.ts",
-    "devapp-web/src/environments/environment.uat.ts",
-    "devapp-web/nginx.conf",
-    "user-app/src/main/resources/application.yml",
-    "order-app/src/main/resources/application.yml"
+    "infra/k8s/backend-runtime.properties",
+    "infra/k8s/web-runtime-config.json"
   ],
   "replacements": [
-    {
-      "from": "10.42.0.0/16",
-      "to": "{{TRUSTED_PROXY_CIDRS}}"
-    },
     {
       "from": "registry.swirlit.dev/swirlit/devapp",
       "to": "{{REGISTRY_HOST}}/{{GITLAB_PROJECT_PATH}}"
@@ -135,58 +117,45 @@
       "to": "GITHUB_REPOSITORY=\"${GITHUB_REPOSITORY:-{{GITHUB_REPOSITORY}}}\""
     },
     {
-      "from": "targetRevision: main",
-      "to": "targetRevision: {{DEFAULT_BRANCH}}"
-    },
-    {
-      "from": "protected_branches/main",
-      "to": "protected_branches/{{DEFAULT_BRANCH}}"
-    },
-    {
-      "from": "'name=main'",
-      "to": "'name={{DEFAULT_BRANCH}}'"
-    },
-    {
-      "from": "/badges/main/",
-      "to": "/badges/{{DEFAULT_BRANCH}}/"
-    },
-    {
-      "from": "/graphs/main/",
-      "to": "/graphs/{{DEFAULT_BRANCH}}/"
-    },
-    {
-      "from": "?ref=main",
-      "to": "?ref={{DEFAULT_BRANCH}}"
-    },
-    {
-      "from": "keycloakRealm: 'swirlit'",
-      "to": "keycloakRealm: '{{KEYCLOAK_REALM}}'"
-    },
-    {
       "from": "default=\"swirlit\"",
       "to": "default=\"{{KEYCLOAK_REALM}}\""
     },
     {
-      "from": "ZONE_NAME=\"${CLOUDFLARE_ZONE:-swirlit.dev}\"",
-      "to": "ZONE_NAME=\"${CLOUDFLARE_ZONE:-{{PUBLIC_DOMAIN}}}\""
+      "from": "DB_HOST=postgres.swirlit.internal",
+      "to": "DB_HOST=postgres.{{INTERNAL_DNS_ZONE}}"
     },
     {
-      "from": "HOST_LABEL=\"${CLOUDFLARE_HOST_LABEL:-devapp}\"",
-      "to": "HOST_LABEL=\"${CLOUDFLARE_HOST_LABEL:-{{APP_SUBDOMAIN}}}\""
+      "from": "KAFKA_BOOTSTRAP_SERVERS=kafka.swirlit.internal:9092",
+      "to": "KAFKA_BOOTSTRAP_SERVERS=kafka.{{INTERNAL_DNS_ZONE}}:9092"
     },
     {
-      "from": "Cloudflare zone (default: swirlit.dev)",
-      "to": "Cloudflare zone (default: {{PUBLIC_DOMAIN}})"
+      "from": "REDIS_HOST=redis.swirlit.internal",
+      "to": "REDIS_HOST=redis.{{INTERNAL_DNS_ZONE}}"
     },
     {
-      "from": "(default: devapp)",
-      "to": "(default: {{APP_SUBDOMAIN}})"
+      "from": "JWT_ISSUER_URI=https://keycloak.swirlit.dev/auth/realms/swirlit",
+      "to": "JWT_ISSUER_URI=https://keycloak.{{PUBLIC_DOMAIN}}/auth/realms/{{KEYCLOAK_REALM}}"
+    },
+    {
+      "from": "JWT_JWK_SET_URI=http://keycloak.swirlit.internal:8080/auth/realms/swirlit/protocol/openid-connect/certs",
+      "to": "JWT_JWK_SET_URI=http://keycloak.{{INTERNAL_DNS_ZONE}}:8080/auth/realms/{{KEYCLOAK_REALM}}/protocol/openid-connect/certs"
+    },
+    {
+      "from": "CORS_ALLOWED_ORIGINS=https://devapp.swirlit.dev",
+      "to": "CORS_ALLOWED_ORIGINS=https://{{APP_HOST}}"
+    },
+    {
+      "from": "\"keycloakUrl\": \"https://keycloak.swirlit.dev/auth\"",
+      "to": "\"keycloakUrl\": \"https://keycloak.{{PUBLIC_DOMAIN}}/auth\""
+    },
+    {
+      "from": "\"keycloakRealm\": \"swirlit\"",
+      "to": "\"keycloakRealm\": \"{{KEYCLOAK_REALM}}\""
     }
   ],
   "registry": {
     "path": "apps/devapp/registry"
   },
-  "vault": [],
   "keycloak": {
     "file": "infra/keycloak/production-client.json",
     "realm": "{{KEYCLOAK_REALM}}"
@@ -210,6 +179,16 @@
       "user-app",
       "order-app",
       "devapp-web"
+    ]
+  },
+  "deployment": {
+    "inventory": "infra/deployment-environments.json",
+    "settingsDirectory": "infra/environments",
+    "defaultEnvironment": "int",
+    "dataServices": [
+      "postgres",
+      "redis",
+      "kafka"
     ]
   }
 }

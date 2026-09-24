@@ -1,22 +1,27 @@
 # Operations Runbook
 
+Application commands in this guide run against the selected target cluster's
+kubeconfig. Central Argo CD, GitLab, Vault and datastore commands run against the
+platform kubeconfig. Keep those contexts distinct; `devapp-int`, `devapp-uat` and
+`devapp-prod` are Applications in central `infra`, while their Deployments live
+in `apps` on separate clusters. See [deployment](deployment.md#ownership-and-topology).
+
 This runbook covers the DevApp application layer, including its public DNS record, registry-credential projection, Argo CD application, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring services are owned by [`bm-cluster`](https://github.com/chefzaid/bm-cluster); use its runbooks when the incident is platform-wide. All DevApp-specific configuration remains in this repository.
 
 ## Runtime Surfaces
 
-Public:
+Public addresses use the settings saved by
+[onboarding](deployment.md#add-or-reconfigure-this-repository):
 
 | Surface | URL |
 |---|---|
-| application | <https://devapp.swirlit.dev> |
-| API documentation | <https://devapp.swirlit.dev/api/docs> |
-| Grafana dashboard | <https://grafana.swirlit.dev/d/devapp-overview> |
-| Kibana logs | <https://kibana.swirlit.dev/app/dashboards#/view/devapp-logs> |
-| GitLab | <https://gitlab.swirlit.dev/swirlit/devapp> |
-| GitHub mirror | <https://github.com/chefzaid/devapp> |
-| GitLab CI | <https://gitlab.swirlit.dev/swirlit/devapp/-/pipelines> |
-| SonarQube | <https://sonarqube.swirlit.dev/dashboard?id=swirlit%3Adevapp> |
-| Argo CD | <https://argocd.swirlit.dev/applications/devapp> |
+| application | `https://<APP_HOST>` |
+| API documentation | `https://<APP_HOST>/api/docs` |
+| Grafana dashboard, after telemetry integration | `https://grafana.<PUBLIC_DOMAIN>/d/devapp-overview` |
+| Kibana logs, after telemetry integration | `https://kibana.<PUBLIC_DOMAIN>` |
+| GitLab source, CI and releases | `<GITLAB_PUBLIC_URL>/<GITLAB_PROJECT_PATH>` |
+| SonarQube | `https://sonarqube.<PUBLIC_DOMAIN>`, project `<SONAR_PROJECT_KEY>` |
+| Argo CD | `https://argocd.<PUBLIC_DOMAIN>/applications/devapp-<env>` |
 
 Cluster-only:
 
@@ -25,20 +30,19 @@ Cluster-only:
 | user service | `user-app.apps.svc.cluster.local:8080` |
 | order service | `order-app.apps.svc.cluster.local:8081` |
 | web service | `devapp-web.apps.svc.cluster.local:80` |
-| PostgreSQL | `postgres.swirlit.internal:5432` |
-| Redis | `redis.swirlit.internal:6379` |
-| Kafka | `kafka.swirlit.internal:9092` |
-| Keycloak | `keycloak.swirlit.internal:8080/auth` |
 
-Application services use canonical Kubernetes service DNS. The shared dependencies retain platform-owned private `*.swirlit.internal` aliases, which are intentionally absent from public DNS.
+Application services use target-cluster Kubernetes DNS. Shared PostgreSQL,
+Redis and Kafka use the registered private gateway; Keycloak uses its shared
+public URL. Inspect the selected environment's generated
+`infra/environments/<env>/backend-runtime.properties` for resolved addresses.
 
 ## First Checks After A Rollout
 
 ```bash
-kubectl get application devapp -n infra
+kubectl --kubeconfig /secure/platform.yaml get application devapp-int -n infra
+export KUBECONFIG=/secure/apps-int.yaml
 kubectl get deploy,pods,svc,ingress -n apps
-kubectl get externalsecret devapp-db-credentials devapp-registry-auth -n apps
-kubectl get configmap devapp-kibana-saved-objects -n apps
+kubectl get externalsecret devapp-runtime-credentials devapp-registry-auth -n apps
 ```
 
 Expected state:
@@ -46,10 +50,8 @@ Expected state:
 - Argo CD: `Synced` and `Healthy`
 - `user-app`, `order-app`, and `devapp-web`: desired replicas available
 - pods: ready with low/no restart growth
-- the latest Argo CD operation includes a successful `devapp-kibana-bootstrap` PostSync hook
 - ExternalSecret: `Ready=True`
-- observability bootstrap Job: completed
-- ingress host: `devapp.swirlit.dev`
+- ingress host: the configured `APP_HOST`
 
 Rollout checks:
 
@@ -67,9 +69,14 @@ Backend probes:
 - `/actuator/health/readiness`: process can receive traffic
 - `/actuator/health`: aggregate health for internal smoke tests
 
-Frontend probe:
+Frontend probes:
 
-- `/`: NGINX can serve the SPA
+- liveness `/`: NGINX can serve the SPA
+- readiness `/runtime-config.json`: public identity configuration is available
+
+The release smoke check also validates the runtime JSON fields. Browser startup
+validates their values before authentication; see the
+[configuration contract](deployment.md#add-or-reconfigure-this-repository).
 
 Actuator is not exposed through public ingress. Inspect safely through the service or a temporary port-forward:
 
@@ -93,7 +100,7 @@ Application:
 - the order later becomes `APPROVED` for an existing user or `REJECTED` for a missing user
 - response headers include `X-Request-Id`
 
-Metrics:
+Metrics, once target telemetry is connected:
 
 - both backend scrape targets report `up=1`
 - request rate matches expected traffic
@@ -110,11 +117,12 @@ Events:
 
 ## Logs And Request Correlation
 
-UAT/production services write structured JSON to stdout. The cluster log pipeline
-collects it into Elasticsearch. The **DevApp — Application Logs** Kibana
-dashboard filters only `user-app`, `order-app`, and `devapp-web`; its first
-panel contains warnings/errors and its second panel contains the complete recent
-stream. The default window is 24 hours with a 30-second refresh.
+UAT/production services write structured JSON to stdout. Target bootstrap does
+not forward those logs or metrics to the shared platform, and central discovery
+does not inspect remote workloads. Configure that integration separately before
+using central dashboards to assess an environment. The
+[platform observability guide](https://github.com/chefzaid/bm-cluster/blob/main/docs/observability.md#namespace-and-discovery)
+defines collection and discovery scope; direct target logs remain available below.
 
 Useful fields:
 
@@ -143,13 +151,16 @@ kubectl logs -n apps <order-pod-name> -f
 kubectl logs -n apps <order-pod-name> --previous
 ```
 
-Start with the request ID returned to the caller and search `requestId` in Kibana. Kafka messages do not yet carry that ID or an OpenTelemetry trace context, so continue event diagnosis with order ID, Kafka key, and timestamps.
+Start with the request ID returned to the caller and search `requestId` in the
+logs, or in Kibana after forwarding is configured. Kafka messages do not yet
+carry that ID or an OpenTelemetry trace context, so continue event diagnosis
+with order ID, Kafka key, and timestamps.
 
 Do not paste tokens, credentials, complete personal records, or browser test artifacts into incident tickets.
 
 ## Metrics Dashboard
 
-`infra/k8s/observability.yaml` provisions panels for:
+`infra/k8s/observability.yaml` supplies a dashboard ConfigMap with panels for:
 
 - application targets up
 - HTTP request rate
@@ -162,7 +173,10 @@ Do not paste tokens, credentials, complete personal records, or browser test art
 - pod working-set memory
 - pod restarts
 
-The dashboard is a visibility baseline, not a complete alerting policy. Event lag, retry, DLT, cache, rate-limit, and SLO alerts are roadmap items.
+On a remote target, the ConfigMap alone does not provision central Grafana or
+supply metric series. Its dashboard needs to be imported and backed by that
+environment's telemetry. Event lag, retry, DLT, cache, rate-limit, and SLO alerts
+are roadmap items.
 
 ## Common Incidents
 
@@ -171,18 +185,19 @@ The dashboard is a visibility baseline, not a complete alerting policy. Event la
 Symptoms:
 
 - pod has `CreateContainerConfigError`
-- `devapp-db-credentials` Secret absent
+- `devapp-runtime-credentials` Secret absent
 - ExternalSecret not ready
 
 Checks:
 
 ```bash
-kubectl describe externalsecret devapp-db-credentials -n apps
-kubectl get secret devapp-db-credentials -n apps
+kubectl describe externalsecret devapp-runtime-credentials -n apps
+kubectl get secret devapp-runtime-credentials -n apps
 kubectl get clustersecretstore vault-backend
 ```
 
-Confirm Vault and External Secrets platform health. Do not create an ad hoc plaintext secret in Git.
+Confirm central Vault health, target External Secrets health and the selected
+environment's Vault role/connectivity. Do not create an ad hoc plaintext secret in Git.
 
 ### Flyway migration or Hibernate validation fails
 
@@ -264,10 +279,10 @@ Symptoms:
 
 Checks:
 
-- public discovery: `https://keycloak.swirlit.dev/auth/realms/swirlit/.well-known/openid-configuration`
-- token `iss` equals `https://keycloak.swirlit.dev/auth/realms/swirlit`
-- backend public issuer setting matches exactly
-- internal JWK URL resolves from the app pod
+- `/runtime-config.json` loads as JSON, not the SPA or a cached old configuration
+- public discovery: `<JWT_ISSUER_URI>/.well-known/openid-configuration`
+- token `iss` and the browser's configured realm match `JWT_ISSUER_URI` in `backend-runtime.properties`
+- the shared public Keycloak JWK URL resolves and is reachable from the target pod
 - canonical Keycloak ingress and the shared internal service are healthy
 - system time is synchronized
 
@@ -286,6 +301,9 @@ kubectl kustomize infra/k8s | less
 
 ### Prometheus target is down
 
+First confirm this target has a configured metrics collector and forwarding path;
+the minimal application-cluster foundation does not provide them.
+
 Checks:
 
 - pod readiness and annotations
@@ -294,20 +312,15 @@ Checks:
 - Prometheus namespace/pod labels still match the policy
 - `/actuator/prometheus` responds through the cluster service
 
-Do not add Actuator back to public ingress as a shortcut.
+Only the exact `/health/user` and `/health/order` routes expose a health summary. Metrics and other Actuator paths remain private.
 
 ### Kibana dashboard is absent or stale
 
-```bash
-kubectl get configmap devapp-kibana-saved-objects -n apps
-kubectl get application devapp -n infra
-```
-
-Argo CD runs `devapp-kibana-bootstrap` as a PostSync hook. The hook waits for
-shared Kibana, authenticates with the platform-managed least-privilege dashboard
-bootstrap credential, imports the saved objects with overwrite, and is deleted
-after a successful import. Inspect the Argo operation and hook logs while a
-failed sync is still retained.
+For a remote environment, check its separately configured log forwarding and
+dashboard integration. The
+[platform discovery diagnostics](https://github.com/chefzaid/bm-cluster/blob/main/docs/observability.md#ownership-and-troubleshooting)
+apply to workloads on the platform cluster; Argo CD tracking alone does not make
+remote workloads discoverable.
 
 ### Argo CD reverts a manual change
 
@@ -317,18 +330,23 @@ This is expected: automated self-heal is enabled. Make the change under `infra/k
 
 Inspect the explicit delivery jobs:
 
-- `01-release`: publishes artifacts/images and fails safely if `origin/main` advanced
-- `02-deploy`: commits desired image tags, refreshes Argo CD, waits for the exact GitOps revision, and runs smoke checks
+- `01-snapshot`: publishes an integration snapshot from the selected branch
+- `01-release`: publishes stable release artifacts/images from the default branch
+- `02-deploy`: applies the Application, waits for the exact GitOps revision, and runs smoke checks
 - optional `01-e2e`: retains browser acceptance output but cannot suppress release or deploy
 
 Compare:
 
 ```bash
-git show origin/main:infra/k8s/kustomization.yaml
-kubectl get application devapp -n infra -o yaml
+git show HEAD:infra/argocd/int.yaml
+kubectl --kubeconfig /secure/platform.yaml get application devapp-int -n infra -o yaml
 ```
 
-Never force push over an advanced GitOps commit. Reconcile histories and start the next normal build.
+Compare the selected Application pointer and its pinned runtime commit; snapshot
+pointers live on `gitops/int/<pipeline-id>`, while release pointers live on the
+default branch. For an interrupted
+onboarding publication, follow [same-pipeline recovery](deployment.md#add-or-reconfigure-this-repository);
+unrelated Git changes still require a new run.
 
 ### GitHub and GitLab differ
 
@@ -397,7 +415,9 @@ Database credential rotation must coordinate:
 4. application restart/reconnection
 5. health verification
 
-GitLab token rotation must update `apps/devapp/ci` in Vault and verify the GitLab CI ExternalSecret before the next desired-version commit.
+Registry/repository credentials live at Vault `apps/devapp/registry`. Coordinate
+their replacement with ExternalSecret refreshes before revoking the prior token.
+Publication uses GitLab's job token; there is no separate `apps/devapp/ci` Secret.
 
 Keycloak signing-key rotation should allow token/JWK overlap and verify both backend resource servers. Never rotate by editing the exported disposable realm secret values for a live realm.
 

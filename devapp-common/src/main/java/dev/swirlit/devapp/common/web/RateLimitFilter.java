@@ -112,7 +112,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
             String requestId = MDC.get("requestId");
             String requestIdProperty = requestId == null ? "" : ",\"requestId\":\"" + requestId + "\"";
-            response.getWriter().write("{\"type\":\"https://devapp.swirlit.dev/problems/429\","
+            response.getWriter().write("{\"type\":\"/problems/429\","
                     + "\"title\":\"Too many requests\",\"status\":429,"
                     + "\"detail\":\"Request limit exceeded; retry after the indicated delay\""
                     + requestIdProperty + "}");

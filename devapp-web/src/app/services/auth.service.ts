@@ -1,18 +1,17 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { OAuthService, AuthConfig } from 'angular-oauth2-oidc';
 import { environment } from '../../environments/environment';
 import { BehaviorSubject, ReplaySubject } from 'rxjs';
+import { RUNTIME_CONFIG } from '../runtime-config';
 
 export type AuthStatus = 'loading' | 'ready' | 'error';
-
-export const resolveKeycloakBaseUrl = (keycloakUrl: string, origin: string): string =>
-  new URL(keycloakUrl, origin).toString().replace(/\/$/, '');
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  readonly authEnabled = environment.authEnabled;
+  private readonly config = inject(RUNTIME_CONFIG);
+  readonly authEnabled = this.config !== null;
   private readonly isLoggedInSubject = new BehaviorSubject<boolean>(!this.authEnabled);
   private readonly authStatusSubject = new BehaviorSubject<AuthStatus>(this.authEnabled ? 'loading' : 'ready');
   private readonly readySubject = new ReplaySubject<void>(1);
@@ -25,17 +24,16 @@ export class AuthService {
   }
 
   private configure(): void {
-    if (!this.authEnabled) {
+    if (!this.config) {
       this.readySubject.next();
       this.readySubject.complete();
       return;
     }
 
-    const keycloakBaseUrl = resolveKeycloakBaseUrl(environment.keycloakUrl, window.location.origin);
     const authConfig: AuthConfig = {
-      issuer: `${keycloakBaseUrl}/realms/${environment.keycloakRealm}`,
+      issuer: `${this.config.keycloakUrl}/realms/${this.config.keycloakRealm}`,
       redirectUri: window.location.origin + '/',
-      clientId: 'devapp-web',
+      clientId: this.config.keycloakClientId,
       responseType: 'code',
       scope: 'openid profile email',
       showDebugInformation: false,

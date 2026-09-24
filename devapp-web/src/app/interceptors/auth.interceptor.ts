@@ -3,7 +3,10 @@ import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  if (req.url.includes('/auth/')) {
+  const url = new URL(req.url, window.location.origin);
+  const apiRequest = url.origin === window.location.origin &&
+    ['/api/users', '/api/orders'].some(path => url.pathname === path || url.pathname.startsWith(`${path}/`));
+  if (!apiRequest) {
     return next(req);
   }
 

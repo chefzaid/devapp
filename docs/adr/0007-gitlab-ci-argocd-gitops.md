@@ -1,6 +1,6 @@
 # ADR 0007: Deliver Through GitLab CI, Immutable Images, And Argo CD
 
-> ADR 0009 supersedes this ADR's job topology. The GitOps, daemonless Kaniko, immutable-tag, and exact-revision decisions below remain active.
+> ADR 0009 supersedes this ADR's job topology. The current [deployment guide](../deployment.md) defines environment selection and immutable release promotion.
 
 - Status: Accepted
 - Date: 2026-08-28
@@ -21,12 +21,12 @@ Use this delivery split:
 - Kaniko pushes immutable `build-shortCommit` tags to GitLab Container Registry
 - Kaniko reuses registry-backed build layers for 30 days
 - CI retains downloadable job artifacts for seven days and publishes immutable JAR/SPA archives plus checksums to GitLab's Generic Package Registry
-- the repository keeps a stable Argo CD bootstrap path at `infra/argocd/application.yaml`
-- GitLab CI changes only Kustomize image tags after confirming `main` did not advance
+- the repository keeps a shared onboarding template and an independently pinned Argo CD Application per environment
+- GitLab CI commits selected environment settings and immutable image digests after confirming the default branch did not advance
 - the desired-version commit includes `[skip ci]`
-- Argo CD owns namespace creation, reconciliation, pruning, self-healing, and retry
+- the platform registers and prepares target namespaces; central Argo CD owns application reconciliation, pruning, self-healing, and retry
 - GitLab CI waits for the exact GitOps commit to be synced/healthy
-- internal smoke checks finish deploy; real Keycloak browser acceptance remains an explicit optional E2E job
+- selected public-route smoke checks finish deploy; real Keycloak browser acceptance remains an explicit optional E2E job
 - GitHub is reconciled as a public mirror without force pushing
 
 ## Rationale
@@ -43,7 +43,7 @@ Optional post-rollout browser tests verify ingress, Keycloak, both APIs, Kafka, 
 
 ## Consequences
 
-Every normal release produces a second GitOps commit.
+Each deployment commits runtime settings, then records that immutable revision in the selected environment Application. Other environment pointers remain unchanged.
 
 Manual Kubernetes changes are temporary because self-healing is enabled.
 

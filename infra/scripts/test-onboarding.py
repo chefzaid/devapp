@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -15,6 +16,10 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = json.loads((ROOT / "infra/onboarding.json").read_text())
 APP = CONTRACT["registry"]["path"].split("/")[1]
+PLATFORM = None
+if os.environ.get("BM_CLUSTER_SOURCE"):
+    sys.path.insert(0, str(Path(os.environ["BM_CLUSTER_SOURCE"]) / "scripts/lib"))
+    import repository_onboarding as PLATFORM
 
 
 def command(args, cwd, *, env=None, check=True):
@@ -28,7 +33,11 @@ def expand(value, context):
 
 def render_fixture(root, context):
     state_path = root / "infra/onboarding-values.json"
-    previous = json.loads(state_path.read_text()).get("bindings", {}) if state_path.exists() else {}
+    state = json.loads(state_path.read_text()) if state_path.exists() else {}
+    if PLATFORM:
+        PLATFORM.render(root, PLATFORM.validate_contract(root), context, state)
+        return
+    previous = state.get("bindings", {})
     bindings = {item["from"]: expand(item["to"], context) for item in CONTRACT["replacements"]}
     replacements = {}
     for original, rendered in bindings.items():
@@ -40,6 +49,12 @@ def render_fixture(root, context):
     for name in CONTRACT["files"]:
         path = root / name
         path.write_text(pattern.sub(lambda match: replacements[match[0]], path.read_text()))
+    # The platform owns these structured Argo fields, independent of replacements.
+    application = root / CONTRACT["application"]
+    app = yaml.safe_load(application.read_text())
+    app["spec"]["source"].update(repoURL=context["GITLAB_REPOSITORY_URL"],
+                                  targetRevision=context["DEFAULT_BRANCH"])
+    application.write_text(yaml.safe_dump(app, sort_keys=False))
     state_path.write_text(json.dumps({"version": 1, "context": context, "bindings": bindings}))
 
 
@@ -47,19 +62,19 @@ def rendered_resources(root, profile="infra/k8s"):
     return list(yaml.safe_load_all(command(["kubectl", "kustomize", profile], root).stdout))
 
 
-def release_rule(variables):
-    for rule in yaml.safe_load((ROOT / ".gitlab-ci.yml").read_text())["01-release"]["rules"]:
-        clauses = rule["if"].split(" && ")
-        matches = []
-        for clause in clauses:
-            match = re.fullmatch(r'\$([A-Z_]+) == (?:"([^"]*)"|\$([A-Z_]+))', clause)
-            if not match:
-                raise AssertionError("Review a changed release rule: " + clause)
-            expected = match[2] if match[2] is not None else variables.get(match[3], "")
-            matches.append(variables.get(match[1], "") == expected)
-        if all(matches):
+def job_rule(job, variables):
+    rules = yaml.safe_load((ROOT / ".gitlab-ci.yml").read_text())[job]["rules"]
+    known = {name: "" for rule in rules for name in re.findall(r"\$([A-Z_]+)", rule["if"])}
+    for rule in rules:
+        result = subprocess.run(["bash", "-c", "[[ " + rule["if"] + " ]]"],
+                                env={**os.environ, **known, **variables}, capture_output=True)
+        if result.returncode == 0:
             return rule.get("when", "on_success")
     return "absent"
+
+
+def release_rule(variables):
+    return job_rule("01-release", variables)
 
 
 class RenderingTests(unittest.TestCase):
@@ -77,7 +92,7 @@ class RenderingTests(unittest.TestCase):
             shutil.copy2(source, target)
         self.context = {
             "PUBLIC_DOMAIN": "example.test", "INTERNAL_DNS_ZONE": "services.test",
-            "POD_CIDR": "10.60.0.0/16", "TRUSTED_PROXY_CIDRS": "10.60.0.0/16",
+            "POD_CIDR": "10.60.0.0/16",
             "APP_SUBDOMAIN": "portal", "APP_HOST": "portal.example.test",
             "TLS_SECRET_NAME": "example-test-tls",
             "GITLAB_PROJECT_PATH": "teams/testing/" + APP + "-copy", "GITLAB_PROJECT_ID": "735",
@@ -92,81 +107,58 @@ class RenderingTests(unittest.TestCase):
 
     def assert_configuration(self, context):
         resources = rendered_resources(self.root)
-        for resource in resources:
-            if resource.get("kind") == "Ingress":
-                self.assertEqual({rule["host"] for rule in resource["spec"]["rules"]}, {context["APP_HOST"]})
-                self.assertEqual(resource["spec"]["tls"][0]["secretName"], context["TLS_SECRET_NAME"])
-        expected_prefix = context["REGISTRY_HOST"] + "/" + context["GITLAB_PROJECT_PATH"] + "/"
-        for resource in resources:
-            if resource.get("kind") == "Deployment":
-                for container in resource["spec"]["template"]["spec"]["containers"]:
-                    self.assertTrue(container["image"].startswith(expected_prefix), container["image"])
-                    if container["name"] in {"user-app", "order-app"}:
-                        env = {item["name"]: item for item in container["env"]}
-                        self.assertEqual(env["APP_RATE_LIMIT_TRUSTED_PROXY_CIDRS"]["value"], context["TRUSTED_PROXY_CIDRS"])
-        self.assertIn(CONTRACT["registry"]["path"], json.dumps(resources))
+        configs = {r["metadata"]["name"]: r for r in resources if r["kind"] == "ConfigMap"}
+        backend = next(r for name, r in configs.items() if name.startswith("devapp-backend-config-"))
+        self.assertEqual(backend["data"]["DB_HOST"], "postgres." + context["INTERNAL_DNS_ZONE"])
+        source = yaml.safe_load((self.root / CONTRACT["application"]).read_text())["spec"]["source"]
+        self.assertEqual(source["targetRevision"], context["DEFAULT_BRANCH"])
+        self.assertEqual(source["repoURL"], context["GITLAB_REPOSITORY_URL"])
         self.assertIn(context["SONAR_PROJECT_KEY"], (self.root / "sonar-project.properties").read_text())
-        workflow = yaml.safe_load((self.root / ".github/workflows/sync-gitlab.yml").read_text())
-        env = workflow["jobs"]["sync-repository"]["env"]
-        if env.get("GITLAB_REPOSITORY") == "${{ vars.GITLAB_REPOSITORY }}":
-            # add-repos installs the generic reconciler; its settings are GitHub Variables.
-            self.assertEqual(env["GITLAB_API_URL"], "${{ vars.GITLAB_API_URL }}")
-            self.assertEqual(env["GITLAB_HOST"], "${{ vars.GITLAB_HOST }}")
-        else:
-            self.assertEqual(str(env["GITLAB_PROJECT_ID"]), context["GITLAB_PROJECT_ID"])
-            self.assertEqual(env["GITLAB_REPOSITORY"], context["GITLAB_PUBLIC_URL"] + "/" + context["GITLAB_PROJECT_PATH"] + ".git")
         ci = yaml.safe_load((self.root / ".gitlab-ci.yml").read_text())
         self.assertEqual(ci["variables"]["REGISTRY_PUSH_HOST"], context["REGISTRY_PUSH_HOST"])
-        self.assertEqual(ci["02-deploy"]["environment"]["url"], "https://" + context["APP_HOST"])
-        if "keycloak" in CONTRACT:
-            client = json.loads((self.root / CONTRACT["keycloak"]["file"]).read_text())
-            self.assertEqual(client["webOrigins"], ["https://" + context["APP_HOST"]])
-            self.assertEqual(client["redirectUris"], ["https://" + context["APP_HOST"] + "/*"])
-            self.assertEqual(client["clientId"], APP + "-web")
-            self.assertEqual(client["attributes"]["pkce.code.challenge.method"], "S256")
-            for environment in ("prod", "uat"):
-                frontend = self.root / f"devapp-web/src/environments/environment.{environment}.ts"
-                self.assertIn("https://keycloak." + context["PUBLIC_DOMAIN"] + "/auth", frontend.read_text())
-                self.assertIn("keycloakRealm: '" + context["KEYCLOAK_REALM"] + "'", frontend.read_text())
-        else:
-            cors = self.root / "indezy-server/src/main/resources/application-kubernetes.yml"
-            self.assertIn("https://" + context["APP_HOST"], cors.read_text())
+        self.assertEqual(ci["variables"]["DEPLOYMENT_ENVIRONMENT"]["options"], ["int", "uat", "prod"])
+        self.assertEqual(ci["variables"]["DEPLOYMENT_ENVIRONMENT"]["value"], "int")
+        client = json.loads((self.root / CONTRACT["keycloak"]["file"]).read_text())
+        self.assertEqual(client["webOrigins"], ["https://" + context["APP_HOST"]])
+        self.assertEqual(client["redirectUris"], ["https://" + context["APP_HOST"] + "/*"])
+        self.assertEqual(client["attributes"]["pkce.code.challenge.method"], "S256")
+        self.assertFalse(any(r["kind"] == "Job" and r["metadata"]["name"] == "devapp-db-setup" for r in resources))
         rendered_resources(self.root, "infra/overlays/ha")
 
-    def test_custom_hosts_project_paths_and_identity_render_together(self):
+    def test_shared_settings_leave_source_and_environment_selection_independent(self):
+        self.assertEqual(CONTRACT["version"], 2)
+        self.assertEqual(CONTRACT["deployment"]["defaultEnvironment"], "int")
+        self.assertFalse(any("/src/" in name or name.endswith("nginx.conf") for name in CONTRACT["files"]))
+        self.assertFalse(any("DEPLOYMENT_ENVIRONMENT" in b["to"] for b in CONTRACT["replacements"]))
+        source_files = [p for base in ("devapp-web/src", "devapp-common/src", "user-app/src", "order-app/src")
+                        for p in (ROOT / base).rglob("*") if p.is_file()]
+        for path in source_files:
+            target = self.root / path.relative_to(ROOT)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
         render_fixture(self.root, self.context)
         self.assert_configuration(self.context)
-        command(["sh", "infra/scripts/set-image-tags.sh", "9.8.7"], self.root)
-        for resource in rendered_resources(self.root, "infra/overlays/ha"):
-            if resource.get("kind") == "Deployment":
-                for container in resource["spec"]["template"]["spec"]["containers"]:
-                    self.assertTrue(container["image"].endswith(":9.8.7"), container["image"])
-        for script in ("configure-gitlab.sh", "configure-repository-sync.sh", "configure-code-quality.sh"):
-            command(["bash", "-n", "infra/scripts/" + script], self.root)
+        for path in source_files:
+            self.assertEqual(path.read_bytes(), (self.root / path.relative_to(ROOT)).read_bytes(), str(path))
 
-    def test_imported_sync_workflow_uses_github_variables(self):
-        path = self.root / ".github/workflows/sync-gitlab.yml"
-        workflow = yaml.safe_load(path.read_text())
-        env = workflow["jobs"]["sync-repository"]["env"]
-        env.pop("GITLAB_PROJECT_ID", None)
-        for key in ("GITLAB_REPOSITORY", "GITLAB_API_URL", "GITLAB_HOST"):
-            env[key] = "${{ vars." + key + " }}"
-        path.write_text(yaml.safe_dump(workflow))
-        render_fixture(self.root, self.context)
-        self.assert_configuration(self.context)
-
-    def test_rerun_and_apex_to_subdomain_changes_keep_stable_data_identity(self):
+    def test_rerun_changed_domain_and_branch_remain_structured_shared_settings(self):
         render_fixture(self.root, self.context)
         snapshot = {name: (self.root / name).read_bytes() for name in CONTRACT["files"]}
         render_fixture(self.root, self.context)
         self.assertEqual(snapshot, {name: (self.root / name).read_bytes() for name in CONTRACT["files"]})
-        apex = dict(self.context, APP_SUBDOMAIN="@", APP_HOST=self.context["PUBLIC_DOMAIN"])
-        render_fixture(self.root, apex)
-        self.assert_configuration(apex)
-        changed = dict(apex, APP_SUBDOMAIN="renamed", APP_HOST="renamed.example.test")
-        render_fixture(self.root, changed)
-        self.assert_configuration(changed)
-        self.assertEqual(CONTRACT["registry"]["path"], "apps/" + APP + "/registry")
+        for branch in ("no", "true", "null", "123", "release/stable", "team's-release"):
+            changed = dict(self.context, DEFAULT_BRANCH=branch, PUBLIC_DOMAIN="second.test",
+                           APP_HOST="renamed.second.test", APP_SUBDOMAIN="renamed", KEYCLOAK_REALM="team")
+            render_fixture(self.root, changed)
+            self.assert_configuration(changed)
+
+    def test_apex_and_subdomain_changes_preserve_shared_registry_identity(self):
+        for label in ("@", "renamed"):
+            changed = dict(self.context, APP_SUBDOMAIN=label,
+                           APP_HOST=self.context["PUBLIC_DOMAIN"] if label == "@" else label + "." + self.context["PUBLIC_DOMAIN"])
+            render_fixture(self.root, changed)
+            self.assert_configuration(changed)
+        self.assertEqual(CONTRACT["registry"]["path"], "apps/devapp/registry")
 
 
 class ReleaseTests(unittest.TestCase):
@@ -201,18 +193,64 @@ class ReleaseTests(unittest.TestCase):
     def test_only_explicit_api_onboarding_bypasses_manual_release(self):
         defaults = {"CI_PIPELINE_SOURCE": "api", "CI_COMMIT_BRANCH": "trunk",
                     "CI_DEFAULT_BRANCH": "trunk", "APP_ONBOARDING": "true",
-                    "SONAR_SCAN_ONLY": "false", "PIPELINE_MODE": "standard"}
+                    "SONAR_SCAN_ONLY": "false", "PIPELINE_MODE": "standard", "DEPLOYMENT_ENVIRONMENT": "int"}
         self.assertEqual(release_rule(defaults), "on_success")
         settings = {**os.environ, **defaults, "CI_COMMIT_MESSAGE": "Configure repository [skip ci]", "CI_OPEN_MERGE_REQUESTS": "1"}
         rules = yaml.safe_load((ROOT / ".gitlab-ci.yml").read_text())["workflow"]["rules"]
         selected = next(rule for rule in rules if subprocess.run(
             ["bash", "-c", "[[ " + rule["if"] + " ]]"], env=settings, capture_output=True).returncode == 0)
         self.assertEqual(selected.get("when", "on_success"), "on_success")
-        self.assertEqual(release_rule(dict(defaults, APP_ONBOARDING="false")), "manual")
-        self.assertEqual(release_rule(dict(defaults, CI_PIPELINE_SOURCE="push")), "manual")
-        self.assertEqual(release_rule(dict(defaults, CI_PIPELINE_SOURCE="web", PIPELINE_MODE="full")), "on_success")
+        self.assertEqual(release_rule(dict(defaults, APP_ONBOARDING="false")), "never")
+        self.assertEqual(release_rule(dict(defaults, CI_PIPELINE_SOURCE="push")), "never")
+        self.assertEqual(release_rule(dict(defaults, CI_PIPELINE_SOURCE="web", PIPELINE_MODE="full", DEPLOYMENT_ENVIRONMENT="uat")), "on_success")
         self.assertEqual(release_rule(dict(defaults, SONAR_SCAN_ONLY="true")), "never")
-        self.assertEqual(release_rule(dict(defaults, CI_COMMIT_BRANCH="feature")), "absent")
+        self.assertEqual(release_rule(dict(defaults, RELEASE_VERSION="1.2.3")), "never")
+        self.assertEqual(release_rule(dict(defaults, CI_COMMIT_BRANCH="feature", DEPLOYMENT_ENVIRONMENT="uat")), "absent")
+
+    def test_dropdown_selects_a_target_and_promotion_skips_all_builds(self):
+        pipeline = yaml.safe_load((ROOT / ".gitlab-ci.yml").read_text())
+        choice = pipeline["variables"]["DEPLOYMENT_ENVIRONMENT"]
+        self.assertEqual(choice["value"], "int")
+        self.assertEqual(choice["options"], ["int", "uat", "prod"])
+        self.assertTrue(choice["description"])
+        self.assertNotIn("03-package", pipeline)
+        self.assertEqual(pipeline["01-release"]["resource_group"], "devapp-release")
+        self.assertEqual(pipeline["set-major-version"]["resource_group"], "devapp-release")
+        self.assertEqual(pipeline["02-deploy"]["resource_group"], "devapp-$DEPLOYMENT_ENVIRONMENT")
+        needs = {item["job"]: item for item in pipeline["02-deploy"]["needs"]}
+        self.assertTrue(needs["01-release"]["optional"])
+        self.assertTrue(needs["01-snapshot"]["optional"])
+        self.assertFalse(needs["00-delivery-policy"].get("optional", False))
+        self.assertEqual(pipeline["default"]["tags"], ["bm-application-int"])
+        self.assertEqual(pipeline["01-release"]["tags"], ["bm-application-release"])
+        self.assertEqual(pipeline["02-deploy"]["tags"], ["$DEPLOYMENT_RUNNER_TAG"])
+        for name in ("01-build", "02-test", "01-e2e", "02-quality", "03-security", "01-release", "set-major-version"):
+            self.assertEqual(pipeline[name]["rules"][0], {"if": '$RELEASE_VERSION != ""', "when": "never"})
+
+    def test_any_branch_web_pipeline_including_open_merge_request_can_deploy_only_to_int(self):
+        variables = {"CI_PIPELINE_SOURCE": "web", "CI_COMMIT_BRANCH": "feature/é;$(example)",
+                     "CI_DEFAULT_BRANCH": "trunk", "CI_OPEN_MERGE_REQUESTS": "1", "PIPELINE_MODE": "full",
+                     "DEPLOYMENT_ENVIRONMENT": "int", "APP_ONBOARDING": "false", "SONAR_SCAN_ONLY": "false"}
+        self.assertEqual(job_rule("workflow", variables), "on_success")
+        self.assertEqual(job_rule("01-snapshot", variables), "on_success")
+        self.assertEqual(job_rule("01-release", variables), "never")
+        self.assertEqual(job_rule("02-deploy", variables), "on_success")
+        self.assertEqual(job_rule("01-snapshot", {**variables, "CI_COMMIT_BRANCH": "trunk"}), "on_success")
+        self.assertEqual(job_rule("workflow", {**variables, "CI_PIPELINE_SOURCE": "push"}), "never")
+        for environment in ("uat", "prod"):
+            selected = {**variables, "DEPLOYMENT_ENVIRONMENT": environment}
+            self.assertEqual(job_rule("01-snapshot", selected), "never")
+            self.assertEqual(job_rule("01-release", selected), "absent")
+            self.assertEqual(job_rule("02-deploy", selected), "absent")
+            selected["CI_COMMIT_BRANCH"] = "trunk"
+            self.assertEqual(job_rule("01-release", selected), "on_success")
+            self.assertEqual(job_rule("02-deploy", selected), "on_success")
+        self.assertEqual(job_rule("01-snapshot", {**variables, "RELEASE_VERSION": "1.2.3"}), "never")
+        self.assertEqual(job_rule("set-major-version", {**variables, "CI_COMMIT_BRANCH": "trunk"}), "never")
+        major = {**variables, "CI_COMMIT_BRANCH": "trunk", "NEW_MAJOR_VERSION": "2", "PIPELINE_MODE": "standard"}
+        self.assertEqual(job_rule("set-major-version", major), "manual")
+        for job in ("01-snapshot", "01-release", "02-deploy"):
+            self.assertEqual(job_rule(job, major), "never")
 
     def test_revision_guard_rejects_stale_source_before_publication_and_accepts_release_descendant(self):
         with tempfile.TemporaryDirectory(prefix=APP + "-onboarding-git-") as directory:
@@ -248,6 +286,11 @@ class ReleaseTests(unittest.TestCase):
             self.assertIn("moved before publication", stale.stderr)
             self.assertNotIn("KANIKO_EXECUTOR", stale.stderr)
             command(guard + ["deploy"], work, env=dict(env, DEPLOY_REVISION=released))
+            command(["git", "checkout", "--quiet", "main"], work)
+            command(["git", "commit", "--quiet", "--allow-empty", "-m", "pin selected application"], work)
+            pointer = command(["git", "rev-parse", "HEAD"], work).stdout.strip()
+            command(["git", "push", "--quiet", "origin", "main"], work)
+            command(guard + ["deploy"], work, env=dict(env, DEPLOY_REVISION=released, DEPLOY_COMMIT=pointer))
             self.assertNotEqual(command(guard + ["deploy"], work, env=dict(env, DEPLOY_REVISION=initial), check=False).returncode, 0)
             command(guard + ["publish"], work, env=dict(env, APP_ONBOARDING="false"))
 

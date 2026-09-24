@@ -12,7 +12,7 @@ Implemented controls:
 - disabled password-grant flow
 - Spring Security OAuth2 JWT resource servers
 - stateless bearer-token APIs
-- authentication required for application APIs in UAT/production
+- authentication required for application APIs in every deployed environment
 - Angular route guard and bearer-token interceptor
 - narrow CORS policy
 - body/path/query validation and explicit DTO boundaries
@@ -22,7 +22,7 @@ Implemented controls:
 - request-ID validation and correlation
 - H2 console disabled and disallowed in production
 - HTTPS-only public ingress
-- Actuator absent from public ingress
+- only exact health-summary routes exposed publicly; other Actuator endpoints remain private
 - Vault and External Secrets for deployed credentials
 - non-root, read-only, capability-dropped containers
 - network restrictions for application ingress
@@ -70,7 +70,7 @@ Security assumptions:
 
 Production browser flow:
 
-1. Angular loads Keycloak discovery from the canonical `https://keycloak.swirlit.dev/auth` issuer.
+1. Angular validates `/runtime-config.json` and loads discovery from its configured Keycloak URL and realm.
 2. The login button starts Authorization Code flow.
 3. Keycloak authenticates the user.
 4. PKCE binds the returned authorization code to the initiating browser.
@@ -92,7 +92,7 @@ Disposable local realm controls in `infra/keycloak/realm.json`:
 - standard flow enabled
 - direct access grants disabled
 - PKCE method `S256`
-- explicit local, container, and live redirect origins
+- explicit disposable local and container redirect origins
 - one disposable demonstration user
 
 The realm also contains a confidential `devapp-smoke` service-account client with a public demo secret. Treat it exactly like the sample user credentials: safe only in the disposable example realm, never as a production secret.
@@ -133,7 +133,7 @@ With `app.security.enabled=true`, the services permit these without a bearer tok
 
 Every other request requires authentication.
 
-The Kubernetes ingress exposes API documentation but not Actuator. Health and metrics remain reachable on cluster services for probes, Prometheus, and GitLab CI smoke checks.
+Ingress exposes API documentation and the exact `/health/user` and `/health/order` health summaries used by CI. Other Actuator routes, including metrics, remain private to cluster services.
 
 Current access policy is authenticated-or-public; there are no roles, scopes, ownership rules, or `@PreAuthorize` examples. That is acceptable only because the demonstration domain has one shared directory/order space. A real application must add resource-specific authorization before storing multi-user data.
 
@@ -188,7 +188,7 @@ Configured behavior:
 
 Default local origin: `http://localhost:4200`.
 
-Production must provide the exact allowed origin list. Do not introduce `*` while credentials are allowed.
+Each deployed environment provides its exact allowed origin list. Do not introduce `*` while credentials are allowed.
 
 ## CSRF And Sessions
 
@@ -234,7 +234,7 @@ Use Cloudflare/API-gateway or a shared distributed limiter for global enforcemen
 
 Traefik Ingress:
 
-- terminates TLS for `devapp.swirlit.dev`
+- terminates TLS for the configured application hostname
 - forces SSL redirect
 - forwards scheme/host information
 
@@ -346,21 +346,37 @@ Still required for a stronger supply-chain posture:
 
 SonarQube analysis runs automatically in `02-quality` on the default branch in both standard and full mode, independently of optional manual `01-e2e`. The scanner imports JaCoCo and LCOV coverage, submits without waiting for the quality gate, and authenticates with a masked project-scoped token. The reporting job retains dependency-audit output and is allowed to fail, so findings never block `01-release`. Compilation and package validation remain required; unit tests and the 80 percent coverage policy are visible, non-blocking jobs.
 
-Platform discovery supplies a protected, masked analysis token when absent and
-requests scan-only pipelines for missing or stale analyses. Application scans
-use that project token; administrator credentials stay with provisioning
-automation. See the [code-quality template contract](code-quality.md#adapting-the-template)
+Application scans use a protected, masked project analysis token; administrator
+credentials stay with provisioning automation. Platform discovery provisions
+tokens and requests stale analyses for platform-local workloads; see
+[discovery scope](code-quality.md#how-it-runs) and the
+[code-quality template contract](code-quality.md#adapting-the-template)
 before changing authentication, source scope or CI job rules.
 
 `03-security` uses a digest-pinned Trivy image to scan dependency manifests, infrastructure-as-code, and the repository working tree for vulnerable packages, misconfigurations, and exposed secrets. It retains JSON and SARIF reports for seven days and exits nonzero for high/critical findings, while `allow_failure` keeps the signal optional. The job is numbered after quality but has no dependency on it: it is manually runnable in standard mode and runs automatically in full mode.
+
+## Deployment Environment Isolation
+
+All deployment targets use the same central PostgreSQL, Redis, Kafka and Keycloak
+services. Each has a separate logical database/login, Redis ACL user/key prefix,
+and Kafka SCRAM principal/topic/group prefix. Target Vault policies expose only
+the selected environment's application credentials and shared registry credential.
+Applications never receive platform administrator credentials.
+
+The shared realm has a separate `devapp-<env>-web` client for each environment.
+Both APIs validate issuer, signature and the matching audience, so a token issued
+for integration cannot authorize production requests. Local Compose retains its
+disposable realm and `devapp-web` audience. See
+[production identity](deployment.md#production-identity) and
+[shared service configuration](deployment.md#kubernetes-desired-state).
 
 ## Actuator And Observability
 
 Actuator health and metrics are unauthenticated at the Spring filter level for probes/scraping. The external boundary is Kubernetes networking:
 
-- no public ingress route
-- ClusterIP services only
-- NetworkPolicy allows Prometheus, ingress for application traffic, same-namespace pods, and GitLab CI smoke agents
+- public ingress maps only `/health/user` and `/health/order` to the health summary
+- metrics and other Actuator routes use ClusterIP services
+- NetworkPolicy restricts traffic to the declared application and ingress paths
 
 Logs include stack traces for internal unexpected failures. Ensure log access is restricted and add redaction tests before logging richer arguments or contexts.
 

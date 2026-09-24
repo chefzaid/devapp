@@ -16,18 +16,28 @@
       "directAccessGrantsEnabled": false,
       "redirectUris": [
         "http://localhost:4200/*",
-        "http://web:8080/*",
-        "https://devapp.swirlit.dev/*"
+        "http://web:8080/*"
       ],
       "webOrigins": [
         "http://localhost:4200",
-        "http://web:8080",
-        "https://devapp.swirlit.dev"
+        "http://web:8080"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:4200/*##http://web:8080/*##https://devapp.swirlit.dev/*"
-      }
+        "post.logout.redirect.uris": "http://localhost:4200/*##http://web:8080/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "devapp-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "devapp-web",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "devapp-smoke",
@@ -38,7 +48,19 @@
       "protocol": "openid-connect",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": true
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "devapp-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "devapp-web",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [

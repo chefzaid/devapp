@@ -14,7 +14,7 @@ devapp-common/       shared Java contracts and reusable infrastructure
 user-app/            user REST API and order-validation consumer
 order-app/           order REST API and result consumer
 devapp-web/          Angular SPA, NGINX image, Vitest and Playwright tests
-infra/ansible/       optional manual Kustomize apply helper
+infra/environments/ generated deployment settings for registered int/uat/prod targets
 infra/argocd/        Argo CD Application bootstrap
 infra/compose/       complete local runtime and Playwright acceptance overlay
 infra/keycloak/      disposable Keycloak realm import
@@ -258,13 +258,18 @@ Both services deliberately use parallel configuration shapes. When changing a sh
 
 ## Frontend Configuration
 
-Environment files:
+`environment.ts` disables authentication for `npm start`; `environment.prod.ts`
+enables it for production and UAT builds. Neither file contains an installation
+domain or realm. Both use relative `/api` URLs.
 
-- `devapp-web/src/environments/environment.ts`: development, authentication disabled
-- `devapp-web/src/environments/environment.uat.ts`: production-shaped auth
-- `devapp-web/src/environments/environment.prod.ts`: production auth
-
-The production and UAT UI use relative `/api` URLs and the canonical `https://keycloak.swirlit.dev/auth` issuer. The development UI keeps its local `/auth` proxy while authentication is disabled by default.
+Authenticated builds load public identity settings from `/runtime-config.json`
+before Angular starts. For local authenticated development, use the
+[Compose stack](#fastest-complete-start): it mounts
+[`web-runtime-config.json`](../infra/compose/web-runtime-config.json) and
+[`nginx-proxies.conf`](../infra/compose/nginx-proxies.conf) for the local Keycloak
+and API routes. The same production image serves Kubernetes using its
+[deployment configuration](deployment.md#add-or-reconfigure-this-repository).
+Use `npm start` for the fast development loop and Compose to exercise authentication.
 
 Frontend scripts:
 

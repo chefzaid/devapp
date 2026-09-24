@@ -120,7 +120,7 @@ public class GlobalExceptionHandler {
     private static ProblemDetail problem(HttpStatus status, String title, String message) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(status, message);
         detail.setTitle(title);
-        detail.setType(URI.create("https://devapp.swirlit.dev/problems/" + status.value()));
+        detail.setType(URI.create("/problems/" + status.value()));
         String requestId = MDC.get("requestId");
         if (requestId != null) {
             detail.setProperty("requestId", requestId);

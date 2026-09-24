@@ -1,56 +1,65 @@
 # Public DNS
 
-This repository owns `devapp.swirlit.dev`, including DNS, Kubernetes Ingress routing
-and application redirects. The platform supplies the shared zone, TLS,
-ingress and optional HA Tunnel; its installer does not create or remove these
-application DNS records.
+One central platform serves separate `int`, `uat` and `prod` application clusters.
+DevApp owns each environment's exact hostname, Ingress routes and browser-client
+redirects. The platform owns cluster registration, the managed Cloudflare zone,
+certificate preparation and private connectivity.
 
 ## Direct ingress
 
-In Cloudflare DNS, create or update a **proxied A** record for each hostname
-above with the public ingress IPv4. Obtain the address from the platform operator
-or the ingress Service:
+The central `infra/deployment-environments` ConfigMap records each environment's
+`domain`, `ingressAddress` and TLS Secret. Onboarding uses the app label from
+`infra/environments/<env>/settings.json` to reconcile the selected proxied A, AAAA or CNAME record:
+
+| Environment | Example hostname | Destination |
+|---|---|---|
+| `int` | `devapp.int.example.com` | Integration cluster ingress address. |
+| `uat` | `devapp.uat.example.com` | Acceptance cluster ingress address. |
+| `prod` | `devapp.example.com` | Production cluster ingress address. |
+
+`appSubdomain: "@"` selects the environment domain itself. It does not select
+the parent Cloudflare zone apex. Production cannot claim the reserved `int` or
+`uat` domain or their descendants.
+
+Use central [onboarding](deployment.md#add-or-reconfigure-this-repository) to
+reconcile the configured hosts. Confirm the target in the central inventory;
+do not discover an application address from the central platform's Traefik
+Service. The generated environment Ingress must use the same hostname and TLS
+Secret as its registered target.
+
+## Certificates and changes
+
+The Cloudflare token needs Zone Read, DNS Edit, and SSL and Certificates Edit
+for the managed parent zone. The certificate permission covers Origin CA issuance
+and [certificate coverage inspection](https://developers.cloudflare.com/api/resources/ssl/subresources/certificate_packs/methods/list/).
+The parent zone's Universal SSL wildcard does not cover those deeper hostnames;
+pre-issue Advanced/Custom edge coverage before publication. Existing Total TLS
+coverage can be reused; enabling Total TLS alone needs DNS first and cannot pass
+the first-publication guard. See the platform's
+[Cloudflare guide](https://github.com/chefzaid/bm-cluster/blob/main/docs/networking.md#cloudflare).
+
+Review conflicting A/AAAA/CNAME records for the exact hostname and preserve
+unrelated MX/TXT records. Changing the app hostname does not automatically delete
+its old record. Verify the replacement route, runtime configuration and both
+API health routes before retiring the old hostname:
 
 ```sh
-kubectl get service traefik -n infra \
-  -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+curl --fail https://devapp.int.example.com/runtime-config.json
+curl --fail https://devapp.int.example.com/health/user
+curl --fail https://devapp.int.example.com/health/order
 ```
 
 ## HA ingress
 
-After the platform's HA activation succeeds, switch each owned hostname to a
-**proxied CNAME** with target `<publishedTunnelID>.cfargotunnel.com`. Verify the
-published checkpoint belongs to this zone before changing DNS:
+The environment's registered ingress address must reach its available application
+nodes before enabling the [HA workload profile](deployment.md#future-multi-node-ha-profile).
+The central platform's own Cloudflare Tunnel is not an application-cluster target.
+A separately designed environment Tunnel or load balancer needs its own routing
+and certificate validation; no central Tunnel checkpoint is reused implicitly.
 
-```sh
-kubectl get configmap bm-cluster-public-ingress -n infra -o json | \
-  jq -er '.data | select(.mode == "tunnel" and .domain == "swirlit.dev" and
-    .publishedTunnelID != null and .publishedTunnelID != "" and
-    .publishedTunnelID == .tunnelID) | .publishedTunnelID + ".cfargotunnel.com"'
-```
+## Central reconciliation
 
-No output or a nonzero exit means the target is not ready. Do not infer readiness
-from a prepared Tunnel ID or keep pointing at the original host after the direct
-listener is retired. The platform's zone-wide Tunnel routes preserve the request
-hostname; the application-owned Ingress selects the backend. No application name
-needs adding to the platform repository.
-
-Review conflicting A/AAAA/CNAME records for these exact hostnames before changing
-their address target. Preserve unrelated records, especially MX and TXT records.
-[Cloudflare Tunnel DNS routing](https://developers.cloudflare.com/tunnel/routing/)
-describes the CNAME target. Verify the public URL and application health after
-DNS changes, then perform the application HA checks in the deployment guide.
-
-## Repository helper
-
-With an authenticated Kubernetes context and a Cloudflare token supplied through
-`CLOUDFLARE_API_TOKEN`, run:
-
-```sh
-./infra/scripts/configure-cloudflare.sh
-```
-
-The helper reads the platform ingress checkpoint and selects direct A or published
-Tunnel CNAME routing. It refuses unpublished or mismatched Tunnel state,
-conflicting address records, and a direct-IP override while HA is selected.
-Re-run it during this application's DNS cutover after platform activation.
+Rerun the platform's `add-repos.sh` to reconcile DevApp's declared hosts against
+registered environment targets. Keep DNS and browser-client changes together;
+deployment verifies that the selected public route serves its expected runtime
+identity configuration.

@@ -1,7 +1,5 @@
 package dev.swirlit.devapp.common.config;
 
-import dev.swirlit.devapp.common.util.Constants;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -19,12 +17,14 @@ import org.apache.kafka.common.TopicPartition;
 public class KafkaReliabilityConfig {
 
     @Bean
-    NewTopics applicationTopics() {
+    NewTopics applicationTopics(
+            @Value("${app.messaging.topics.order:order_topic}") String orderTopic,
+            @Value("${app.messaging.topics.result:order_result_topic}") String resultTopic) {
         return new NewTopics(
-                TopicBuilder.name(Constants.ORDER_TOPIC).partitions(3).build(),
-                TopicBuilder.name(Constants.ORDER_RESULT_TOPIC).partitions(3).build(),
-                TopicBuilder.name(Constants.ORDER_TOPIC + ".DLT").partitions(3).build(),
-                TopicBuilder.name(Constants.ORDER_RESULT_TOPIC + ".DLT").partitions(3).build());
+                TopicBuilder.name(orderTopic).partitions(3).build(),
+                TopicBuilder.name(resultTopic).partitions(3).build(),
+                TopicBuilder.name(orderTopic + ".DLT").partitions(3).build(),
+                TopicBuilder.name(resultTopic + ".DLT").partitions(3).build());
     }
 
     @Bean

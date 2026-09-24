@@ -66,6 +66,9 @@ vault_field() {
 encoded_project_path="$(jq -rn --arg value "$GITLAB_PROJECT_PATH" '$value|@uri')"
 gitlab_api GET "projects/$encoded_project_path" > "$work_dir/project.json"
 project_id="$(jq -er '.id' "$work_dir/project.json")"
+default_branch="$(jq -er '.default_branch | select(type == "string" and length > 0)' "$work_dir/project.json")"
+git check-ref-format "refs/heads/$default_branch" >/dev/null || fail 'GitLab returned an invalid default branch'
+encoded_default_branch="$(jq -rn --arg value "$default_branch" '$value|@uri')"
 
 jq -n --arg description "$PROJECT_DESCRIPTION" --arg topics "$PROJECT_TOPICS" \
   --arg current_visibility "$(jq -er '.visibility' "$work_dir/project.json")" '
@@ -132,17 +135,17 @@ LABELS
 info 'GitLab labels reconciled'
 
 protected_status="$(curl --config "$gitlab_config" --silent --output "$work_dir/protected.json" \
-  --write-out '%{http_code}' "$GITLAB_URL/api/v4/projects/$project_id/protected_branches/main")"
+  --write-out '%{http_code}' "$GITLAB_URL/api/v4/projects/$project_id/protected_branches/$encoded_default_branch")"
 if [[ "$protected_status" == 200 ]]; then
-  gitlab_api PATCH "projects/$project_id/protected_branches/main" \
+  gitlab_api PATCH "projects/$project_id/protected_branches/$encoded_default_branch" \
     --form-string 'allow_force_push=false' >/dev/null
 elif [[ "$protected_status" == 404 ]]; then
-  gitlab_api POST "projects/$project_id/protected_branches" --form-string 'name=main' \
+  gitlab_api POST "projects/$project_id/protected_branches" --form-string "name=$default_branch" \
     --form-string 'push_access_level=40' --form-string 'merge_access_level=30' \
     --form-string 'allow_force_push=false' >/dev/null
 else
   cat "$work_dir/protected.json" >&2
-  fail "Unable to inspect the protected main branch (HTTP $protected_status)"
+  fail "Unable to inspect the protected default branch (HTTP $protected_status)"
 fi
 info 'GitLab default-branch protection reconciled'
 
@@ -270,13 +273,13 @@ jq -r '.[] | select(.name|IN("Pipeline","Run pipeline","Coverage","Release","Pac
 sonar_key_encoded="$(jq -rn --arg value "$SONAR_PROJECT_KEY" '$value|@uri')"
 gitlab_api POST "projects/$project_id/badges" --form-string 'name=Pipeline' \
   --form-string "link_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/-/pipelines" \
-  --form-string "image_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/badges/main/pipeline.svg" >/dev/null
+  --form-string "image_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/badges/$encoded_default_branch/pipeline.svg" >/dev/null
 gitlab_api POST "projects/$project_id/badges" --form-string 'name=Coverage' \
-  --form-string "link_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/-/graphs/main/charts" \
-  --form-string "image_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/badges/main/coverage.svg" >/dev/null
+  --form-string "link_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/-/graphs/$encoded_default_branch/charts" \
+  --form-string "image_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/badges/$encoded_default_branch/coverage.svg" >/dev/null
 gitlab_api POST "projects/$project_id/badges" --form-string 'name=Run pipeline' \
-  --form-string "link_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/-/pipelines/new?ref=main" \
-  --form-string "image_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/badges/main/pipeline.svg?key_text=run%20pipeline" >/dev/null
+  --form-string "link_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/-/pipelines/new?ref=$encoded_default_branch" \
+  --form-string "image_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/badges/$encoded_default_branch/pipeline.svg?key_text=run%20pipeline" >/dev/null
 gitlab_api POST "projects/$project_id/badges" --form-string 'name=Release' \
   --form-string "link_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/-/releases" \
   --form-string "image_url=$GITLAB_PUBLIC_URL/$GITLAB_PROJECT_PATH/-/badges/release.svg" >/dev/null

@@ -62,7 +62,7 @@
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.uat.ts"
+                  "with": "src/environments/environment.prod.ts"
                 }
               ],
               "optimization": {

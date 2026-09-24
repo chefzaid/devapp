@@ -2,7 +2,6 @@ package dev.swirlit.devapp.order.service;
 
 import dev.swirlit.devapp.common.domain.OrderStatus;
 import dev.swirlit.devapp.common.event.OrderEvent;
-import dev.swirlit.devapp.common.util.Constants;
 import dev.swirlit.devapp.order.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +22,7 @@ public class OrderResultListener {
 
     @Transactional
     @CacheEvict(cacheNames = "orders", key = "#event.orderId()")
-    @KafkaListener(topics = Constants.ORDER_RESULT_TOPIC, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${app.messaging.topics.result:order_result_topic}", groupId = "${spring.kafka.consumer.group-id}")
     public void consume(OrderEvent event) {
         validateResult(event);
         var order = orderRepository.findById(event.orderId()).orElse(null);

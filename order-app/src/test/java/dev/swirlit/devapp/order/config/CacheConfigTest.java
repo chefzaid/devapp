@@ -11,11 +11,18 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 class CacheConfigTest {
 
     @Test
+    void environmentsUseDistinctCacheKeys() {
+        var mapper = JsonMapper.builder().findAndAddModules().build();
+        assertEquals("devapp:int:orders::", CacheConfig.cacheConfiguration(mapper, "devapp:int:").getKeyPrefixFor("orders"));
+        assertEquals("devapp:prod:orders::", CacheConfig.cacheConfiguration(mapper, "devapp:prod:").getKeyPrefixFor("orders"));
+    }
+
+    @Test
     void cacheValuesRetainTheirOrderType() {
         Order order = new Order(17L, 2501L);
         order.setId(23L);
 
-        var serialization = CacheConfig.cacheConfiguration(JsonMapper.builder().findAndAddModules().build())
+        var serialization = CacheConfig.cacheConfiguration(JsonMapper.builder().findAndAddModules().build(), "")
                 .getValueSerializationPair();
 
         Order restored = assertInstanceOf(Order.class, serialization.read(serialization.write(order)));

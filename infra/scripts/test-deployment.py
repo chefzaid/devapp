@@ -125,6 +125,8 @@ class RenderingTests(unittest.TestCase):
             result = subprocess.run(["kubectl", "kustomize", f"infra/environments/{environment}"], cwd=self.root,
                                     text=True, capture_output=True, check=True)
             resources = list(yaml.safe_load_all(result.stdout))
+            self.assertTrue(all(item["metadata"]["annotations"]["argocd.argoproj.io/sync-wave"] == "10"
+                                for item in resources if item["kind"] == "Ingress"))
             images = [item["spec"]["template"]["spec"]["containers"][0]["image"] for item in resources if item["kind"] == "Deployment"]
             self.assertEqual(set(images), set(metadata["images"]))
             backend = next(item for item in resources if item["kind"] == "ConfigMap" and "DB_NAME" in item.get("data", {}))

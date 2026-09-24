@@ -4,6 +4,7 @@ metadata:
   name: devapp-ingress
   namespace: apps
   annotations:
+    argocd.argoproj.io/sync-wave: "10"
     gethomepage.dev/description: Public development application
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Applications

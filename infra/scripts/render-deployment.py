@@ -264,6 +264,7 @@ def render(root, inventory, environment, release, revision, repository_url=None,
     health_ingress = {
         "apiVersion": "networking.k8s.io/v1", "kind": "Ingress", "metadata": {
             "name": "devapp-health", "namespace": namespace, "annotations": {
+                "argocd.argoproj.io/sync-wave": "10",
                 "traefik.ingress.kubernetes.io/router.entrypoints": "websecure",
                 "traefik.ingress.kubernetes.io/router.tls": "true",
                 "traefik.ingress.kubernetes.io/router.middlewares": f"{namespace}-devapp-health@kubernetescrd"}},

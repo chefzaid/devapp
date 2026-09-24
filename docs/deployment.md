@@ -69,6 +69,9 @@ Remote deployments also include the application's ingress NetworkPolicy; local
 deployments use platform-owned network policies that application CI cannot relax.
 The workloads use non-root containers, read-only root filesystems, explicit
 resources, health probes and restricted Linux capabilities.
+Argo CD creates application and health ingress routes after the workloads become
+healthy. Moving an existing hostname between namespaces still needs an explicit
+route cutover so two environments never compete for the same hostname.
 
 Environment overlays replace public runtime configuration and select images by
 digest. They contain no copied Java, Angular or Kubernetes base source. ConfigMap

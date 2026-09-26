@@ -5,7 +5,7 @@ metadata:
   namespace: apps
   annotations:
     argocd.argoproj.io/sync-wave: "10"
-    gethomepage.dev/description: Public development application
+    gethomepage.dev/description: Full Java/Angular microservices app template
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Applications
     gethomepage.dev/href: https://devapp.swirlit.dev

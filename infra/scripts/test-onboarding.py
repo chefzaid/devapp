@@ -17,8 +17,8 @@ ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = json.loads((ROOT / "infra/onboarding.json").read_text())
 APP = CONTRACT["registry"]["path"].split("/")[1]
 PLATFORM = None
-if os.environ.get("BM_CLUSTER_SOURCE"):
-    sys.path.insert(0, str(Path(os.environ["BM_CLUSTER_SOURCE"]) / "scripts/lib"))
+if os.environ.get("SWIRL_CLOUD_SOURCE"):
+    sys.path.insert(0, str(Path(os.environ["SWIRL_CLOUD_SOURCE"]) / "scripts/lib"))
     import repository_onboarding as PLATFORM
 
 
@@ -221,8 +221,8 @@ class ReleaseTests(unittest.TestCase):
         self.assertTrue(needs["01-release"]["optional"])
         self.assertTrue(needs["01-snapshot"]["optional"])
         self.assertFalse(needs["00-delivery-policy"].get("optional", False))
-        self.assertEqual(pipeline["default"]["tags"], ["bm-application-int"])
-        self.assertEqual(pipeline["01-release"]["tags"], ["bm-application-release"])
+        self.assertEqual(pipeline["default"]["tags"], ["swirl-cloud-application-int"])
+        self.assertEqual(pipeline["01-release"]["tags"], ["swirl-cloud-application-release"])
         self.assertEqual(pipeline["02-deploy"]["tags"], ["$DEPLOYMENT_RUNNER_TAG"])
         for name in ("01-build", "02-test", "01-e2e", "02-quality", "03-security", "01-release", "set-major-version"):
             self.assertEqual(pipeline[name]["rules"][0], {"if": '$RELEASE_VERSION != ""', "when": "never"})

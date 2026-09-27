@@ -7,7 +7,7 @@ Argo CD Applications remain in `infra`. The examples below select local `int`;
 change `APP_NAMESPACE` and `KUBECONFIG` for another target. See
 [deployment](deployment.md#ownership-and-topology).
 
-This runbook covers the DevApp application layer, including its public DNS record, registry-credential projection, Argo CD application, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring services are owned by [`bm-cluster`](https://github.com/chefzaid/bm-cluster); use its runbooks when the incident is platform-wide. All DevApp-specific configuration remains in this repository.
+This runbook covers the DevApp application layer, including its public DNS record, registry-credential projection, Argo CD application, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring services are owned by [`swirl-cloud`](https://github.com/chefzaid/swirl-cloud); use its runbooks when the incident is platform-wide. All DevApp-specific configuration remains in this repository.
 
 ## Runtime Surfaces
 
@@ -123,7 +123,7 @@ UAT/production services write structured JSON to stdout. Target bootstrap does
 not forward those logs or metrics to the shared platform, and central discovery
 does not inspect remote workloads. Configure that integration separately before
 using central dashboards to assess an environment. The
-[platform observability guide](https://github.com/chefzaid/bm-cluster/blob/main/docs/observability.md#namespace-and-discovery)
+[platform observability guide](https://github.com/chefzaid/swirl-cloud/blob/main/docs/operations.md#namespace-and-discovery)
 defines collection and discovery scope; direct target logs remain available below.
 
 Useful fields:
@@ -232,7 +232,7 @@ Symptoms:
 
 Checks:
 
-- confirm shared Redis health in `bm-cluster`
+- confirm shared Redis health in `swirl-cloud`
 - inspect application readiness details internally
 - verify `REDIS_HOST`/port and NetworkPolicy behavior
 
@@ -320,7 +320,7 @@ Only the exact `/health/user` and `/health/order` routes expose a health summary
 
 For a remote environment, check its separately configured log forwarding and
 dashboard integration. The
-[platform discovery diagnostics](https://github.com/chefzaid/bm-cluster/blob/main/docs/observability.md#ownership-and-troubleshooting)
+[platform discovery diagnostics](https://github.com/chefzaid/swirl-cloud/blob/main/docs/operations.md#ownership-and-troubleshooting)
 apply to workloads on the platform cluster; Argo CD tracking alone does not make
 remote workloads discoverable.
 
@@ -395,7 +395,7 @@ Database migrations require separate care. Application rollback is safe only whe
 
 ## Backup And Recovery Ownership
 
-Application data resides in shared PostgreSQL. Kafka and Redis have persistent platform storage in relevant environments. Backup schedules, retention, encryption, and restore infrastructure belong to `bm-cluster`.
+Application data resides in shared PostgreSQL. Kafka and Redis have persistent platform storage in relevant environments. Backup schedules, retention, encryption, and restore infrastructure belong to `swirl-cloud`.
 
 DevApp still needs application-level recovery validation:
 

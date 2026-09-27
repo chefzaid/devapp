@@ -17,7 +17,7 @@ stages:
 
 default:
   tags:
-    - bm-application-int
+    - swirl-cloud-application-int
   interruptible: true
 
 variables:
@@ -269,7 +269,7 @@ variables:
 
 01-release:
   stage: release
-  tags: [bm-application-release]
+  tags: [swirl-cloud-application-release]
   needs:
     - job: 01-build
       artifacts: true
@@ -404,19 +404,19 @@ variables:
     - if: '$CI_COMMIT_BRANCH && $DEPLOYMENT_ENVIRONMENT == "int"'
       variables:
         DEPLOYMENT_TIER: testing
-        DEPLOYMENT_RUNNER_TAG: bm-application-int
+        DEPLOYMENT_RUNNER_TAG: swirl-cloud-application-int
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOYMENT_ENVIRONMENT == "uat"'
       variables:
         DEPLOYMENT_TIER: staging
-        DEPLOYMENT_RUNNER_TAG: bm-application-release
+        DEPLOYMENT_RUNNER_TAG: swirl-cloud-application-release
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOYMENT_ENVIRONMENT == "prod"'
       variables:
         DEPLOYMENT_TIER: production
-        DEPLOYMENT_RUNNER_TAG: bm-application-release
+        DEPLOYMENT_RUNNER_TAG: swirl-cloud-application-release
 
 set-major-version:
   stage: version
-  tags: [bm-application-release]
+  tags: [swirl-cloud-application-release]
   image:
     name: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
     entrypoint: [""]

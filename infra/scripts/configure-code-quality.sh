@@ -16,7 +16,7 @@ SONAR_PROJECT_KEY="${SONAR_PROJECT_KEY:-swirlit:devapp}"
 SONAR_ALM_KEY="${SONAR_ALM_KEY:-swirlit-gitlab}"
 INFRA_NAMESPACE="${INFRA_NAMESPACE:-infra}"
 VAULT_POD="${VAULT_POD:-vault-0}"
-VAULT_TOKEN_FILE="${VAULT_BOOTSTRAP_TOKEN_FILE:-/var/lib/bm-cluster/vault-bootstrap-token}"
+VAULT_TOKEN_FILE="${VAULT_BOOTSTRAP_TOKEN_FILE:-/var/lib/swirl-cloud/vault-bootstrap-token}"
 
 info() { printf '[INFO] %s\n' "$*"; }
 fail() { printf '[ERROR] %s\n' "$*" >&2; exit 1; }

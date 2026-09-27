@@ -1,6 +1,6 @@
 # DevApp
 
-DevApp is a deliberately small, production-shaped full-stack template. Two Java 25 / Spring Boot 4 services and an Angular 22 SPA demonstrate reusable application, event-driven, security, observability, testing, and GitOps patterns on the platform supplied by [`bm-cluster`](https://github.com/chefzaid/bm-cluster).
+DevApp is a deliberately small, production-shaped full-stack template. Two Java 25 / Spring Boot 4 services and an Angular 22 SPA demonstrate reusable application, event-driven, security, observability, testing, and GitOps patterns on the platform supplied by [`swirl-cloud`](https://github.com/chefzaid/swirl-cloud).
 
 [![Java](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -27,7 +27,7 @@ can share the platform cluster; remote clusters are optional. See the
 CI submits Sonar analysis for both the Java backend and Angular frontend. The
 platform's scheduled discovery currently covers its local workloads; remote
 application clusters need separate telemetry/discovery integration. See
-[observability scope](https://github.com/chefzaid/bm-cluster/blob/main/docs/observability.md#namespace-and-discovery). When
+[observability scope](https://github.com/chefzaid/swirl-cloud/blob/main/docs/operations.md#namespace-and-discovery). When
 copying this template, follow the [code-quality onboarding guide](./docs/code-quality.md#adapting-the-template)
 to preserve source coverage, credentials and scan-only CI behavior.
 

@@ -11,7 +11,7 @@ Each repository owns its source paths, build commands, tests and scanner job.
 The scheduled platform discovery below covers managed local application
 namespaces, including `apps` and registered shared-cluster environments. It does not yet discover remote application clusters; those use
 normal CI or manual scans. See the
-[platform discovery scope](https://github.com/chefzaid/bm-cluster/blob/main/docs/observability.md#namespace-and-discovery).
+[platform discovery scope](https://github.com/chefzaid/swirl-cloud/blob/main/docs/operations.md#namespace-and-discovery).
 
 ## How It Runs
 
@@ -152,7 +152,7 @@ visibly. `SONAR_REPORT_STATUS=submitted` means the report was uploaded; check
 Sonar's completed analysis timestamp and quality gate separately. The job does
 not wait for or enforce the quality gate, and its findings do not block release.
 
-The platform's [source-analysis guide](https://github.com/chefzaid/bm-cluster/blob/main/docs/observability.md#source-analysis)
+The platform's [source-analysis guide](https://github.com/chefzaid/swirl-cloud/blob/main/docs/operations.md#source-analysis)
 documents controller installation, credentials, permissions and tests. See also
 the [deployment guide](deployment.md#automatic-sonar-coverage),
 [ADR 0008](adr/0008-code-quality-and-verification.md) and the CI job contract in

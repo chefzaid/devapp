@@ -7,7 +7,7 @@
 
 The template needs modern REST/event services, a browser client, relational persistence, distributed caching, identity, messaging, observability, containers, Kubernetes, and automated delivery. It must also support a fast developer loop without requiring the whole platform.
 
-The surrounding `bm-cluster` platform already supplies PostgreSQL, Redis, Kafka, Keycloak, Vault, GitLab Container Registry, GitLab CI, Argo CD, Prometheus/Grafana, Elasticsearch/Kibana, K3s, and Traefik Ingress.
+The surrounding `swirl-cloud` platform already supplies PostgreSQL, Redis, Kafka, Keycloak, Vault, GitLab Container Registry, GitLab CI, Argo CD, Prometheus/Grafana, Elasticsearch/Kibana, K3s, and Traefik Ingress.
 
 ## Decision
 
@@ -32,7 +32,7 @@ Spring Boot supplies mature, composable infrastructure for all backend patterns 
 
 The profile split prevents technical completeness from making ordinary code changes slow or infrastructure-dependent.
 
-Reusing `bm-cluster` avoids duplicating operational platform ownership in the application repository.
+Reusing `swirl-cloud` avoids duplicating operational platform ownership in the application repository.
 
 ## Consequences
 

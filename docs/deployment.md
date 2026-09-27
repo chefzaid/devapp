@@ -1,6 +1,6 @@
 # Deployment Guide
 
-One shared `bm-cluster` platform provides GitLab, its runner and registry, Argo CD,
+One shared `swirl-cloud` platform provides GitLab, its runner and registry, Argo CD,
 Vault, PostgreSQL, Redis, Kafka and Keycloak. DevApp's `int`, `uat` and `prod`
 environments can run in separate namespaces on that same cluster or on optional
 remote clusters. One GitLab project publishes images; central Argo CD deploys
@@ -23,7 +23,7 @@ the selected environment.
 | `infra/scripts/` | Rendering, release and maintenance helpers. |
 
 Application runtime resources stay in this repository. Cluster registration,
-shared-service connectivity and platform credentials belong to `bm-cluster`.
+shared-service connectivity and platform credentials belong to `swirl-cloud`.
 
 ## Ownership And Topology
 
@@ -261,7 +261,7 @@ python3 infra/scripts/test-deployment.py
 These checks need Python with PyYAML, Git, Bash, jq and kubectl. They use disposable
 Git repositories and fake APIs to verify publication recovery, routing, target
 ownership, independent pins, digest promotion and wrong-target refusal. Set
-`BM_CLUSTER_SOURCE=/path/to/bm-cluster` for the actual onboarding renderer checks.
+`SWIRL_CLOUD_SOURCE=/path/to/swirl-cloud` for the actual onboarding renderer checks.
 No live deployment is needed.
 
 ## Production Identity

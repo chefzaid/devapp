@@ -46,7 +46,7 @@ Only the optional `nested` style needs additional coverage for deeper names:
 pre-issue Advanced/Custom edge coverage or reuse existing Total TLS coverage.
 Enabling Total TLS alone needs DNS first and cannot pass the first-publication
 guard. See the platform's
-[Cloudflare guide](https://github.com/chefzaid/bm-cluster/blob/main/docs/networking.md#cloudflare).
+[Cloudflare guide](https://github.com/chefzaid/swirl-cloud/blob/main/docs/dns.md#cloudflare).
 
 Review conflicting A/AAAA/CNAME records for the exact hostname and preserve
 unrelated MX/TXT records. Changing the app hostname does not automatically delete

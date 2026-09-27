@@ -11,7 +11,7 @@ REGISTRY_DEPLOY_TOKEN_NAME="${REGISTRY_DEPLOY_TOKEN_NAME:-$APP_NAME-cluster-pull
 INFRA_NAMESPACE="${INFRA_NAMESPACE:-infra}"
 APP_NAMESPACE="${APP_NAMESPACE:-apps}"
 VAULT_POD="${VAULT_POD:-vault-0}"
-VAULT_TOKEN_FILE="${VAULT_BOOTSTRAP_TOKEN_FILE:-/var/lib/bm-cluster/vault-bootstrap-token}"
+VAULT_TOKEN_FILE="${VAULT_BOOTSTRAP_TOKEN_FILE:-/var/lib/swirl-cloud/vault-bootstrap-token}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
@@ -79,9 +79,9 @@ api_json PUT "projects/$project_id" --header 'Content-Type: application/json' \
   --data-binary "@$work_dir/update-project.json" >/dev/null
 
 api_json GET "projects/$project_id/runners?type=instance_type&per_page=100" > "$work_dir/runners.json"
-jq -e '.[] | select(.description == "bm-cluster-kubernetes")' \
+jq -e '.[] | select(.description == "swirl-cloud-kubernetes")' \
   "$work_dir/runners.json" >/dev/null || \
-  fail "The bm-cluster instance runner is not enabled for $GITLAB_PROJECT_PATH"
+  fail "The swirl-cloud instance runner is not enabled for $GITLAB_PROJECT_PATH"
 
 vault_token="$(sudo cat "$VAULT_TOKEN_FILE")"
 registry_username="$({ printf '%s\n' "$vault_token"; } | \
@@ -131,4 +131,4 @@ unset registry_password
 git -C "$REPOSITORY_ROOT" show HEAD:.gitlab-ci.yml >/dev/null
 GITLAB_URL="$GITLAB_URL" "$SCRIPT_DIR/configure-code-quality.sh"
 GITLAB_URL="$GITLAB_URL" "$SCRIPT_DIR/configure-repository-sync.sh"
-info "$APP_NAME shared GitLab, registry and repository settings are configured. Use bm-cluster/add-repos.sh for environment provisioning and select the deployment target in GitLab CI."
+info "$APP_NAME shared GitLab, registry and repository settings are configured. Use swirl-cloud/add-repos.sh for environment provisioning and select the deployment target in GitLab CI."

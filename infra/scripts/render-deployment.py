@@ -257,7 +257,7 @@ def render(root, inventory, environment, release, revision, repository_url=None,
                                         "devapp.delivery/source": release["sourceRevision"],
                                         "devapp.delivery/kind": release.get("kind", "release")},
                         "labels": {"app.kubernetes.io/name": "devapp", "app.kubernetes.io/part-of": "devapp",
-                                   "bm-cluster/environment": environment}},
+                                   "swirl-cloud/environment": environment}},
            "spec": {"project": f"applications-{environment}", "source": {"repoURL": repository_url,
                     "targetRevision": revision, "path": str(relative)}, "destination": metadata["destination"],
                     "syncPolicy": template["spec"]["syncPolicy"]}}

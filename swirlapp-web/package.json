@@ -1,6 +1,6 @@
 {
   "name": "swirlapp-web",
-  "version": "1.12.15",
+  "version": "1.13.0",
   "description": "Swirl Demo App Web",
   "scripts": {
     "ng": "ng",

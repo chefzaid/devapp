@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swirl-demo-app-prod
+  namespace: infra
+  annotations:
+    swirl-demo-app.delivery/pipeline: '590'
+    swirl-demo-app.delivery/source: 5ff3d06a52fbb858d6c55a050bf4a26ecbd82095
+    swirl-demo-app.delivery/kind: release
+  labels:
+    app.kubernetes.io/name: swirl-demo-app
+    app.kubernetes.io/part-of: swirl-demo-app
+    swirl-cloud/environment: prod
+spec:
+  project: applications-prod
+  source:
+    repoURL: http://gitlab.swirlit.internal/swirlit/swirl-demo-app.git
+    targetRevision: 4eff50ce123c4cf1235914ca10a8f2758646935b
+    path: infra/environments/prod
+  destination:
+    name: in-cluster
+    namespace: apps-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+    syncOptions:
+    - PruneLast=true
+    - FailOnSharedResource=true

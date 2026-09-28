@@ -13,7 +13,7 @@
 
     <groupId>dev.swirlit.demo</groupId>
     <artifactId>swirlapp-parent</artifactId>
-    <version>1.10.5</version>
+    <version>1.11.0</version>
     <packaging>pom</packaging>
     <name>swirlapp-parent</name>
     <description>Swirl Demo App Java 25 microservices demo</description>

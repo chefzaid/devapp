@@ -29,11 +29,11 @@
   ],
   "replacements": [
     {
-      "from": "registry.swirlit.dev/swirlit/demo",
+      "from": "registry.swirlit.dev/swirlit/swirl-demo-app",
       "to": "{{REGISTRY_HOST}}/{{GITLAB_PROJECT_PATH}}"
     },
     {
-      "from": "https://gitlab.swirlit.dev/swirlit/demo",
+      "from": "https://gitlab.swirlit.dev/swirlit/swirl-demo-app",
       "to": "{{GITLAB_PUBLIC_URL}}/{{GITLAB_PROJECT_PATH}}"
     },
     {

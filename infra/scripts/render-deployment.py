@@ -271,7 +271,7 @@ def render(root, inventory, environment, release, revision, repository_url=None,
                 "traefik.ingress.kubernetes.io/router.middlewares": f"{namespace}-swirl-demo-app-health@kubernetescrd"}},
         "spec": {"ingressClassName": "traefik", "tls": [tls],
             "rules": [{"host": host, "http": {"paths": [{"path": "/health/" + name, "pathType": "Exact",
-                "backend": {"service": {"name": name + "-app", "port": {"number": port}}}}
+                "backend": {"service": {"name": "swirlapp-" + name, "port": {"number": port}}}}
                 for name, port in (("user", 8080), ("order", 8081))]}}]}}
     health_middleware = {"apiVersion": "traefik.io/v1alpha1", "kind": "Middleware",
                          "metadata": {"name": "swirl-demo-app-health", "namespace": namespace},

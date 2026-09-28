@@ -310,6 +310,8 @@ variables:
       when: never
     - if: '$NEW_MAJOR_VERSION != ""'
       when: never
+    - if: '$DEPLOYMENT_ENVIRONMENT == "prod"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "api" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $APP_ONBOARDING == "true"'
     - if: '$DEPLOYMENT_ENVIRONMENT == "int"'
       when: never
@@ -351,14 +353,10 @@ variables:
     paths:
       - package-output/
       - release.env
-  manual_confirmation: "Deploy this branch build to integration?"
   rules:
     - if: '$RELEASE_VERSION != "" || $SONAR_SCAN_ONLY == "true" || $APP_ONBOARDING == "true" || $DEPLOYMENT_ENVIRONMENT != "int" || $NEW_MAJOR_VERSION != ""'
       when: never
-    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH && $PIPELINE_MODE == "full"'
     - if: '$CI_COMMIT_BRANCH'
-      when: manual
-      allow_failure: false
 
 02-deploy:
   stage: release
@@ -407,9 +405,38 @@ variables:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOYMENT_ENVIRONMENT == "uat"'
       variables:
         DEPLOYMENT_TIER: staging
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOYMENT_ENVIRONMENT == "prod"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOYMENT_ENVIRONMENT == "prod"'
       variables:
         DEPLOYMENT_TIER: production
+
+# Default-branch commits offer one manual publication; the release then deploys
+# to uat automatically. prod promotes that uat release from a web pipeline.
+01-publish:
+  extends: 01-release
+  manual_confirmation: "Publish $CI_COMMIT_SHORT_SHA as a release and deploy it to uat?"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "push" || $RELEASE_VERSION != "" || $SONAR_SCAN_ONLY == "true" || $NEW_MAJOR_VERSION != ""'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: true
+
+02-deploy-uat:
+  extends: 02-deploy
+  tags: [swirl-cloud-application-uat]
+  needs:
+    - job: 00-delivery-policy
+      artifacts: false
+    - job: 01-publish
+      artifacts: true
+  resource_group: swirl-demo-app-uat
+  variables:
+    DEPLOYMENT_ENVIRONMENT: uat
+    DEPLOYMENT_TIER: staging
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "push" || $RELEASE_VERSION != "" || $SONAR_SCAN_ONLY == "true" || $NEW_MAJOR_VERSION != ""'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
 set-major-version:
   stage: version

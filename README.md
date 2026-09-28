@@ -16,11 +16,10 @@ settings and each target's configuration. Java and Angular images run unchanged
 across environments, with runtime configuration and scoped credentials supplied
 by Kubernetes and Vault.
 
-In the one GitLab project, open **New pipeline** and choose `PIPELINE_MODE=full`.
-Select any branch and `DEPLOYMENT_ENVIRONMENT=int` to deploy a snapshot. `uat`
-and `prod` require a release: publish from the default branch, or set
-`RELEASE_VERSION` to promote an existing release without rebuilding. Central
-Argo CD deploys only the selected environment's namespace. All three environments
+Every commit builds and deploys a snapshot to `int`. Publishing a release from a
+default-branch commit pipeline deploys it to `uat`. `prod` is a manual pipeline that
+promotes the release running on `uat`, without rebuilding. Central Argo CD deploys
+only the selected environment's namespace. All three environments
 can share the platform cluster; remote clusters are optional. See the
 [delivery flow](docs/deployment.md#delivery-flow) for prerequisites and verification.
 

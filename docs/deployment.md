@@ -157,13 +157,20 @@ onboarding run can verify and resume its own work.
 
 ## Delivery Flow
 
-Open **Build → Pipelines → New pipeline**, then choose `PIPELINE_MODE=full`:
-
-| Target | Branch / version selection | Result |
+| Environment | Trigger | Result |
 |---|---|---|
-| `int` | Any branch; leave `RELEASE_VERSION` empty. | Build and deploy an immutable snapshot. |
-| `int`, `uat` or `prod` | Default branch; set `RELEASE_VERSION`, such as `1.2.3`. | Deploy that finalized release without rebuilding. |
-| `uat` or `prod` | Default branch; leave `RELEASE_VERSION` empty. | Publish a stable release, then deploy it after GitLab finalizes it. |
+| `int` | Every commit, on any branch. | Build, publish and deploy an immutable snapshot automatically. |
+| `uat` | **Publish** (`01-publish`) on a default-branch commit pipeline. | Publish a stable release, then `02-deploy-uat` deploys it automatically. |
+| `prod` | Manual **New pipeline** on the default branch with `DEPLOYMENT_ENVIRONMENT=prod`. | Promote the release running on `uat`; nothing is built. |
+
+`prod` never publishes and never deploys a release directly. It reads the latest
+`uat` deployment record on the default branch and requires the live `uat`
+Application to be `Synced`/`Healthy` on that exact runtime revision. Leave
+`RELEASE_VERSION` empty to promote it; any other version is refused.
+
+A manual pipeline with `PIPELINE_MODE=full` can also redeploy a branch snapshot to
+`int`, redeploy an existing release to `int` or `uat` with `RELEASE_VERSION`, or
+publish and deploy a release to `uat` from the default branch.
 
 All branch snapshots share the `int` environment and hostname; a newer deployment
 replaces the previous integration deployment. This does not create a hostname per
@@ -175,11 +182,13 @@ Release promotion skips build, test, scan, publication and version-change jobs.
 Deployment verifies the annotated release tag, GitLab release and image digests.
 Snapshots and unfinished releases are rejected for `uat` and `prod`.
 
-Ordinary pipelines build automatically and leave publication manual. Optional E2E,
-quality and security reports do not gate release. Compilation/package artifacts
-are produced by `01-build`; `01-release` builds and publishes the containers once.
-`01-snapshot` publishes integration containers. `02-deploy` depends on the
-appropriate successful publication unless promoting an existing release.
+Commit pipelines build, test and deploy `int` automatically and leave publication
+manual. Optional E2E, quality and security reports do not gate release.
+Compilation/package artifacts are produced by `01-build`; `01-release` (manual and
+onboarding pipelines) or `01-publish` (commit pipelines) builds and publishes the
+containers once. `01-snapshot` publishes integration containers. `02-deploy` and
+`02-deploy-uat` depend on the appropriate successful publication unless promoting
+an existing release.
 
 Publication and major-version changes share a project-wide lock. Deployments use
 one lock per environment and normal Git pushes; a concurrent change to the shared

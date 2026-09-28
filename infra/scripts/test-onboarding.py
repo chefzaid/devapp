@@ -240,17 +240,42 @@ class ReleaseTests(unittest.TestCase):
         for environment in ("uat", "prod"):
             selected = {**variables, "DEPLOYMENT_ENVIRONMENT": environment}
             self.assertEqual(job_rule("01-snapshot", selected), "never")
-            self.assertEqual(job_rule("01-release", selected), "absent")
+            self.assertEqual(job_rule("01-release", selected), "never" if environment == "prod" else "absent")
             self.assertEqual(job_rule("02-deploy", selected), "absent")
             selected["CI_COMMIT_BRANCH"] = "trunk"
-            self.assertEqual(job_rule("01-release", selected), "on_success")
+            # uat publishes and deploys a release; prod only promotes the release running on uat.
+            self.assertEqual(job_rule("01-release", selected), "never" if environment == "prod" else "on_success")
             self.assertEqual(job_rule("02-deploy", selected), "on_success")
+            self.assertEqual(job_rule("02-deploy", {**selected, "CI_PIPELINE_SOURCE": "api"}),
+                             "absent" if environment == "prod" else "on_success")
         self.assertEqual(job_rule("01-snapshot", {**variables, "RELEASE_VERSION": "1.2.3"}), "never")
         self.assertEqual(job_rule("set-major-version", {**variables, "CI_COMMIT_BRANCH": "trunk"}), "never")
         major = {**variables, "CI_COMMIT_BRANCH": "trunk", "NEW_MAJOR_VERSION": "2", "PIPELINE_MODE": "standard"}
         self.assertEqual(job_rule("set-major-version", major), "manual")
         for job in ("01-snapshot", "01-release", "02-deploy"):
             self.assertEqual(job_rule(job, major), "never")
+
+    def test_commits_deploy_int_and_default_branch_releases_deploy_uat(self):
+        push = {"CI_PIPELINE_SOURCE": "push", "CI_COMMIT_BRANCH": "feature/x", "CI_DEFAULT_BRANCH": "trunk",
+                "PIPELINE_MODE": "standard", "DEPLOYMENT_ENVIRONMENT": "int", "APP_ONBOARDING": "false",
+                "SONAR_SCAN_ONLY": "false"}
+        for branch in ("feature/x", "trunk"):
+            commit = {**push, "CI_COMMIT_BRANCH": branch}
+            self.assertEqual(job_rule("01-snapshot", commit), "on_success")
+            self.assertEqual(job_rule("02-deploy", commit), "on_success")
+            self.assertEqual(job_rule("01-release", commit), "never")
+        self.assertEqual(job_rule("01-publish", push), "absent")
+        self.assertEqual(job_rule("02-deploy-uat", push), "absent")
+        trunk = {**push, "CI_COMMIT_BRANCH": "trunk"}
+        self.assertEqual(job_rule("01-publish", trunk), "manual")
+        self.assertEqual(job_rule("02-deploy-uat", trunk), "on_success")
+        for source in ("web", "api"):
+            self.assertEqual(job_rule("01-publish", {**trunk, "CI_PIPELINE_SOURCE": source}), "never")
+            self.assertEqual(job_rule("02-deploy-uat", {**trunk, "CI_PIPELINE_SOURCE": source}), "never")
+        pipeline = yaml.safe_load((ROOT / ".gitlab-ci.yml").read_text())
+        self.assertEqual(pipeline["02-deploy-uat"]["variables"]["DEPLOYMENT_ENVIRONMENT"], "uat")
+        self.assertEqual(pipeline["02-deploy-uat"]["tags"], ["swirl-cloud-application-uat"])
+        self.assertEqual([item["job"] for item in pipeline["02-deploy-uat"]["needs"]], ["00-delivery-policy", "01-publish"])
 
     def test_revision_guard_rejects_stale_source_before_publication_and_accepts_release_descendant(self):
         with tempfile.TemporaryDirectory(prefix=APP + "-onboarding-git-") as directory:

@@ -286,6 +286,25 @@ verify_application_owner() {
     fail 'The existing Application belongs to another target or repository; review its ownership.'
 }
 
+uat_release() {
+  # prod never deploys directly: it promotes the release uat is verified to run.
+  local pin version runtime application
+  git fetch --quiet --no-tags origin "refs/heads/$CI_DEFAULT_BRANCH:refs/remotes/origin/$CI_DEFAULT_BRANCH"
+  pin="$(git log -1 --format=%H --grep='^deploy: pin uat to ' "refs/remotes/origin/$CI_DEFAULT_BRANCH")"
+  [[ -n "$pin" && "$(trailer "$pin" Deployment-Environment)" == uat ]] ||
+    fail 'prod promotes only the release deployed to uat; deploy a release to uat first.'
+  version="$(trailer "$pin" Deployment-Release)"
+  runtime="$(trailer "$pin" Deployment-Runtime)"
+  [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ && "$runtime" =~ ^[0-9a-f]{40}$ ]] ||
+    fail 'The uat deployment record is incomplete.'
+  application="$(timeout 60 kubectl get application swirl-demo-app-uat -n infra -o json)" ||
+    fail 'Cannot verify the uat deployment.'
+  jq -e --arg runtime "$runtime" '.spec.source.targetRevision == $runtime and .status.sync.revision == $runtime and
+    .status.sync.status == "Synced" and .status.health.status == "Healthy"' <<<"$application" >/dev/null ||
+    fail "uat is not Synced/Healthy on release $version; prod promotes only a verified uat release."
+  printf '%s\n' "$version"
+}
+
 deploy_release() {
   local selected_version="${RELEASE_VERSION:-}" original_revision tip application_name repository_url pointer_file
   local delivery_branch snapshot=false snapshot_branch snapshot_manifest SNAPSHOT_PUBLICATION
@@ -293,6 +312,14 @@ deploy_release() {
   [[ "${SONAR_SCAN_ONLY:-false}" != true && -n "${CI_DEFAULT_BRANCH:-}" && -n "${CI_COMMIT_BRANCH:-}" ]] ||
     fail 'Deployment requires a branch delivery pipeline.'
   [[ "${CI_PIPELINE_ID:-}" =~ ^[0-9]+$ && "${CI_COMMIT_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || fail 'Missing pipeline identity.'
+  if [[ "$DEPLOYMENT_ENVIRONMENT" == prod ]]; then
+    [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]] || fail 'Release deployment requires the default branch.'
+    local uat_version
+    uat_version="$(uat_release)" || exit 1
+    [[ -z "$selected_version" || "$selected_version" == "$uat_version" ]] ||
+      fail "prod promotes only the release running on uat ($uat_version), not $selected_version."
+    selected_version="$uat_version"
+  fi
   if [[ -f release.env && -z "$selected_version" ]]; then
     # shellcheck disable=SC1091
     source release.env
@@ -413,11 +440,14 @@ validate_delivery_request() {
       fail 'RELEASE_VERSION must select a finalized major.minor.patch release; snapshots deploy only from a branch to int.'
     [[ -n "${CI_DEFAULT_BRANCH:-}" && "${CI_COMMIT_BRANCH:-}" == "$CI_DEFAULT_BRANCH" ]] ||
       fail 'Select the default branch to promote a finalized release.'
+  elif [[ "${DEPLOYMENT_ENVIRONMENT:-int}" == prod ]]; then
+    [[ -n "${CI_DEFAULT_BRANCH:-}" && "${CI_COMMIT_BRANCH:-}" == "$CI_DEFAULT_BRANCH" ]] ||
+      fail 'prod promotes the release running on uat; select the default branch.'
   elif [[ "${DEPLOYMENT_ENVIRONMENT:-int}" != int ]]; then
     [[ -n "${CI_DEFAULT_BRANCH:-}" && "${CI_COMMIT_BRANCH:-}" == "$CI_DEFAULT_BRANCH" ]] ||
-      fail 'uat and prod require a finalized release; select the default branch to publish or promote one. Branch snapshots deploy to int.'
+      fail 'uat requires a finalized release; select the default branch to publish or promote one. Branch snapshots deploy to int.'
     [[ "$(cat VERSION)" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] ||
-      fail 'uat and prod cannot publish a SNAPSHOT baseline; select a finalized RELEASE_VERSION.'
+      fail 'uat cannot publish a SNAPSHOT baseline; select a finalized RELEASE_VERSION.'
   fi
 }
 

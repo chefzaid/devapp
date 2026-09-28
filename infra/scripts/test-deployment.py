@@ -388,6 +388,34 @@ state_path =''', 1)
         image_sets = [app["status"]["summary"]["images"] for app in previous.values()]
         self.assertTrue(all(images == image_sets[0] for images in image_sets))
 
+    def test_prod_only_promotes_the_verified_uat_release(self):
+        fixture = self.fixture
+        def web(environment, index, **changes):
+            return self.deploy(DEPLOYMENT_ENVIRONMENT=environment, APP_ONBOARDING="false", CI_PIPELINE_SOURCE="web",
+                               CI_PIPELINE_ID=str(120 + index), **changes,
+                               CI_COMMIT_SHA=fixture.git("rev-parse", "origin/trunk").stdout.strip())
+        refused = web("prod", 0, RELEASE_VERSION="1.0.1")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("deploy a release to uat first", refused.stderr)
+        self.assertEqual(web("uat", 1, RELEASE_VERSION="1.0.1").returncode, 0)
+        mismatch = web("prod", 2, RELEASE_VERSION="1.0.2")
+        self.assertNotEqual(mismatch.returncode, 0)
+        self.assertIn("running on uat (1.0.1)", mismatch.stderr)
+        state = self.state()
+        state["applications"]["swirl-demo-app-uat"]["status"]["health"]["status"] = "Degraded"
+        self.state(applications=state["applications"])
+        unhealthy = web("prod", 3)
+        self.assertNotEqual(unhealthy.returncode, 0)
+        self.assertIn("uat is not Synced/Healthy", unhealthy.stderr)
+        self.assertNotIn("swirl-demo-app-prod", self.state().get("applied", []))
+        state["applications"]["swirl-demo-app-uat"]["status"]["health"]["status"] = "Healthy"
+        self.state(applications=state["applications"])
+        promoted = web("prod", 4)
+        self.assertEqual(promoted.returncode, 0, promoted.stderr + promoted.stdout)
+        self.assertIn("swirl-demo-app-prod", self.state()["applied"])
+        tip = fixture.git("rev-parse", "origin/trunk").stdout.strip()
+        self.assertEqual(fixture.git("show", "-s", "--format=%s", tip).stdout.strip(), "deploy: pin prod to 1.0.1 [skip ci]")
+
     def test_retry_keeps_the_same_git_pointer_and_does_not_rebuild(self):
         result = self.deploy()
         self.assertEqual(result.returncode, 0, result.stderr)

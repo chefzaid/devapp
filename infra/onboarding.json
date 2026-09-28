@@ -6,7 +6,7 @@
       "name": "APP_SUBDOMAIN",
       "label": "Public subdomain (@ for the zone apex)",
       "type": "subdomain",
-      "default": "swirl-demo-app"
+      "default": "demo"
     }
   ],
   "files": [

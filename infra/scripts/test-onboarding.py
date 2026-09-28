@@ -223,7 +223,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertFalse(needs["00-delivery-policy"].get("optional", False))
         self.assertEqual(pipeline["default"]["tags"], ["swirl-cloud-application-int"])
         self.assertEqual(pipeline["01-release"]["tags"], ["swirl-cloud-application-release"])
-        self.assertEqual(pipeline["02-deploy"]["tags"], ["$DEPLOYMENT_RUNNER_TAG"])
+        self.assertEqual(pipeline["02-deploy"]["tags"], ["swirl-cloud-application-$DEPLOYMENT_ENVIRONMENT"])
         for name in ("01-build", "02-test", "01-e2e", "02-quality", "03-security", "01-release", "set-major-version"):
             self.assertEqual(pipeline[name]["rules"][0], {"if": '$RELEASE_VERSION != ""', "when": "never"})
 

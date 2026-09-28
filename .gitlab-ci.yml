@@ -362,7 +362,7 @@ variables:
 
 02-deploy:
   stage: release
-  tags: [$DEPLOYMENT_RUNNER_TAG]
+  tags: ["swirl-cloud-application-$DEPLOYMENT_ENVIRONMENT"]
   needs:
     - job: 00-delivery-policy
       artifacts: false
@@ -404,15 +404,12 @@ variables:
     - if: '$CI_COMMIT_BRANCH && $DEPLOYMENT_ENVIRONMENT == "int"'
       variables:
         DEPLOYMENT_TIER: testing
-        DEPLOYMENT_RUNNER_TAG: swirl-cloud-application-int
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOYMENT_ENVIRONMENT == "uat"'
       variables:
         DEPLOYMENT_TIER: staging
-        DEPLOYMENT_RUNNER_TAG: swirl-cloud-application-release
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOYMENT_ENVIRONMENT == "prod"'
       variables:
         DEPLOYMENT_TIER: production
-        DEPLOYMENT_RUNNER_TAG: swirl-cloud-application-release
 
 set-major-version:
   stage: version

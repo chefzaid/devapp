@@ -4,7 +4,7 @@ metadata:
   name: swirl-demo-app-prod
   namespace: infra
   annotations:
-    swirl-demo-app.delivery/pipeline: '590'
+    swirl-demo-app.delivery/pipeline: '599'
     swirl-demo-app.delivery/source: 5ff3d06a52fbb858d6c55a050bf4a26ecbd82095
     swirl-demo-app.delivery/kind: release
   labels:
@@ -15,7 +15,7 @@ spec:
   project: applications-prod
   source:
     repoURL: http://gitlab.swirlit.internal/swirlit/swirl-demo-app.git
-    targetRevision: 4eff50ce123c4cf1235914ca10a8f2758646935b
+    targetRevision: 5c6cc8c770c9ef12ab051b324db2f9a56952be22
     path: infra/environments/prod
   destination:
     name: in-cluster

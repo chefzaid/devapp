@@ -1,0 +1,257 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: apps-prod
+resources:
+- ../../k8s
+- health-ingress.yaml
+configMapGenerator:
+- name: swirl-demo-app-backend-config
+  behavior: replace
+  envs:
+  - backend-runtime.properties
+  options:
+    annotations:
+      argocd.argoproj.io/sync-wave: '-2'
+- name: swirlapp-web-config
+  behavior: replace
+  files:
+  - runtime-config.json=web-runtime-config.json
+images:
+- name: registry.swirlit.dev/swirlit/swirl-demo-app/swirlapp-user
+  digest: sha256:5020122e6fd9dfcc14a0a4b7c52cc2e4f85b80824b948db71f0255c7a6843955
+- name: registry.swirlit.dev/swirlit/swirl-demo-app/swirlapp-order
+  digest: sha256:4e47b4f107cff1f01ffc6a49b07cd25c047f6a39a5615578690b99994ee03487
+- name: registry.swirlit.dev/swirlit/swirl-demo-app/swirlapp-web
+  digest: sha256:729ce605de13745bcd769e8da085b0f73fbd5650f2be2a3a8cf93a07ad7a3b72
+patches:
+- target:
+    kind: Ingress
+    name: swirl-demo-app-ingress
+  patch: "- op: replace\n  path: /spec/rules/0/host\n  value: demo.swirlit.dev\n-\
+    \ op: replace\n  path: /spec/tls/0/hosts\n  value:\n  - demo.swirlit.dev\n- op:\
+    \ remove\n  path: /spec/tls/0/secretName\n- op: replace\n  path: /metadata/annotations/gethomepage.dev~1href\n\
+    \  value: https://demo.swirlit.dev\n- op: replace\n  path: /metadata/annotations/gethomepage.dev~1name\n\
+    \  value: Swirl Demo App (prod)\n- op: replace\n  path: /metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares\n\
+    \  value: apps-prod-swirl-demo-app-upload-limit@kubernetescrd\n"
+- target:
+    kind: Service
+    name: swirlapp-user
+  patch: "- op: replace\n  path: /metadata/annotations/traefik.ingress.kubernetes.io~1service.serverstransport\n\
+    \  value: apps-prod-swirl-demo-app-backend@kubernetescrd\n"
+- target:
+    kind: Service
+    name: swirlapp-order
+  patch: "- op: replace\n  path: /metadata/annotations/traefik.ingress.kubernetes.io~1service.serverstransport\n\
+    \  value: apps-prod-swirl-demo-app-backend@kubernetescrd\n"
+- target:
+    kind: Service
+    name: swirlapp-web
+  patch: "- op: replace\n  path: /metadata/annotations/traefik.ingress.kubernetes.io~1service.serverstransport\n\
+    \  value: apps-prod-swirl-demo-app-backend@kubernetescrd\n"
+- target:
+    kind: ExternalSecret
+  patch: "- op: replace\n  path: /spec/secretStoreRef/name\n  value: vault-backend-prod\n"
+- target:
+    kind: ConfigMap
+    name: swirl-demo-app-grafana-dashboard
+  patch: "- op: replace\n  path: /data\n  value:\n    swirl-demo-app-prod-overview.json:\
+    \ \"{\\n  \\\"uid\\\": \\\"swirl-demo-app-prod-overview\\\"\\\n      ,\\n  \\\"\
+    title\\\": \\\"Swirl Demo App PROD Overview\\\",\\n  \\\"tags\\\": [\\n    \\\"\
+    swirl-demo-app\\\"\\\n      ,\\n    \\\"spring-boot\\\",\\n    \\\"provisioned\\\
+    \"\\n  ],\\n  \\\"timezone\\\": \\\"browser\\\"\\\n      ,\\n  \\\"schemaVersion\\\
+    \": 41,\\n  \\\"version\\\": 1,\\n  \\\"refresh\\\": \\\"30s\\\",\\n  \\\"\\\n\
+    \      time\\\": {\\n    \\\"from\\\": \\\"now-6h\\\",\\n    \\\"to\\\": \\\"\
+    now\\\"\\n  },\\n  \\\"templating\\\"\\\n      : {\\n    \\\"list\\\": [\\n  \
+    \    {\\n        \\\"name\\\": \\\"application\\\",\\n        \\\"\\\n      label\\\
+    \": \\\"Application\\\",\\n        \\\"type\\\": \\\"query\\\",\\n        \\\"\
+    datasource\\\"\\\n      : {\\n          \\\"type\\\": \\\"prometheus\\\",\\n \
+    \         \\\"uid\\\": \\\"prometheus\\\"\\n\\\n      \\        },\\n        \\\
+    \"query\\\": {\\n          \\\"query\\\": \\\"label_values(up{job=\\\\\\\n   \
+    \   \\\"kubernetes-pods\\\\\\\",namespace=\\\\\\\"apps-prod\\\\\\\"}, app)\\\"\
+    ,\\n          \\\"refId\\\"\\\n      : \\\"PrometheusVariableQueryEditor-VariableQuery\\\
+    \"\\n        },\\n        \\\"includeAll\\\"\\\n      : true,\\n        \\\"allValue\\\
+    \": \\\".*\\\",\\n        \\\"multi\\\": true,\\n        \\\"\\\n      refresh\\\
+    \": 1,\\n        \\\"current\\\": {\\n          \\\"text\\\": \\\"All\\\",\\n\
+    \      \\\n      \\    \\\"value\\\": [\\n            \\\"$__all\\\"\\n      \
+    \    ]\\n        }\\n      }\\n\\\n      \\    ]\\n  },\\n  \\\"panels\\\": [\\\
+    n    {\\n      \\\"id\\\": 1,\\n      \\\"type\\\": \\\"stat\\\"\\\n      ,\\\
+    n      \\\"title\\\": \\\"Application Targets Up\\\",\\n      \\\"gridPos\\\"\
+    : {\\n    \\\n      \\    \\\"x\\\": 0,\\n        \\\"y\\\": 0,\\n        \\\"\
+    w\\\": 6,\\n        \\\"h\\\": 4\\n   \\\n      \\   },\\n      \\\"datasource\\\
+    \": {\\n        \\\"type\\\": \\\"prometheus\\\",\\n       \\\n      \\ \\\"uid\\\
+    \": \\\"prometheus\\\"\\n      },\\n      \\\"targets\\\": [\\n        {\\n  \
+    \   \\\n      \\     \\\"refId\\\": \\\"A\\\",\\n          \\\"expr\\\": \\\"\
+    sum(up{job=\\\\\\\"kubernetes-pods\\\\\\\n      \\\",namespace=\\\\\\\"apps-prod\\\
+    \\\\\",app=~\\\\\\\"$application\\\\\\\"})\\\",\\n          \\\"\\\n      instant\\\
+    \": true\\n        }\\n      ],\\n      \\\"fieldConfig\\\": {\\n        \\\"\
+    defaults\\\"\\\n      : {\\n          \\\"unit\\\": \\\"short\\\",\\n        \
+    \  \\\"thresholds\\\": {\\n         \\\n      \\   \\\"mode\\\": \\\"absolute\\\
+    \",\\n            \\\"steps\\\": [\\n              {\\n   \\\n      \\       \
+    \      \\\"color\\\": \\\"red\\\"\\n              },\\n              {\\n    \
+    \  \\\n      \\          \\\"color\\\": \\\"green\\\",\\n                \\\"\
+    value\\\": 1\\n           \\\n      \\   }\\n            ]\\n          }\\n  \
+    \      },\\n        \\\"overrides\\\": []\\n \\\n      \\     },\\n      \\\"\
+    options\\\": {\\n        \\\"reduceOptions\\\": {\\n          \\\"calcs\\\"\\\n\
+    \      : [\\n            \\\"lastNotNull\\\"\\n          ],\\n          \\\"values\\\
+    \": false\\n\\\n      \\        },\\n        \\\"colorMode\\\": \\\"value\\\"\
+    ,\\n        \\\"graphMode\\\": \\\"none\\\"\\\n      \\n      }\\n    },\\n  \
+    \  {\\n      \\\"id\\\": 2,\\n      \\\"type\\\": \\\"stat\\\",\\n    \\\n   \
+    \   \\  \\\"title\\\": \\\"Request Rate\\\",\\n      \\\"gridPos\\\": {\\n   \
+    \     \\\"x\\\": 6,\\n \\\n      \\       \\\"y\\\": 0,\\n        \\\"w\\\": 6,\\\
+    n        \\\"h\\\": 4\\n      },\\n      \\\"datasource\\\"\\\n      : {\\n  \
+    \      \\\"type\\\": \\\"prometheus\\\",\\n        \\\"uid\\\": \\\"prometheus\\\
+    \"\\n  \\\n      \\    },\\n      \\\"targets\\\": [\\n        {\\n          \\\
+    \"refId\\\": \\\"A\\\",\\n    \\\n      \\      \\\"expr\\\": \\\"sum(rate(http_server_requests_seconds_count{namespace=\\\
+    \\\\\"\\\n      apps-prod\\\\\\\",app=~\\\\\\\"$application\\\\\\\",uri!~\\\\\\\
+    \"/actuator.*\\\\\\\"}[5m]))\\\",\\n\\\n      \\          \\\"instant\\\": true\\\
+    n        }\\n      ],\\n      \\\"fieldConfig\\\": {\\n\\\n      \\        \\\"\
+    defaults\\\": {\\n          \\\"unit\\\": \\\"reqps\\\"\\n        },\\n      \\\
+    \n      \\  \\\"overrides\\\": []\\n      },\\n      \\\"options\\\": {\\n   \
+    \     \\\"reduceOptions\\\"\\\n      : {\\n          \\\"calcs\\\": [\\n     \
+    \       \\\"lastNotNull\\\"\\n          ],\\n   \\\n      \\       \\\"values\\\
+    \": false\\n        },\\n        \\\"colorMode\\\": \\\"value\\\",\\n \\\n   \
+    \   \\       \\\"graphMode\\\": \\\"area\\\"\\n      }\\n    },\\n    {\\n   \
+    \   \\\"id\\\": 3,\\n\\\n      \\      \\\"type\\\": \\\"stat\\\",\\n      \\\"\
+    title\\\": \\\"5xx Error Rate\\\",\\n      \\\"gridPos\\\"\\\n      : {\\n   \
+    \     \\\"x\\\": 12,\\n        \\\"y\\\": 0,\\n        \\\"w\\\": 6,\\n      \
+    \  \\\"h\\\"\\\n      : 4\\n      },\\n      \\\"datasource\\\": {\\n        \\\
+    \"type\\\": \\\"prometheus\\\",\\n\\\n      \\        \\\"uid\\\": \\\"prometheus\\\
+    \"\\n      },\\n      \\\"targets\\\": [\\n        {\\n\\\n      \\          \\\
+    \"refId\\\": \\\"A\\\",\\n          \\\"expr\\\": \\\"sum(rate(http_server_requests_seconds_count{namespace=\\\
+    \\\\\n      \\\"apps-prod\\\\\\\",app=~\\\\\\\"$application\\\\\\\",status=~\\\
+    \\\\\"5..\\\\\\\"}[5m]))\\\",\\n  \\\n      \\        \\\"instant\\\": true\\\
+    n        }\\n      ],\\n      \\\"fieldConfig\\\": {\\n\\\n      \\        \\\"\
+    defaults\\\": {\\n          \\\"unit\\\": \\\"reqps\\\",\\n          \\\"thresholds\\\
+    \"\\\n      : {\\n            \\\"mode\\\": \\\"absolute\\\",\\n            \\\
+    \"steps\\\": [\\n       \\\n      \\       {\\n                \\\"color\\\":\
+    \ \\\"green\\\"\\n              },\\n        \\\n      \\      {\\n          \
+    \      \\\"color\\\": \\\"red\\\",\\n                \\\"value\\\": 0.01\\n\\\n\
+    \      \\              }\\n            ]\\n          }\\n        },\\n       \
+    \ \\\"overrides\\\"\\\n      : []\\n      },\\n      \\\"options\\\": {\\n   \
+    \     \\\"reduceOptions\\\": {\\n       \\\n      \\   \\\"calcs\\\": [\\n   \
+    \         \\\"lastNotNull\\\"\\n          ],\\n          \\\"values\\\"\\\n  \
+    \    : false\\n        },\\n        \\\"colorMode\\\": \\\"value\\\",\\n     \
+    \   \\\"graphMode\\\"\\\n      : \\\"area\\\"\\n      }\\n    },\\n    {\\n  \
+    \    \\\"id\\\": 4,\\n      \\\"type\\\": \\\"stat\\\"\\\n      ,\\n      \\\"\
+    title\\\": \\\"Average Response Time\\\",\\n      \\\"gridPos\\\": {\\n     \\\
+    \n      \\   \\\"x\\\": 18,\\n        \\\"y\\\": 0,\\n        \\\"w\\\": 6,\\\
+    n        \\\"h\\\": 4\\n   \\\n      \\   },\\n      \\\"datasource\\\": {\\n\
+    \        \\\"type\\\": \\\"prometheus\\\",\\n       \\\n      \\ \\\"uid\\\":\
+    \ \\\"prometheus\\\"\\n      },\\n      \\\"targets\\\": [\\n        {\\n    \
+    \ \\\n      \\     \\\"refId\\\": \\\"A\\\",\\n          \\\"expr\\\": \\\"sum(rate(http_server_requests_seconds_sum{namespace=\\\
+    \\\\\n      \\\"apps-prod\\\\\\\",app=~\\\\\\\"$application\\\\\\\",uri!~\\\\\\\
+    \"/actuator.*\\\\\\\"}[5m])) /\\\n      \\ clamp_min(sum(rate(http_server_requests_seconds_count{namespace=\\\
+    \\\\\"apps-prod\\\\\\\n      \\\",app=~\\\\\\\"$application\\\\\\\",uri!~\\\\\\\
+    \"/actuator.*\\\\\\\"}[5m])), 0.000001)\\\",\\n\\\n      \\          \\\"instant\\\
+    \": true\\n        }\\n      ],\\n      \\\"fieldConfig\\\": {\\n\\\n      \\\
+    \        \\\"defaults\\\": {\\n          \\\"unit\\\": \\\"s\\\"\\n        },\\\
+    n        \\\"\\\n      overrides\\\": []\\n      },\\n      \\\"options\\\": {\\\
+    n        \\\"reduceOptions\\\":\\\n      \\ {\\n          \\\"calcs\\\": [\\n\
+    \            \\\"lastNotNull\\\"\\n          ],\\n   \\\n      \\       \\\"values\\\
+    \": false\\n        },\\n        \\\"colorMode\\\": \\\"value\\\",\\n \\\n   \
+    \   \\       \\\"graphMode\\\": \\\"area\\\"\\n      }\\n    },\\n    {\\n   \
+    \   \\\"id\\\": 5,\\n\\\n      \\      \\\"type\\\": \\\"timeseries\\\",\\n  \
+    \    \\\"title\\\": \\\"HTTP Requests by Application\\\n      \\ and Status\\\"\
+    ,\\n      \\\"gridPos\\\": {\\n        \\\"x\\\": 0,\\n        \\\"y\\\": 4,\\\
+    n\\\n      \\        \\\"w\\\": 12,\\n        \\\"h\\\": 8\\n      },\\n     \
+    \ \\\"datasource\\\": {\\n \\\n      \\       \\\"type\\\": \\\"prometheus\\\"\
+    ,\\n        \\\"uid\\\": \\\"prometheus\\\"\\n      },\\n\\\n      \\      \\\"\
+    targets\\\": [\\n        {\\n          \\\"refId\\\": \\\"A\\\",\\n          \\\
+    \"\\\n      expr\\\": \\\"sum by (app, status) (rate(http_server_requests_seconds_count{namespace=\\\
+    \\\\\n      \\\"apps-prod\\\\\\\",app=~\\\\\\\"$application\\\\\\\",uri!~\\\\\\\
+    \"/actuator.*\\\\\\\"}[5m]))\\\"\\\n      ,\\n          \\\"legendFormat\\\":\
+    \ \\\"{{app}} HTTP {{status}}\\\"\\n        }\\n    \\\n      \\  ],\\n      \\\
+    \"fieldConfig\\\": {\\n        \\\"defaults\\\": {\\n          \\\"unit\\\"\\\n\
+    \      : \\\"reqps\\\"\\n        },\\n        \\\"overrides\\\": []\\n      },\\\
+    n      \\\"options\\\"\\\n      : {\\n        \\\"legend\\\": {\\n          \\\
+    \"displayMode\\\": \\\"table\\\",\\n        \\\n      \\  \\\"placement\\\": \\\
+    \"bottom\\\"\\n        }\\n      }\\n    },\\n    {\\n      \\\"id\\\"\\\n   \
+    \   : 6,\\n      \\\"type\\\": \\\"timeseries\\\",\\n      \\\"title\\\": \\\"\
+    JVM Heap Used\\\",\\n\\\n      \\      \\\"gridPos\\\": {\\n        \\\"x\\\"\
+    : 12,\\n        \\\"y\\\": 4,\\n        \\\"w\\\"\\\n      : 12,\\n        \\\"\
+    h\\\": 8\\n      },\\n      \\\"datasource\\\": {\\n        \\\"type\\\"\\\n \
+    \     : \\\"prometheus\\\",\\n        \\\"uid\\\": \\\"prometheus\\\"\\n     \
+    \ },\\n      \\\"targets\\\"\\\n      : [\\n        {\\n          \\\"refId\\\"\
+    : \\\"A\\\",\\n          \\\"expr\\\": \\\"sum by (app)\\\n      \\ (jvm_memory_used_bytes{namespace=\\\
+    \\\\\"apps-prod\\\\\\\",app=~\\\\\\\"$application\\\\\\\n      \\\",area=\\\\\\\
+    \"heap\\\\\\\"})\\\",\\n          \\\"legendFormat\\\": \\\"{{app}}\\\"\\n   \
+    \    \\\n      \\ }\\n      ],\\n      \\\"fieldConfig\\\": {\\n        \\\"defaults\\\
+    \": {\\n         \\\n      \\ \\\"unit\\\": \\\"bytes\\\"\\n        },\\n    \
+    \    \\\"overrides\\\": []\\n      },\\n   \\\n      \\   \\\"options\\\": {\\\
+    n        \\\"legend\\\": {\\n          \\\"displayMode\\\": \\\"table\\\"\\\n\
+    \      ,\\n          \\\"placement\\\": \\\"bottom\\\"\\n        }\\n      }\\\
+    n    },\\n    {\\n\\\n      \\      \\\"id\\\": 7,\\n      \\\"type\\\": \\\"\
+    timeseries\\\",\\n      \\\"title\\\": \\\"Application\\\n      \\ CPU\\\",\\\
+    n      \\\"gridPos\\\": {\\n        \\\"x\\\": 0,\\n        \\\"y\\\": 12,\\n\
+    \    \\\n      \\    \\\"w\\\": 8,\\n        \\\"h\\\": 8\\n      },\\n      \\\
+    \"datasource\\\": {\\n      \\\n      \\  \\\"type\\\": \\\"prometheus\\\",\\\
+    n        \\\"uid\\\": \\\"prometheus\\\"\\n      },\\n  \\\n      \\    \\\"targets\\\
+    \": [\\n        {\\n          \\\"refId\\\": \\\"A\\\",\\n          \\\"expr\\\
+    \"\\\n      : \\\"sum by (app) (process_cpu_usage{namespace=\\\\\\\"apps-prod\\\
+    \\\\\",app=~\\\\\\\"$application\\\\\\\n      \\\"}) * 100\\\",\\n          \\\
+    \"legendFormat\\\": \\\"{{app}}\\\"\\n        }\\n      ],\\n\\\n      \\    \
+    \  \\\"fieldConfig\\\": {\\n        \\\"defaults\\\": {\\n          \\\"unit\\\
+    \": \\\"percent\\\"\\\n      ,\\n          \\\"min\\\": 0,\\n          \\\"max\\\
+    \": 100\\n        },\\n        \\\"overrides\\\"\\\n      : []\\n      },\\n \
+    \     \\\"options\\\": {\\n        \\\"legend\\\": {\\n          \\\"displayMode\\\
+    \"\\\n      : \\\"table\\\",\\n          \\\"placement\\\": \\\"bottom\\\"\\n\
+    \        }\\n      }\\n    },\\n\\\n      \\    {\\n      \\\"id\\\": 8,\\n  \
+    \    \\\"type\\\": \\\"timeseries\\\",\\n      \\\"title\\\":\\\n      \\ \\\"\
+    Database Connections\\\",\\n      \\\"gridPos\\\": {\\n        \\\"x\\\": 8,\\\
+    n     \\\n      \\   \\\"y\\\": 12,\\n        \\\"w\\\": 8,\\n        \\\"h\\\"\
+    : 8\\n      },\\n      \\\"datasource\\\"\\\n      : {\\n        \\\"type\\\"\
+    : \\\"prometheus\\\",\\n        \\\"uid\\\": \\\"prometheus\\\"\\n  \\\n     \
+    \ \\    },\\n      \\\"targets\\\": [\\n        {\\n          \\\"refId\\\": \\\
+    \"A\\\",\\n    \\\n      \\      \\\"expr\\\": \\\"sum by (app) (hikaricp_connections_active{namespace=\\\
+    \\\\\"\\\n      apps-prod\\\\\\\",app=~\\\\\\\"$application\\\\\\\"})\\\",\\n\
+    \          \\\"legendFormat\\\": \\\"\\\n      {{app}} active\\\"\\n        },\\\
+    n        {\\n          \\\"refId\\\": \\\"B\\\",\\n     \\\n      \\     \\\"\
+    expr\\\": \\\"sum by (app) (hikaricp_connections_pending{namespace=\\\\\\\"\\\n\
+    \      apps-prod\\\\\\\",app=~\\\\\\\"$application\\\\\\\"})\\\",\\n         \
+    \ \\\"legendFormat\\\": \\\"\\\n      {{app}} pending\\\"\\n        }\\n     \
+    \ ],\\n      \\\"fieldConfig\\\": {\\n        \\\"\\\n      defaults\\\": {\\\
+    n          \\\"unit\\\": \\\"short\\\"\\n        },\\n        \\\"overrides\\\"\
+    \\\n      : []\\n      },\\n      \\\"options\\\": {\\n        \\\"legend\\\"\
+    : {\\n          \\\"displayMode\\\"\\\n      : \\\"table\\\",\\n          \\\"\
+    placement\\\": \\\"bottom\\\"\\n        }\\n      }\\n    },\\n\\\n      \\  \
+    \  {\\n      \\\"id\\\": 9,\\n      \\\"type\\\": \\\"timeseries\\\",\\n     \
+    \ \\\"title\\\":\\\n      \\ \\\"Pod Memory\\\",\\n      \\\"gridPos\\\": {\\\
+    n        \\\"x\\\": 16,\\n        \\\"y\\\":\\\n      \\ 12,\\n        \\\"w\\\
+    \": 8,\\n        \\\"h\\\": 8\\n      },\\n      \\\"datasource\\\":\\\n     \
+    \ \\ {\\n        \\\"type\\\": \\\"prometheus\\\",\\n        \\\"uid\\\": \\\"\
+    prometheus\\\"\\n  \\\n      \\    },\\n      \\\"targets\\\": [\\n        {\\\
+    n          \\\"refId\\\": \\\"A\\\",\\n    \\\n      \\      \\\"expr\\\": \\\"\
+    sum by (pod) (container_memory_working_set_bytes{namespace=\\\\\\\n      \\\"\
+    apps-prod\\\\\\\",container=~\\\\\\\"swirlapp-user|swirlapp-order|swirlapp-web\\\
+    \\\\\"\\\n      })\\\",\\n          \\\"legendFormat\\\": \\\"{{pod}}\\\"\\n \
+    \       }\\n      ],\\n      \\\"\\\n      fieldConfig\\\": {\\n        \\\"defaults\\\
+    \": {\\n          \\\"unit\\\": \\\"bytes\\\"\\n \\\n      \\       },\\n    \
+    \    \\\"overrides\\\": []\\n      },\\n      \\\"options\\\": {\\n    \\\n  \
+    \    \\    \\\"legend\\\": {\\n          \\\"displayMode\\\": \\\"table\\\",\\\
+    n          \\\"placement\\\"\\\n      : \\\"bottom\\\"\\n        }\\n      }\\\
+    n    },\\n    {\\n      \\\"id\\\": 10,\\n      \\\"\\\n      type\\\": \\\"table\\\
+    \",\\n      \\\"title\\\": \\\"Swirl Demo App Pod Restarts\\\",\\n    \\\n   \
+    \   \\  \\\"gridPos\\\": {\\n        \\\"x\\\": 0,\\n        \\\"y\\\": 20,\\\
+    n        \\\"w\\\": 24,\\n\\\n      \\        \\\"h\\\": 7\\n      },\\n     \
+    \ \\\"datasource\\\": {\\n        \\\"type\\\": \\\"prometheus\\\"\\\n      ,\\\
+    n        \\\"uid\\\": \\\"prometheus\\\"\\n      },\\n      \\\"targets\\\": [\\\
+    n       \\\n      \\ {\\n          \\\"refId\\\": \\\"A\\\",\\n          \\\"\
+    expr\\\": \\\"kube_pod_container_status_restarts_total{namespace=\\\\\\\n    \
+    \  \\\"apps-prod\\\\\\\"}\\\",\\n          \\\"legendFormat\\\": \\\"{{pod}} /\
+    \ {{container}}\\\"\\\n      ,\\n          \\\"instant\\\": true,\\n         \
+    \ \\\"format\\\": \\\"table\\\"\\n        }\\n\\\n      \\      ],\\n      \\\"\
+    options\\\": {\\n        \\\"showHeader\\\": true\\n      }\\n   \\\n      \\\
+    \ }\\n  ]\\n}\\n\"\n"
+- target:
+    kind: NetworkPolicy
+  patch: "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name:\
+    \ platform-owned\n$patch: delete\n"
+- target:
+    kind: ExternalSecret
+    name: swirl-demo-app-runtime-credentials
+  patch: "- op: replace\n  path: /spec/data/0/remoteRef/key\n  value: apps/swirl-demo-app/prod/database\n\
+    - op: replace\n  path: /spec/data/1/remoteRef/key\n  value: apps/swirl-demo-app/prod/database\n\
+    - op: replace\n  path: /spec/data/2/remoteRef/key\n  value: apps/swirl-demo-app/prod/redis\n\
+    - op: replace\n  path: /spec/data/3/remoteRef/key\n  value: apps/swirl-demo-app/prod/redis\n\
+    - op: replace\n  path: /spec/data/4/remoteRef/key\n  value: apps/swirl-demo-app/prod/kafka\n\
+    - op: replace\n  path: /spec/data/5/remoteRef/key\n  value: apps/swirl-demo-app/prod/kafka\n"

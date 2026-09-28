@@ -31,7 +31,8 @@ patches:
     - op: replace\n  path: /spec/tls/0/hosts\n  value:\n  - demo-int.swirlit.dev\n\
     - op: remove\n  path: /spec/tls/0/secretName\n- op: replace\n  path: /metadata/annotations/gethomepage.dev~1href\n\
     \  value: https://demo-int.swirlit.dev\n- op: replace\n  path: /metadata/annotations/gethomepage.dev~1name\n\
-    \  value: Swirl Demo App (int)\n- op: replace\n  path: /metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares\n\
+    \  value: Swirl Demo App\n- op: replace\n  path: /metadata/annotations/gethomepage.dev~1group\n\
+    \  value: Applications - INT\n- op: replace\n  path: /metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares\n\
     \  value: apps-int-swirl-demo-app-upload-limit@kubernetescrd\n"
 - target:
     kind: Service

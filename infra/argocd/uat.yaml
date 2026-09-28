@@ -4,7 +4,7 @@ metadata:
   name: swirl-demo-app-uat
   namespace: infra
   annotations:
-    swirl-demo-app.delivery/pipeline: '588'
+    swirl-demo-app.delivery/pipeline: '598'
     swirl-demo-app.delivery/source: 5ff3d06a52fbb858d6c55a050bf4a26ecbd82095
     swirl-demo-app.delivery/kind: release
   labels:
@@ -15,7 +15,7 @@ spec:
   project: applications-uat
   source:
     repoURL: http://gitlab.swirlit.internal/swirlit/swirl-demo-app.git
-    targetRevision: 7a9a0e173385a45ca675923ea61ad77edb42760f
+    targetRevision: 7371742ac305740bdcfd4a88f2490df22221a2dd
     path: infra/environments/uat
   destination:
     name: in-cluster

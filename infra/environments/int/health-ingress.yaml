@@ -21,14 +21,14 @@ spec:
         pathType: Exact
         backend:
           service:
-            name: user-app
+            name: swirlapp-user
             port:
               number: 8080
       - path: /health/order
         pathType: Exact
         backend:
           service:
-            name: order-app
+            name: swirlapp-order
             port:
               number: 8081
 ---

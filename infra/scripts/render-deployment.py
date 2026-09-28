@@ -208,7 +208,8 @@ def render(root, inventory, environment, release, revision, repository_url=None,
         ({"op": "remove", "path": "/spec/tls/0/secretName"} if central_tls else
          {"op": "replace", "path": "/spec/tls/0/secretName", "value": tls["secretName"]}),
         {"op": "replace", "path": "/metadata/annotations/gethomepage.dev~1href", "value": "https://" + host},
-        {"op": "replace", "path": "/metadata/annotations/gethomepage.dev~1name", "value": f"Swirl Demo App ({environment})"},
+        {"op": "replace", "path": "/metadata/annotations/gethomepage.dev~1name", "value": "Swirl Demo App"},
+        {"op": "replace", "path": "/metadata/annotations/gethomepage.dev~1group", "value": f"Applications - {environment.upper()}"},
         {"op": "replace", "path": "/metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares",
          "value": f"{namespace}-swirl-demo-app-upload-limit@kubernetescrd"},
     ], sort_keys=False)}]

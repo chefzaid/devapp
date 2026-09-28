@@ -138,6 +138,9 @@ class RenderingTests(unittest.TestCase):
             self.assertEqual({item["remoteRef"]["key"] for item in secret["spec"]["data"]},
                              {f"apps/swirl-demo-app/{environment}/{service}" for service in ("database", "redis", "kafka")})
             self.assertFalse(any(item["kind"] == "Job" and item["metadata"]["name"] == "swirl-demo-app-db-setup" for item in resources))
+            entry = next(item for item in resources if item["kind"] == "Ingress" and item["metadata"]["name"] == "swirl-demo-app-ingress")
+            self.assertEqual(entry["metadata"]["annotations"]["gethomepage.dev/name"], "Swirl Demo App")
+            self.assertEqual(entry["metadata"]["annotations"]["gethomepage.dev/group"], "Applications - " + environment.upper())
             previous.update({str(path.relative_to(self.root)): path.read_bytes()
                              for path in (self.root / f"infra/environments/{environment}").rglob("*") if path.is_file()})
             previous[f"infra/argocd/{environment}.yaml"] = (self.root / f"infra/argocd/{environment}.yaml").read_bytes()

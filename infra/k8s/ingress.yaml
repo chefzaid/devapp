@@ -7,7 +7,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "10"
     gethomepage.dev/description: Full Java/Angular microservices app template
     gethomepage.dev/enabled: "true"
-    gethomepage.dev/group: Applications
+    gethomepage.dev/group: Applications - PROD
     gethomepage.dev/href: https://demo.swirlit.dev
     gethomepage.dev/icon: mdi-application-braces-outline
     gethomepage.dev/name: Swirl Demo App

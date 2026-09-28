@@ -272,7 +272,7 @@ load_deployment_release() {
 
 verify_application_owner() {
   local current
-  current="$(kubectl --request-timeout=30s get application "$application_name" -n infra --ignore-not-found -o json)"
+  current="$(timeout 60 kubectl get application "$application_name" -n infra --ignore-not-found -o json)"
   [[ -n "$current" ]] || return 0
   local deployed_pipeline
   deployed_pipeline="$(jq -r '.metadata.annotations["swirl-demo-app.delivery/pipeline"] // "0"' <<<"$current")"

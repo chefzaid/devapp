@@ -79,7 +79,8 @@ def target(inventory, environment):
 
 
 def kubectl(*arguments):
-    result = subprocess.run(["kubectl", "--request-timeout=30s", *arguments], text=True,
+    # --request-timeout would bypass in-cluster credentials; bound the process instead.
+    result = subprocess.run(["kubectl", *arguments], text=True,
                             capture_output=True, timeout=60)
     require(result.returncode == 0, "Cannot verify the central deployment inventory or Argo CD registration")
     return json.loads(result.stdout)

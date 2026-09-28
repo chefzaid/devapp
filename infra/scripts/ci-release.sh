@@ -376,7 +376,7 @@ deploy_release() {
       .status.sync.revision == $metadata[0].revision and .status.sync.status == "Synced" and
       .status.health.status == "Healthy" and (.status.summary.images as $actual |
       $metadata[0].images | all(. as $image | $actual | index($image))) and
-      ([.status.resources[]? | select(.kind == "Deployment" and .health.status == "Healthy") | .name] as $ready |
+      ([.status.resources[]? | select(.kind == "Deployment" and .status == "Synced") | .name] as $ready |
       ["swirlapp-user", "swirlapp-order", "swirlapp-web"] | all(. as $name | $ready | index($name)))' <<<"$application" >/dev/null; then
       success=true
       break

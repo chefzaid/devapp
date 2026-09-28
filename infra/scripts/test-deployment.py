@@ -307,7 +307,7 @@ elif args[0] == 'apply':
     metadata = json.loads(pathlib.Path('package-output/deployment.json').read_text())
     app['status'] = {'sync': {'revision': app['spec']['source']['targetRevision'], 'status': 'Synced'},
       'health': {'status': 'Healthy'}, 'summary': {'images': metadata['images']},
-      'resources': [{'kind':'Deployment','name':name,'health':{'status':'Healthy'}} for name in ('swirlapp-user','swirlapp-order','swirlapp-web')]}
+      'resources': [{'kind':'Deployment','name':name,'status':'Synced'} for name in ('swirlapp-user','swirlapp-order','swirlapp-web')]}
     if state.get('wrong_destination'): app['spec']['destination']['name'] = 'wrong-cluster'
     state.setdefault('applications', {})[app['metadata']['name']] = app
     state.setdefault('applied', []).append(app['metadata']['name'])

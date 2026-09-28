@@ -1,32 +1,32 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: user-app
+  name: swirlapp-user
 spec:
   minAvailable: 1
   unhealthyPodEvictionPolicy: AlwaysAllow
   selector:
     matchLabels:
-      app: user-app
+      app: swirlapp-user
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: order-app
+  name: swirlapp-order
 spec:
   minAvailable: 1
   unhealthyPodEvictionPolicy: AlwaysAllow
   selector:
     matchLabels:
-      app: order-app
+      app: swirlapp-order
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: devapp-web
+  name: swirlapp-web
 spec:
   minAvailable: 1
   unhealthyPodEvictionPolicy: AlwaysAllow
   selector:
     matchLabels:
-      app: devapp-web
+      app: swirlapp-web

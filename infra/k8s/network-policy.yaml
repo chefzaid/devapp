@@ -9,9 +9,9 @@ spec:
       - key: app
         operator: In
         values:
-          - devapp-web
-          - user-app
-          - order-app
+          - swirlapp-web
+          - swirlapp-user
+          - swirlapp-order
   policyTypes:
     - Ingress
   ingress:
@@ -22,9 +22,9 @@ spec:
               - key: app
                 operator: In
                 values:
-                  - devapp-web
-                  - user-app
-                  - order-app
+                  - swirlapp-web
+                  - swirlapp-user
+                  - swirlapp-order
     # Public requests arrive only through the cluster ingress controller.
     - from:
         - namespaceSelector:

@@ -1,17 +1,17 @@
 # Features
 
-This guide catalogs capabilities already represented in DevApp. Planned work belongs in [TODO.md](../TODO.md), so this file distinguishes implemented behavior from future intent.
+This guide catalogs capabilities already represented in Swirl Demo App. Planned work belongs in [TODO.md](../TODO.md), so this file distinguishes implemented behavior from future intent.
 
-DevApp is a technical template. Its user directory and order flow are intentionally small: they exist to exercise reusable full-stack and distributed-system patterns, not to grow into a product domain.
+Swirl Demo App is a technical template. Its user directory and order flow are intentionally small: they exist to exercise reusable full-stack and distributed-system patterns, not to grow into a product domain.
 
 ## Minimal Demonstration Flow
 
 The application has only two business concepts:
 
-1. `user-app` creates, retrieves, edits, and deletes users.
-2. `order-app` creates a `PENDING` order and publishes an event.
-3. `user-app` resolves the referenced user and publishes an `APPROVED` or `REJECTED` result.
-4. `order-app` validates the result and updates the order.
+1. `swirlapp-user` creates, retrieves, edits, and deletes users.
+2. `swirlapp-order` creates a `PENDING` order and publishes an event.
+3. `swirlapp-user` resolves the referenced user and publishes an `APPROVED` or `REJECTED` result.
+4. `swirlapp-order` validates the result and updates the order.
 5. The Angular UI shows both resources and can create, edit, or delete each one.
 
 This flow proves HTTP APIs, persistence, caching, asynchronous communication, authentication, UI integration, tests, observability, and delivery without requiring a large functional model.
@@ -20,7 +20,7 @@ This flow proves HTTP APIs, persistence, caching, asynchronous communication, au
 
 Implemented backend structure:
 
-- Maven reactor with `devapp-common`, `user-app`, and `order-app`
+- Maven reactor with `swirlapp-common`, `swirlapp-user`, and `swirlapp-order`
 - independent Spring Boot processes and deployable images for the two services
 - conventional controller, service, repository, domain, DTO, and configuration layers
 - shared library for entity auditing, status/event contracts, error handling, request IDs, rate limiting, and Kafka reliability

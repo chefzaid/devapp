@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: user-app
+  name: swirlapp-user
   namespace: apps
 spec:
   replicas: 2
@@ -21,12 +21,12 @@ spec:
         nodeTaintsPolicy: Honor
         labelSelector:
           matchLabels:
-            app: user-app
+            app: swirlapp-user
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: order-app
+  name: swirlapp-order
   namespace: apps
 spec:
   replicas: 2
@@ -46,12 +46,12 @@ spec:
         nodeTaintsPolicy: Honor
         labelSelector:
           matchLabels:
-            app: order-app
+            app: swirlapp-order
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: devapp-web
+  name: swirlapp-web
   namespace: apps
 spec:
   replicas: 2
@@ -71,4 +71,4 @@ spec:
         nodeTaintsPolicy: Honor
         labelSelector:
           matchLabels:
-            app: devapp-web
+            app: swirlapp-web

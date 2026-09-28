@@ -2,10 +2,10 @@
 .idea
 .vscode
 **/target
-!user-app/target
-!user-app/target/user-app.jar
-!order-app/target
-!order-app/target/order-app.jar
+!swirlapp-user/target
+!swirlapp-user/target/swirlapp-user.jar
+!swirlapp-order/target
+!swirlapp-order/target/swirlapp-order.jar
 **/node_modules
 **/dist
 **/coverage

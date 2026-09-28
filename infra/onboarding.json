@@ -6,7 +6,7 @@
       "name": "APP_SUBDOMAIN",
       "label": "Public subdomain (@ for the zone apex)",
       "type": "subdomain",
-      "default": "devapp"
+      "default": "swirl-demo-app"
     }
   ],
   "files": [
@@ -29,15 +29,15 @@
   ],
   "replacements": [
     {
-      "from": "registry.swirlit.dev/swirlit/devapp",
+      "from": "registry.swirlit.dev/swirlit/demo",
       "to": "{{REGISTRY_HOST}}/{{GITLAB_PROJECT_PATH}}"
     },
     {
-      "from": "https://gitlab.swirlit.dev/swirlit/devapp",
+      "from": "https://gitlab.swirlit.dev/swirlit/demo",
       "to": "{{GITLAB_PUBLIC_URL}}/{{GITLAB_PROJECT_PATH}}"
     },
     {
-      "from": "http://gitlab.swirlit.internal/swirlit/devapp",
+      "from": "http://gitlab.swirlit.internal/swirlit/swirl-demo-app",
       "to": "{{GITLAB_INTERNAL_URL}}/{{GITLAB_PROJECT_PATH}}"
     },
     {
@@ -57,7 +57,7 @@
       "to": "{{REGISTRY_HOST}}"
     },
     {
-      "from": "devapp.swirlit.dev",
+      "from": "demo.swirlit.dev",
       "to": "{{APP_HOST}}"
     },
     {
@@ -77,11 +77,11 @@
       "to": "{{TLS_SECRET_NAME}}"
     },
     {
-      "from": "swirlit:devapp",
+      "from": "swirlit:swirl-demo-app",
       "to": "{{SONAR_PROJECT_KEY}}"
     },
     {
-      "from": "swirlit/devapp",
+      "from": "swirlit/swirl-demo-app",
       "to": "{{GITLAB_PROJECT_PATH}}"
     },
     {
@@ -141,7 +141,7 @@
       "to": "JWT_JWK_SET_URI=http://keycloak.{{INTERNAL_DNS_ZONE}}:8080/auth/realms/{{KEYCLOAK_REALM}}/protocol/openid-connect/certs"
     },
     {
-      "from": "CORS_ALLOWED_ORIGINS=https://devapp.swirlit.dev",
+      "from": "CORS_ALLOWED_ORIGINS=https://demo.swirlit.dev",
       "to": "CORS_ALLOWED_ORIGINS=https://{{APP_HOST}}"
     },
     {
@@ -154,7 +154,7 @@
     }
   ],
   "registry": {
-    "path": "apps/devapp/registry"
+    "path": "apps/swirl-demo-app/registry"
   },
   "keycloak": {
     "file": "infra/keycloak/production-client.json",
@@ -176,9 +176,9 @@
   },
   "readiness": {
     "deployments": [
-      "user-app",
-      "order-app",
-      "devapp-web"
+      "swirlapp-user",
+      "swirlapp-order",
+      "swirlapp-web"
     ]
   },
   "deployment": {

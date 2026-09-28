@@ -5,16 +5,16 @@
   "sourceRevision": "d28f49efb0d2ac7d7d091704723255ef30508283",
   "pipelineId": "487",
   "images": {
-    "user-app": {
-      "repository": "registry.swirlit.dev/swirlit/devapp/user-app",
+    "swirlapp-user": {
+      "repository": "registry.swirlit.dev/swirlit/demo/swirlapp-user",
       "digest": "sha256:b8fefb33b051f1b3e53b60413744a5a14746880ee2ac1305fd1e8ddf1da0ee74"
     },
-    "order-app": {
-      "repository": "registry.swirlit.dev/swirlit/devapp/order-app",
+    "swirlapp-order": {
+      "repository": "registry.swirlit.dev/swirlit/demo/swirlapp-order",
       "digest": "sha256:9204e23fc44d954716a0130592b994610e3f1fba262848b8230011255c5f6ebc"
     },
-    "devapp-web": {
-      "repository": "registry.swirlit.dev/swirlit/devapp/devapp-web",
+    "swirlapp-web": {
+      "repository": "registry.swirlit.dev/swirlit/demo/swirlapp-web",
       "digest": "sha256:4887427933fdd77f6a4d040994b6c4e74a5760dab0c4215986d6321e056ebf7c"
     }
   }

@@ -108,7 +108,7 @@ class RenderingTests(unittest.TestCase):
     def assert_configuration(self, context):
         resources = rendered_resources(self.root)
         configs = {r["metadata"]["name"]: r for r in resources if r["kind"] == "ConfigMap"}
-        backend = next(r for name, r in configs.items() if name.startswith("devapp-backend-config-"))
+        backend = next(r for name, r in configs.items() if name.startswith("swirl-demo-app-backend-config-"))
         self.assertEqual(backend["data"]["DB_HOST"], "postgres." + context["INTERNAL_DNS_ZONE"])
         source = yaml.safe_load((self.root / CONTRACT["application"]).read_text())["spec"]["source"]
         self.assertEqual(source["targetRevision"], context["DEFAULT_BRANCH"])
@@ -122,7 +122,7 @@ class RenderingTests(unittest.TestCase):
         self.assertEqual(client["webOrigins"], ["https://" + context["APP_HOST"]])
         self.assertEqual(client["redirectUris"], ["https://" + context["APP_HOST"] + "/*"])
         self.assertEqual(client["attributes"]["pkce.code.challenge.method"], "S256")
-        self.assertFalse(any(r["kind"] == "Job" and r["metadata"]["name"] == "devapp-db-setup" for r in resources))
+        self.assertFalse(any(r["kind"] == "Job" and r["metadata"]["name"] == "swirl-demo-app-db-setup" for r in resources))
         rendered_resources(self.root, "infra/overlays/ha")
 
     def test_shared_settings_leave_source_and_environment_selection_independent(self):
@@ -130,7 +130,7 @@ class RenderingTests(unittest.TestCase):
         self.assertEqual(CONTRACT["deployment"]["defaultEnvironment"], "int")
         self.assertFalse(any("/src/" in name or name.endswith("nginx.conf") for name in CONTRACT["files"]))
         self.assertFalse(any("DEPLOYMENT_ENVIRONMENT" in b["to"] for b in CONTRACT["replacements"]))
-        source_files = [p for base in ("devapp-web/src", "devapp-common/src", "user-app/src", "order-app/src")
+        source_files = [p for base in ("swirlapp-web/src", "swirlapp-common/src", "swirlapp-user/src", "swirlapp-order/src")
                         for p in (ROOT / base).rglob("*") if p.is_file()]
         for path in source_files:
             target = self.root / path.relative_to(ROOT)
@@ -158,7 +158,7 @@ class RenderingTests(unittest.TestCase):
                            APP_HOST=self.context["PUBLIC_DOMAIN"] if label == "@" else label + "." + self.context["PUBLIC_DOMAIN"])
             render_fixture(self.root, changed)
             self.assert_configuration(changed)
-        self.assertEqual(CONTRACT["registry"]["path"], "apps/devapp/registry")
+        self.assertEqual(CONTRACT["registry"]["path"], "apps/swirl-demo-app/registry")
 
 
 class ReleaseTests(unittest.TestCase):
@@ -214,9 +214,9 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(choice["options"], ["int", "uat", "prod"])
         self.assertTrue(choice["description"])
         self.assertNotIn("03-package", pipeline)
-        self.assertEqual(pipeline["01-release"]["resource_group"], "devapp-release")
-        self.assertEqual(pipeline["set-major-version"]["resource_group"], "devapp-release")
-        self.assertEqual(pipeline["02-deploy"]["resource_group"], "devapp-$DEPLOYMENT_ENVIRONMENT")
+        self.assertEqual(pipeline["01-release"]["resource_group"], "swirl-demo-app-release")
+        self.assertEqual(pipeline["set-major-version"]["resource_group"], "swirl-demo-app-release")
+        self.assertEqual(pipeline["02-deploy"]["resource_group"], "swirl-demo-app-$DEPLOYMENT_ENVIRONMENT")
         needs = {item["job"]: item for item in pipeline["02-deploy"]["needs"]}
         self.assertTrue(needs["01-release"]["optional"])
         self.assertTrue(needs["01-snapshot"]["optional"])

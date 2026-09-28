@@ -1,4 +1,4 @@
-# Dockerfile for DevApp Development Environment
+# Dockerfile for Swirl Demo App Development Environment
 # Java 25 + Spring Boot 4 + Angular 22 development
 
 FROM mcr.microsoft.com/devcontainers/base:bookworm

@@ -11,12 +11,12 @@
         <relativePath/>
     </parent>
 
-    <groupId>dev.swirlit.devapp</groupId>
-    <artifactId>parent</artifactId>
+    <groupId>dev.swirlit.demo</groupId>
+    <artifactId>swirlapp-parent</artifactId>
     <version>1.7.0</version>
     <packaging>pom</packaging>
-    <name>devapp-parent</name>
-    <description>DevApp Java 25 microservices demo</description>
+    <name>swirlapp-parent</name>
+    <description>Swirl Demo App Java 25 microservices demo</description>
 
     <properties>
         <java.version>25</java.version>
@@ -33,9 +33,9 @@
     </properties>
 
     <modules>
-        <module>devapp-common</module>
-        <module>order-app</module>
-        <module>user-app</module>
+        <module>swirlapp-common</module>
+        <module>swirlapp-order</module>
+        <module>swirlapp-user</module>
     </modules>
 
     <dependencyManagement>

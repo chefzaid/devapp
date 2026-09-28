@@ -2,7 +2,7 @@
 
 One central platform serves `int`, `uat` and `prod` application environments on
 the same cluster or optional remote clusters.
-DevApp owns each environment's exact hostname, Ingress routes and browser-client
+Swirl Demo App owns each environment's exact hostname, Ingress routes and browser-client
 redirects. The platform owns cluster registration, the managed Cloudflare zone,
 certificate preparation and private connectivity.
 
@@ -14,9 +14,9 @@ The central `infra/deployment-environments` ConfigMap records each environment's
 
 | Environment | Example hostname | Destination |
 |---|---|---|
-| `int` | `devapp-int.example.com` | Registered integration ingress address. |
-| `uat` | `devapp-uat.example.com` | Registered acceptance ingress address. |
-| `prod` | `devapp.example.com` | Registered production ingress address. |
+| `int` | `demo-int.example.com` | Registered integration ingress address. |
+| `uat` | `demo-uat.example.com` | Registered acceptance ingress address. |
+| `prod` | `demo.example.com` | Registered production ingress address. |
 
 The table uses the `suffix` hostname style; `nested` remains available for
 installations with deeper TLS coverage. All three addresses can be identical. The hostname selects the application's
@@ -54,9 +54,9 @@ its old record. Verify the replacement route, runtime configuration and both
 API health routes before retiring the old hostname:
 
 ```sh
-curl --fail https://devapp-int.example.com/runtime-config.json
-curl --fail https://devapp-int.example.com/health/user
-curl --fail https://devapp-int.example.com/health/order
+curl --fail https://demo-int.example.com/runtime-config.json
+curl --fail https://demo-int.example.com/health/user
+curl --fail https://demo-int.example.com/health/order
 ```
 
 ## HA ingress
@@ -69,7 +69,7 @@ and certificate validation; no central Tunnel checkpoint is reused implicitly.
 
 ## Central reconciliation
 
-Rerun the platform's `add-repos.sh` to reconcile DevApp's declared hosts against
+Rerun the platform's `add-repos.sh` to reconcile Swirl Demo App's declared hosts against
 registered environment targets. Keep DNS and browser-client changes together;
 deployment verifies that the selected public route serves its expected runtime
 identity configuration.

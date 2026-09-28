@@ -1,6 +1,6 @@
 {
-  "appSubdomain": "devapp",
-  "databaseName": "devappdb",
+  "appSubdomain": "demo",
+  "databaseName": "swirl_demo_app_db",
   "highAvailability": false,
   "trustedProxyCIDRs": "10.42.0.0/16"
 }

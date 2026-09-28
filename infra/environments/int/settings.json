@@ -1,5 +1,5 @@
 {
-  "appSubdomain": "devapp",
+  "appSubdomain": "demo",
   "highAvailability": false,
   "trustedProxyCIDRs": "10.42.0.0/16"
 }

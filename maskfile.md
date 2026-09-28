@@ -1,4 +1,4 @@
-# DevApp Task Commands
+# Swirl Demo App Task Commands
 
 ## help
 
@@ -20,9 +20,9 @@ use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn -q -DskipTests install
 elif [ "$target" = "front" ]; then
-  cd devapp-web && npm install
+  cd swirlapp-web && npm install
 else
-  cd devapp-web && npm install && cd ..
+  cd swirlapp-web && npm install && cd ..
   mvn -q -DskipTests install
 fi
 ```
@@ -36,9 +36,9 @@ use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn test
 elif [ "$target" = "front" ]; then
-  cd devapp-web && npm test
+  cd swirlapp-web && npm test
 else
-  mvn test && cd devapp-web && npm test
+  mvn test && cd swirlapp-web && npm test
 fi
 ```
 
@@ -51,9 +51,9 @@ use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn clean verify
 elif [ "$target" = "front" ]; then
-  cd devapp-web && npm run test:coverage
+  cd swirlapp-web && npm run test:coverage
 else
-  mvn clean verify && cd devapp-web && npm run test:coverage
+  mvn clean verify && cd swirlapp-web && npm run test:coverage
 fi
 ```
 
@@ -66,9 +66,9 @@ use_java_25_if_available
 if [ "$target" = "back" ]; then
   mvn clean package -DskipTests
 elif [ "$target" = "front" ]; then
-  cd devapp-web && npm run build-prod
+  cd swirlapp-web && npm run build-prod
 else
-  mvn clean package -DskipTests && cd devapp-web && npm run build-prod
+  mvn clean package -DskipTests && cd swirlapp-web && npm run build-prod
 fi
 ```
 
@@ -79,25 +79,25 @@ target="${1:-all}"
 . ./infra/scripts/mask-helpers.sh
 use_java_25_if_available
 if [ "$target" = "user" ]; then
-  mvn spring-boot:run -pl user-app
+  mvn spring-boot:run -pl swirlapp-user
 elif [ "$target" = "order" ]; then
-  mvn spring-boot:run -pl order-app
+  mvn spring-boot:run -pl swirlapp-order
 elif [ "$target" = "front" ]; then
-  cd devapp-web && npm start
+  cd swirlapp-web && npm start
 else
   STARTUP_CHECK_DELAY=1
-  mvn spring-boot:run -pl user-app &
+  mvn spring-boot:run -pl swirlapp-user &
   USER_PID=$!
   sleep "$STARTUP_CHECK_DELAY"
   if ! kill -0 "$USER_PID" 2>/dev/null; then
-    echo "Failed to start user-app. Check logs and ensure port 8080 is available."
+    echo "Failed to start swirlapp-user. Check logs and ensure port 8080 is available."
     exit 1
   fi
-  mvn spring-boot:run -pl order-app &
+  mvn spring-boot:run -pl swirlapp-order &
   ORDER_PID=$!
   sleep "$STARTUP_CHECK_DELAY"
   if ! kill -0 "$ORDER_PID" 2>/dev/null; then
-    echo "Failed to start order-app. Check logs and ensure port 8081 is available."
+    echo "Failed to start swirlapp-order. Check logs and ensure port 8081 is available."
     kill "$USER_PID" 2>/dev/null || true
     exit 1
   fi
@@ -110,7 +110,7 @@ else
     done
   }
   trap cleanup EXIT INT TERM
-  cd devapp-web && npm start &
+  cd swirlapp-web && npm start &
   FRONT_PID=$!
   wait "$FRONT_PID"
 fi

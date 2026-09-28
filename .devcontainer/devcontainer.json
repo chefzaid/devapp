@@ -1,9 +1,9 @@
 {
-    "name": "DevApp",
+    "name": "Swirl Demo App",
     "dockerComposeFile": "docker-compose.yml",
-    "service": "devapp",
-    "runServices": ["devapp"],
-    "workspaceFolder": "/workspace/devapp",
+    "service": "swirl-demo-app",
+    "runServices": ["swirl-demo-app"],
+    "workspaceFolder": "/workspace/swirl-demo-app",
     "remoteUser": "vscode",
 
     // Port forwarding for all services

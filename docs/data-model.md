@@ -1,6 +1,6 @@
 # Data Model Reference
 
-DevApp intentionally uses only two application tables and one event contract. The small model makes persistence, migration, caching, auditing, concurrency, and cross-service messaging behavior easy to see.
+Swirl Demo App intentionally uses only two application tables and one event contract. The small model makes persistence, migration, caching, auditing, concurrency, and cross-service messaging behavior easy to see.
 
 ## Relationship Overview
 
@@ -34,11 +34,11 @@ erDiagram
     }
 ```
 
-`orders.user_id` is a logical service reference, not a database foreign key. `user-app` owns user validation; `order-app` does not join or query the user table.
+`orders.user_id` is a logical service reference, not a database foreign key. `swirlapp-user` owns user validation; `swirlapp-order` does not join or query the user table.
 
 ## Shared Base Entity
 
-Both entities inherit these persistence fields from `devapp-common`:
+Both entities inherit these persistence fields from `swirlapp-common`:
 
 | Field | Type | Purpose |
 |---|---|---|
@@ -54,7 +54,7 @@ Audit principals and optimistic-lock versions are persistence concerns. Public `
 
 ## User
 
-Owner: `user-app`
+Owner: `swirlapp-user`
 
 Table: `app_users`
 
@@ -68,20 +68,20 @@ Table: `app_users`
 
 Creation and edits fail fast when the normalized username or email belongs to another user. Database unique constraints remain the authoritative race-safe enforcement and are mapped to HTTP `409 Conflict`.
 
-Deleting a user removes only the owned `app_users` row. Existing orders retain their approved `user_name` snapshot because `order-app` owns those records and there is intentionally no cross-service cascade. Future validation requests for the deleted user are rejected.
+Deleting a user removes only the owned `app_users` row. Existing orders retain their approved `user_name` snapshot because `swirlapp-order` owns those records and there is intentionally no cross-service cascade. Future validation requests for the deleted user are rejected.
 
 The model has no password column. Keycloak owns identities and credentials; an application `User` is demonstration directory data rather than the authentication account record.
 
 ## Order
 
-Owner: `order-app`
+Owner: `swirlapp-order`
 
 Table: `orders`
 
 | Column | Constraint | API behavior |
 |---|---|---|
 | `id` | identity primary key | returned as resource identifier and Kafka key |
-| `user_id` | required | logical reference validated asynchronously by `user-app` |
+| `user_id` | required | logical reference validated asynchronously by `swirlapp-user` |
 | `user_name` | optional | populated from an approved result; null for pending/rejected orders |
 | `product_id` | required | opaque positive identifier used only to demonstrate a second reference |
 | `status` | required, maximum 20 characters | enum string |
@@ -128,8 +128,8 @@ The event is serialized as JSON. There is not yet a schema registry or formal co
 
 Rules:
 
-- `user-app` owns `app_users` and never writes orders.
-- `order-app` owns `orders` and never reads the user table.
+- `swirlapp-user` owns `app_users` and never writes orders.
+- `swirlapp-order` owns `orders` and never reads the user table.
 - cross-service identity is carried through Kafka, not database joins.
 - both services currently share one PostgreSQL database/schema supplied by the platform.
 - separate Flyway history tables prevent one service from treating the other service's migrations as its own.
@@ -149,7 +149,7 @@ Current transaction boundaries:
 
 Important consistency boundary:
 
-1. `order-app` inserts the order in a database transaction.
+1. `swirlapp-order` inserts the order in a database transaction.
 2. After the database commit succeeds, it sends the Kafka event from application code.
 3. Those two operations are not one atomic commit.
 
@@ -193,8 +193,8 @@ Migration locations and history tables:
 
 | Service | Migration location | History table |
 |---|---|---|
-| `user-app` | `user-app/src/main/resources/db/migration` | `flyway_schema_history_users` |
-| `order-app` | `order-app/src/main/resources/db/migration` | `flyway_schema_history_orders` |
+| `swirlapp-user` | `swirlapp-user/src/main/resources/db/migration` | `flyway_schema_history_users` |
+| `swirlapp-order` | `swirlapp-order/src/main/resources/db/migration` | `flyway_schema_history_orders` |
 
 Both use `baseline-on-migrate` with baseline version `0`. This lets either service initialize its own history in a shared, already non-empty schema while still running versioned migrations. Current migrations create the service table and add the optimistic-lock column safely for older installations.
 

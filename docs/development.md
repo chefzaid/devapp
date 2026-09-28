@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide covers DevApp's two local workflows: a fast dependency-free loop and a production-shaped authenticated stack.
+This guide covers Swirl Demo App's two local workflows: a fast dependency-free loop and a production-shaped authenticated stack.
 
 When creating an application from this template, follow the
 [code-quality onboarding instructions](code-quality.md#adapting-the-template) alongside the
@@ -10,10 +10,10 @@ retain `.sonar-auto.json`, and preserve the scan-only CI rules.
 ## Repository Layout
 
 ```text
-devapp-common/       shared Java contracts and reusable infrastructure
-user-app/            user REST API and order-validation consumer
-order-app/           order REST API and result consumer
-devapp-web/          Angular SPA, NGINX image, Vitest and Playwright tests
+swirlapp-common/       shared Java contracts and reusable infrastructure
+swirlapp-user/            user REST API and order-validation consumer
+swirlapp-order/           order REST API and result consumer
+swirlapp-web/          Angular SPA, NGINX image, Vitest and Playwright tests
 infra/environments/ generated deployment settings for registered int/uat/prod targets
 infra/argocd/        Argo CD Application bootstrap
 infra/compose/       complete local runtime and Playwright acceptance overlay
@@ -31,8 +31,8 @@ infra/scripts/       CI/CD, image-tag, and task-runner helpers
 ```mermaid
 flowchart LR
     browser[Browser\nlocalhost:4200] --> angular[Angular dev server]
-    angular --> user[user-app\nlocalhost:8080\nH2 + simple cache]
-    angular --> order[order-app\nlocalhost:8081\nH2 + simple cache]
+    angular --> user[swirlapp-user\nlocalhost:8080\nH2 + simple cache]
+    angular --> order[swirlapp-order\nlocalhost:8081\nH2 + simple cache]
 ```
 
 Defaults:
@@ -51,8 +51,8 @@ This loop is for controller, service, persistence, and UI work that does not req
 flowchart LR
     browser[Browser\nlocalhost:4200] --> web[NGINX + Angular]
     browser --> keycloak[Keycloak through /auth]
-    web --> user[user-app]
-    web --> order[order-app]
+    web --> user[swirlapp-user]
+    web --> order[swirlapp-order]
     user --> pg[(PostgreSQL)]
     order --> pg
     user --> redis[(Redis)]
@@ -94,10 +94,10 @@ Open <http://localhost:4200> and use:
 
 | Surface | Username | Password |
 |---|---|---|
-| DevApp | `user` | `password` |
+| Swirl Demo App | `user` | `password` |
 | Keycloak admin at <http://localhost:8180/auth/admin> | `admin` | `admin` |
 
-These credentials and the `devapp-smoke` client secret in the imported realm are public test values. Do not reuse them outside the disposable demo.
+These credentials and the `swirl-demo-app-smoke` client secret in the imported realm are public test values. Do not reuse them outside the disposable demo.
 
 Useful endpoints:
 
@@ -113,7 +113,7 @@ Useful endpoints:
 Follow and stop the stack:
 
 ```bash
-docker compose -f infra/compose/compose.yaml logs -f user-app order-app
+docker compose -f infra/compose/compose.yaml logs -f swirlapp-user swirlapp-order
 docker compose -f infra/compose/compose.yaml down
 ```
 
@@ -131,7 +131,7 @@ Install backend and frontend dependencies once:
 
 ```bash
 mvn -DskipTests install
-cd devapp-web
+cd swirlapp-web
 npm ci
 cd ..
 ```
@@ -139,9 +139,9 @@ cd ..
 Start these in separate terminals:
 
 ```bash
-mvn spring-boot:run -pl user-app
-mvn spring-boot:run -pl order-app
-cd devapp-web && npm start
+mvn spring-boot:run -pl swirlapp-user
+mvn spring-boot:run -pl swirlapp-order
+cd swirlapp-web && npm start
 ```
 
 Open <http://localhost:4200>. The Angular development proxy routes:
@@ -184,7 +184,7 @@ Mask uses Java 25 when `infra/scripts/mask-helpers.sh` can locate it. Direct Mav
 - Java, Spring, Angular, TypeScript, YAML, Docker, database, and Git editor extensions
 - persistent Maven and npm dependency volumes
 
-Only the `devapp` workspace service starts automatically. PostgreSQL, Redis, Kafka, and Keycloak are behind the optional `local-infra` profile.
+Only the `swirl-demo-app` workspace service starts automatically. PostgreSQL, Redis, Kafka, and Keycloak are behind the optional `local-infra` profile.
 
 After opening the repository with **Reopen in Container**, use the normal direct commands. To opt into the dev-container infrastructure definition:
 
@@ -230,8 +230,8 @@ The roadmap keeps a stricter application-only dev-container direction: environme
 | Variable | Purpose | Complete-local value |
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | Spring profile | `prod` |
-| `DB_HOST`, `DB_PORT`, `DB_NAME` | PostgreSQL location | `postgres`, `5432`, `devappdb` |
-| `DB_USERNAME`, `DB_PASSWORD` | PostgreSQL credential | disposable `devapp` values |
+| `DB_HOST`, `DB_PORT`, `DB_NAME` | PostgreSQL location | `postgres`, `5432`, `swirl_demo_app_db` |
+| `DB_USERNAME`, `DB_PASSWORD` | PostgreSQL credential | disposable `swirl-demo-app` values |
 | `REDIS_HOST`, `REDIS_PORT` | Redis location | `redis`, `6379` |
 | `REDIS_PASSWORD` | optional Redis password | empty locally |
 | `KAFKA_BOOTSTRAP_SERVERS` | brokers | `kafka:9092` |
@@ -246,8 +246,8 @@ Spring relaxed binding also allows direct overrides such as `APP_SECURITY_ENABLE
 
 ## Backend Configuration Files
 
-- `user-app/src/main/resources/application.yml`
-- `order-app/src/main/resources/application.yml`
+- `swirlapp-user/src/main/resources/application.yml`
+- `swirlapp-order/src/main/resources/application.yml`
 - `*/src/main/resources/application-test.yml`
 - `*/src/main/resources/logback-spring.xml`
 - `*/src/main/resources/db/schema.sql`
@@ -274,7 +274,7 @@ Use `npm start` for the fast development loop and Compose to exercise authentica
 Frontend scripts:
 
 ```bash
-cd devapp-web
+cd swirlapp-web
 npm start
 npm run build
 npm run build:uat
@@ -290,7 +290,7 @@ npm run analyze
 
 Keep reusable concerns in the smallest sensible boundary:
 
-- `devapp-common`: framework-neutral contracts or truly shared infrastructure
+- `swirlapp-common`: framework-neutral contracts or truly shared infrastructure
 - owning service `domain`: persistence model
 - owning service `dto`: public HTTP contract
 - owning service `repository`: database access
@@ -308,7 +308,7 @@ Workflow:
 6. Add full-context or container tests when infrastructure behavior matters.
 7. Document configuration, observability, and removal/extension points.
 
-Avoid putting service-owned JPA entities in `devapp-common`; that would couple persistence domains.
+Avoid putting service-owned JPA entities in `swirlapp-common`; that would couple persistence domains.
 
 ## Adding A Frontend Capability
 
@@ -348,14 +348,14 @@ curl http://localhost:8080/actuator/health
 curl http://localhost:8081/actuator/health
 ```
 
-Then verify `devapp-web/proxy.conf.json` and ensure ports `8080` and `8081` are free.
+Then verify `swirlapp-web/proxy.conf.json` and ensure ports `8080` and `8081` are free.
 
 ### Complete stack remains unhealthy
 
 ```bash
 docker compose -f infra/compose/compose.yaml ps
 docker compose -f infra/compose/compose.yaml logs postgres redis kafka keycloak
-docker compose -f infra/compose/compose.yaml logs user-app order-app web
+docker compose -f infra/compose/compose.yaml logs swirlapp-user swirlapp-order web
 ```
 
 Applications wait for dependency health checks. Keycloak and Kafka can take longer on their first image pull/start.
@@ -368,13 +368,13 @@ Issuer equality matters. The browser-visible issuer, token `iss` claim, and `JWT
 
 Read Flyway logs and inspect the service-specific history table. Do not switch Hibernate back to `update`; correct the missing migration.
 
-### A Maven module cannot resolve `devapp-common`
+### A Maven module cannot resolve `swirlapp-common`
 
 Run from the repository root with `-am` or install the reactor first:
 
 ```bash
 mvn -DskipTests install
-mvn spring-boot:run -pl user-app
+mvn spring-boot:run -pl swirlapp-user
 ```
 
 ### Local ports are already occupied

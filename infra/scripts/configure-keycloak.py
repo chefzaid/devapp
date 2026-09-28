@@ -198,5 +198,5 @@ if __name__ == "__main__":
     try:
         main()
     except (RuntimeError, KeyError, ValueError, OSError, subprocess.SubprocessError) as error:
-        print(f"Unable to configure the DevApp Keycloak client: {error}", file=sys.stderr)
+        print(f"Unable to configure the Swirl Demo App Keycloak client: {error}", file=sys.stderr)
         sys.exit(1)

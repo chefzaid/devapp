@@ -7,7 +7,7 @@
 
 ## Context
 
-The platform provides GitLab CI Kubernetes agents, GitLab Container Registry, GitLab, Argo CD, K3s, Vault, and External Secrets. DevApp needs reproducible verification, artifact publication, desired-state updates, reconciliation, and post-rollout checks.
+The platform provides GitLab CI Kubernetes agents, GitLab Container Registry, GitLab, Argo CD, K3s, Vault, and External Secrets. Swirl Demo App needs reproducible verification, artifact publication, desired-state updates, reconciliation, and post-rollout checks.
 
 Allowing GitLab CI to mutate Deployments directly would make the cluster differ from Git and blur build versus runtime ownership.
 

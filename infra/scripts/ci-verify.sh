@@ -23,11 +23,11 @@ build_application() {
   mvn --batch-mode clean package -DskipTests \
     -Dhttp.proxyHost= -Dhttps.proxyHost=
 
-  pushd devapp-web >/dev/null
+  pushd swirlapp-web >/dev/null
   npm ci
   npm run test:e2e:types
   npm run build-prod
-  tar -czf "devapp-web-${APP_VERSION}.tar.gz" -C dist devapp-web
+  tar -czf "swirlapp-web-${APP_VERSION}.tar.gz" -C dist swirlapp-web
   popd >/dev/null
 }
 
@@ -35,10 +35,10 @@ test_application() {
   mvn --batch-mode clean verify -Djacoco.haltOnFailure=false \
     -Dhttp.proxyHost= -Dhttps.proxyHost=
 
-  pushd devapp-web >/dev/null
+  pushd swirlapp-web >/dev/null
   npm ci
   npm run test:ci -- --coverage-reporters=cobertura
-  coverage_report="coverage/devapp-web/cobertura-coverage.xml"
+  coverage_report="coverage/swirlapp-web/cobertura-coverage.xml"
   [[ -s "$coverage_report" ]]
   coverage_line_rate="$(awk 'match($0, /line-rate="[^"]+"/) { print substr($0, RSTART + 11, RLENGTH - 12); exit }' "$coverage_report")"
   [[ "$coverage_line_rate" =~ ^[0-9]+([.][0-9]+)?$ ]]
@@ -47,7 +47,7 @@ test_application() {
 
   python3 infra/scripts/ci-coverage-check.py \
     ./*/target/site/jacoco/jacoco.xml \
-    devapp-web/coverage/devapp-web/cobertura-coverage.xml
+    swirlapp-web/coverage/swirlapp-web/cobertura-coverage.xml
 }
 
 prepare_sources

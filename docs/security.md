@@ -1,6 +1,6 @@
 # Security Reference
 
-This document describes DevApp's implemented security posture, trust boundaries, and limitations. It is a reusable baseline, not a compliance certification or a substitute for threat modeling the application created from this template.
+This document describes Swirl Demo App's implemented security posture, trust boundaries, and limitations. It is a reusable baseline, not a compliance certification or a substitute for threat modeling the application created from this template.
 
 ## Security Posture Summary
 
@@ -88,18 +88,18 @@ Disposable local realm controls in `infra/keycloak/realm.json`:
 
 - `sslRequired: external`
 - registration disabled
-- public `devapp-web` client
+- public `swirlapp-web` client
 - standard flow enabled
 - direct access grants disabled
 - PKCE method `S256`
 - explicit disposable local and container redirect origins
 - one disposable demonstration user
 
-The realm also contains a confidential `devapp-smoke` service-account client with a public demo secret. Treat it exactly like the sample user credentials: safe only in the disposable example realm, never as a production secret.
+The realm also contains a confidential `swirl-demo-app-smoke` service-account client with a public demo secret. Treat it exactly like the sample user credentials: safe only in the disposable example realm, never as a production secret.
 
 ## Password And Credential Handling
 
-Passwords never pass through `user-app`, `order-app`, PostgreSQL application tables, Redis caches, Kafka events, or API DTOs.
+Passwords never pass through `swirlapp-user`, `swirlapp-order`, PostgreSQL application tables, Redis caches, Kafka events, or API DTOs.
 
 Keycloak owns:
 
@@ -117,7 +117,7 @@ Rules for adopters:
 - never log passwords, authorization codes, access/refresh tokens, or client secrets
 - rotate identity-provider keys and secrets through managed procedures
 
-Do not add a password field to the DevApp `User` entity merely because it has a username/email. Authentication identity and demonstration application profile are separate concerns.
+Do not add a password field to the Swirl Demo App `User` entity merely because it has a username/email. Authentication identity and demonstration application profile are separate concerns.
 
 ## Backend Authorization
 
@@ -370,10 +370,10 @@ and Kafka SCRAM principal/topic/group prefix. Target Vault policies expose only
 the selected environment's application credentials and shared registry credential.
 Applications never receive platform administrator credentials.
 
-The shared realm has a separate `devapp-<env>-web` client for each environment.
+The shared realm has a separate `swirl-demo-app-<env>-web` client for each environment.
 Both APIs validate issuer, signature and the matching audience, so a token issued
 for integration cannot authorize production requests. Local Compose retains its
-disposable realm and `devapp-web` audience. See
+disposable realm and `swirlapp-web` audience. See
 [production identity](deployment.md#production-identity) and
 [shared service configuration](deployment.md#kubernetes-desired-state).
 

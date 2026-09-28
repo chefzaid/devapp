@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: devapp-web
+  name: swirlapp-web
   namespace: apps
   labels:
-    app: devapp-web
+    app: swirlapp-web
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: devapp-web
+      app: swirlapp-web
   template:
     metadata:
       labels:
-        app: devapp-web
+        app: swirlapp-web
     spec:
       terminationGracePeriodSeconds: 15
       automountServiceAccountToken: false
       imagePullSecrets:
-        - name: devapp-registry-auth
+        - name: swirl-demo-app-registry-auth
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -26,8 +26,8 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: devapp-web
-        image: registry.swirlit.dev/swirlit/devapp/devapp-web:v3
+      - name: swirlapp-web
+        image: registry.swirlit.dev/swirlit/demo/swirlapp-web:v3
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
@@ -67,22 +67,22 @@ spec:
       volumes:
         - name: runtime-config
           configMap:
-            name: devapp-web-config
+            name: swirlapp-web-config
         - name: tmp
           emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: devapp-web
+  name: swirlapp-web
   annotations:
-    traefik.ingress.kubernetes.io/service.serverstransport: apps-devapp-backend@kubernetescrd
+    traefik.ingress.kubernetes.io/service.serverstransport: apps-swirl-demo-app-backend@kubernetescrd
   namespace: apps
   labels:
-    app: devapp-web
+    app: swirlapp-web
 spec:
   selector:
-    app: devapp-web
+    app: swirlapp-web
   type: ClusterIP
   ports:
     - name: http

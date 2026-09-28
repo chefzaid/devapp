@@ -17,6 +17,6 @@ esac
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 kustomization="$script_dir/../k8s/kustomization.yaml"
 
-for image in user-app order-app devapp-web; do
+for image in swirlapp-user swirlapp-order swirlapp-web; do
     sed -i "/name: .*\/$image$/{n;s/newTag: .*/newTag: $tag/;}" "$kustomization"
 done

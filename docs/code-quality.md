@@ -1,6 +1,6 @@
 # Code Quality
 
-DevApp combines tests and coverage with backend/frontend Sonar analysis and
+Swirl Demo App combines tests and coverage with backend/frontend Sonar analysis and
 dependency reports. This guide covers manual scans, automatic analysis and the
 contract to preserve when creating an application from this template. See the
 [testing guide](testing.md) for test commands and
@@ -17,8 +17,8 @@ normal CI or manual scans. See the
 
 The platform's `infra/sonar-apps-discovery` CronJob runs every 15 minutes. It
 follows Argo CD tracking annotations from managed local workloads to their source
-repositories and deduplicates components from the same repository. DevApp's web,
-user and order Deployments therefore share one Sonar project, `swirlit:devapp`.
+repositories and deduplicates components from the same repository. Swirl Demo App's web,
+user and order Deployments therefore share one Sonar project, `swirlit:swirl-demo-app`.
 Repositories must belong to the platform's configured GitLab hosts and group.
 
 Discovery provisions missing Sonar projects, binds them to GitLab and supplies a
@@ -52,7 +52,7 @@ local test and dependency reports.
 ### Run A Manual Scan
 
 1. Open GitLab **Build → Pipelines → Run pipeline** for the application.
-2. Select the default branch (`main` in DevApp).
+2. Select the default branch (`main` in Swirl Demo App).
 3. Add the pipeline variable `SONAR_SCAN_ONLY` with value `true`, then run the
    pipeline. Build, test and quality run automatically.
 4. Check the `02-quality` log and the completed analysis in Sonar. You can also
@@ -69,8 +69,8 @@ the application in the same analysis:
 
 | Component | Source paths | Analysis inputs |
 |---|---|---|
-| Java backend and shared code | `devapp-common/src/main`, `user-app/src/main`, `order-app/src/main` | Compiled classes from all three modules, Maven dependency JARs and service JaCoCo XML reports |
-| Angular frontend | `devapp-web/src` | TypeScript, HTML and CSS source, plus `devapp-web/coverage/devapp-web/lcov.info` |
+| Java backend and shared code | `swirlapp-common/src/main`, `swirlapp-user/src/main`, `swirlapp-order/src/main` | Compiled classes from all three modules, Maven dependency JARs and service JaCoCo XML reports |
+| Angular frontend | `swirlapp-web/src` | TypeScript, HTML and CSS source, plus `swirlapp-web/coverage/swirlapp-web/lcov.info` |
 
 The [test job](../.gitlab-ci.yml) publishes classes and coverage as artifacts;
 `02-quality` downloads them through `needs`. Maven dependencies come from the CI
@@ -127,7 +127,7 @@ in `corp`, such as Odoo, is outside this source-discovery scope.
 
 ## Verification And Troubleshooting
 
-From the DevApp repository, verify the submission helper's success, scanner
+From the Swirl Demo App repository, verify the submission helper's success, scanner
 failure and missing-token behavior without contacting live services:
 
 ```bash

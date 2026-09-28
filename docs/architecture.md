@@ -1,14 +1,14 @@
 # Architecture Overview And ADR Index
 
-This directory contains DevApp architecture decision records. ADRs explain why the template demonstrates a pattern, where its boundary is, and what future changes must preserve or deliberately replace.
+This directory contains Swirl Demo App architecture decision records. ADRs explain why the template demonstrates a pattern, where its boundary is, and what future changes must preserve or deliberately replace.
 
 ## System Architecture At A Glance
 
 ```mermaid
 flowchart LR
     browser[Angular SPA] -->|OIDC| keycloak[Keycloak]
-    browser -->|JWT /api/users| user[user-app]
-    browser -->|JWT /api/orders| order[order-app]
+    browser -->|JWT /api/users| user[swirlapp-user]
+    browser -->|JWT /api/orders| order[swirlapp-order]
     user --> users[(app_users)]
     order --> orders[(orders)]
     order -->|order_topic| kafka[(Kafka)]
@@ -34,7 +34,7 @@ flowchart LR
 
 ## Service Architecture
 
-`devapp-common` contains only cross-cutting contracts and infrastructure:
+`swirlapp-common` contains only cross-cutting contracts and infrastructure:
 
 - auditing base/configuration
 - `OrderStatus` and `OrderEvent`
@@ -56,7 +56,7 @@ Service-owned entities do not live in the shared module. Services share an event
 
 ## Frontend Architecture
 
-`devapp-web` is a standalone Angular application with:
+`swirlapp-web` is a standalone Angular application with:
 
 - lazy route components for login, users, and orders
 - functional routing, auth guard, and HTTP interceptor
@@ -87,12 +87,12 @@ The UI stays deliberately small so infrastructure and delivery behavior remain v
 ### Order creation and validation
 
 1. authenticated caller creates an order.
-2. `order-app` persists it as `PENDING`.
-3. when messaging is enabled, `order-app` publishes keyed `OrderEvent` to `order_topic`.
-4. `user-app` resolves the user.
+2. `swirlapp-order` persists it as `PENDING`.
+3. when messaging is enabled, `swirlapp-order` publishes keyed `OrderEvent` to `order_topic`.
+4. `swirlapp-user` resolves the user.
 5. missing user becomes a normal `REJECTED` result; transient failures propagate for retry.
-6. `user-app` awaits result publication to `order_result_topic`.
-7. `order-app` validates identifiers, status, and current state.
+6. `swirlapp-user` awaits result publication to `order_result_topic`.
+7. `swirlapp-order` validates identifiers, status, and current state.
 8. exact duplicates are ignored; a pending order becomes approved or rejected.
 9. affected cache data is evicted.
 
@@ -110,8 +110,8 @@ checks, and [code quality](code-quality.md) for analysis ownership and discovery
 
 ## Data Ownership Rules
 
-- `user-app` owns `app_users`.
-- `order-app` owns `orders`.
+- `swirlapp-user` owns `app_users`.
+- `swirlapp-order` owns `orders`.
 - `orders.user_id` is a logical reference, not a foreign key.
 - services do not query one another's repositories/tables.
 - Kafka performs cross-service validation.

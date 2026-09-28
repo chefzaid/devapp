@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: order-app
+  name: swirlapp-order
   namespace: apps
   labels:
-    app: order-app
+    app: swirlapp-order
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: order-app
+      app: swirlapp-order
   template:
     metadata:
       labels:
-        app: order-app
+        app: swirlapp-order
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/path: /actuator/prometheus
@@ -22,7 +22,7 @@ spec:
       terminationGracePeriodSeconds: 30
       automountServiceAccountToken: false
       imagePullSecrets:
-        - name: devapp-registry-auth
+        - name: swirl-demo-app-registry-auth
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -31,8 +31,8 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: order-app
-        image: registry.swirlit.dev/swirlit/devapp/order-app:v5
+      - name: swirlapp-order
+        image: registry.swirlit.dev/swirlit/demo/swirlapp-order:v5
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
@@ -43,39 +43,39 @@ spec:
         - containerPort: 8081
         envFrom:
         - configMapRef:
-            name: devapp-backend-config
+            name: swirl-demo-app-backend-config
         env:
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
         - name: DB_USERNAME
           valueFrom:
             secretKeyRef:
-              name: devapp-runtime-credentials
+              name: swirl-demo-app-runtime-credentials
               key: DB_USERNAME
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: devapp-runtime-credentials
+              name: swirl-demo-app-runtime-credentials
               key: DB_PASSWORD
         - name: REDIS_USERNAME
           valueFrom:
             secretKeyRef:
-              name: devapp-runtime-credentials
+              name: swirl-demo-app-runtime-credentials
               key: REDIS_USERNAME
         - name: REDIS_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: devapp-runtime-credentials
+              name: swirl-demo-app-runtime-credentials
               key: REDIS_PASSWORD
         - name: KAFKA_USERNAME
           valueFrom:
             secretKeyRef:
-              name: devapp-runtime-credentials
+              name: swirl-demo-app-runtime-credentials
               key: KAFKA_USERNAME
         - name: KAFKA_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: devapp-runtime-credentials
+              name: swirl-demo-app-runtime-credentials
               key: KAFKA_PASSWORD
         - name: KAFKA_ENABLED
           value: "true"
@@ -112,15 +112,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: order-app
+  name: swirlapp-order
   annotations:
-    traefik.ingress.kubernetes.io/service.serverstransport: apps-devapp-backend@kubernetescrd
+    traefik.ingress.kubernetes.io/service.serverstransport: apps-swirl-demo-app-backend@kubernetescrd
   namespace: apps
   labels:
-    app: order-app
+    app: swirlapp-order
 spec:
   selector:
-    app: order-app
+    app: swirlapp-order
   ports:
     - name: http
       protocol: TCP

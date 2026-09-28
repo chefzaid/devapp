@@ -1,6 +1,6 @@
-# DevApp
+# Swirl Demo App
 
-DevApp is a deliberately small, production-shaped full-stack template. Two Java 25 / Spring Boot 4 services and an Angular 22 SPA demonstrate reusable application, event-driven, security, observability, testing, and GitOps patterns on the platform supplied by [`swirl-cloud`](https://github.com/chefzaid/swirl-cloud).
+Swirl Demo App is a deliberately small, production-shaped full-stack template. Two Java 25 / Spring Boot 4 services and an Angular 22 SPA demonstrate reusable application, event-driven, security, observability, testing, and GitOps patterns on the platform supplied by [`swirl-cloud`](https://github.com/chefzaid/swirl-cloud).
 
 [![Java](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -66,10 +66,10 @@ Open <http://localhost:4200> and sign in with username `user` and password `pass
 Useful commands:
 
 ```bash
-docker compose -f infra/compose/compose.yaml logs -f user-app order-app
+docker compose -f infra/compose/compose.yaml logs -f swirlapp-user swirlapp-order
 docker compose -f infra/compose/compose.yaml down
 mvn clean verify
-cd devapp-web && npm ci && npm test
+cd swirlapp-web && npm ci && npm test
 ```
 
 See the [Development Guide](./docs/development.md) for dependency-free local development and the [Testing Guide](./docs/testing.md) for the complete verification matrix.

@@ -1,0 +1,56 @@
+package dev.swirlit.demo.order.service;
+
+import dev.swirlit.demo.common.domain.OrderStatus;
+import dev.swirlit.demo.common.event.OrderEvent;
+import dev.swirlit.demo.order.repository.OrderRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class OrderResultListener {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderResultListener.class);
+    private final OrderRepository orderRepository;
+
+    public OrderResultListener(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = "orders", key = "#event.orderId()")
+    @KafkaListener(topics = "${app.messaging.topics.result:order_result_topic}", groupId = "${spring.kafka.consumer.group-id}")
+    public void consume(OrderEvent event) {
+        validateResult(event);
+        var order = orderRepository.findById(event.orderId()).orElse(null);
+        if (order == null) {
+            log.debug("Ignoring result for deleted order {}", event.orderId());
+            return;
+        }
+        if (!order.getUserId().equals(event.userId()) || !order.getProductId().equals(event.productId())) {
+            log.debug("Ignoring superseded result for edited order {}", event.orderId());
+            return;
+        }
+        if (order.getStatus() == event.status()) {
+            log.debug("Ignoring duplicate {} result for order {}", event.status(), event.orderId());
+            return;
+        }
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new IllegalArgumentException("Order %d is already %s".formatted(event.orderId(), order.getStatus()));
+        }
+        order.setStatus(event.status());
+        order.setUserName(event.userName());
+    }
+
+    private static void validateResult(OrderEvent event) {
+        if (event == null || event.orderId() == null || event.userId() == null || event.productId() == null) {
+            throw new IllegalArgumentException("Order result identifiers are required");
+        }
+        if (event.status() != OrderStatus.APPROVED && event.status() != OrderStatus.REJECTED) {
+            throw new IllegalArgumentException("Order result must be APPROVED or REJECTED");
+        }
+    }
+}

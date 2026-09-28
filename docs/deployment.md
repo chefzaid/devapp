@@ -1,7 +1,7 @@
 # Deployment Guide
 
 One shared `swirl-cloud` platform provides GitLab, its runner and registry, Argo CD,
-Vault, PostgreSQL, Redis, Kafka and Keycloak. DevApp's `int`, `uat` and `prod`
+Vault, PostgreSQL, Redis, Kafka and Keycloak. Swirl Demo App's `int`, `uat` and `prod`
 environments can run in separate namespaces on that same cluster or on optional
 remote clusters. One GitLab project publishes images; central Argo CD deploys
 the selected environment.
@@ -27,7 +27,7 @@ shared-service connectivity and platform credentials belong to `swirl-cloud`.
 
 ## Ownership And Topology
 
-Each environment has an Application named `devapp-<env>` in the central `infra`
+Each environment has an Application named `swirl-demo-app-<env>` in the central `infra`
 namespace. It uses AppProject `applications-<env>` and the registered cluster and
 namespace. Shared-cluster targets use destination `in-cluster` and namespaces
 `apps-int`, `apps-uat` and `apps-prod` by default. An environment may instead use
@@ -53,9 +53,9 @@ to another cluster or namespace requires an explicit migration.
 
 Each environment has separate database credentials/database, Redis cache prefix
 and credentials, Kafka topic prefix and credentials, and browser client
-`devapp-<env>-web`. Runtime credentials come from Vault paths
-`apps/devapp/<env>/{database,redis,kafka}`. The registry credential at
-`apps/devapp/registry` is shared read access to this project's images. The
+`swirl-demo-app-<env>-web`. Runtime credentials come from Vault paths
+`apps/swirl-demo-app/<env>/{database,redis,kafka}`. The registry credential at
+`apps/swirl-demo-app/registry` is shared read access to this project's images. The
 registered `secretStoreName` selects each environment's scoped Vault store.
 Shared-cluster workloads use Kubernetes Service endpoints; remote workloads use
 the platform's private gateway. Registration supplies these endpoint choices,
@@ -93,9 +93,9 @@ kubectl kustomize infra/environments/int >/dev/null
 The release publishes three images in the central project registry:
 
 ```text
-<registry>/<gitlab-project-path>/user-app:<semantic-version>
-<registry>/<gitlab-project-path>/order-app:<semantic-version>
-<registry>/<gitlab-project-path>/devapp-web:<semantic-version>
+<registry>/<gitlab-project-path>/swirlapp-user:<semantic-version>
+<registry>/<gitlab-project-path>/swirlapp-order:<semantic-version>
+<registry>/<gitlab-project-path>/swirlapp-web:<semantic-version>
 ```
 
 Each image is built once during publication. The release manifest records its
@@ -110,7 +110,7 @@ or `prod`; a source version ending in `-SNAPSHOT` is supported for integration.
 
 ## Add or reconfigure this repository
 
-Run the platform's `./add-repos.sh` and select DevApp. Its
+Run the platform's `./add-repos.sh` and select Swirl Demo App. Its
 [onboarding declaration](../infra/onboarding.json) supplies the app contract;
 the platform imports this repository once and prepares its registered environment
 settings. The initial deployment defaults to `int`; set
@@ -120,31 +120,31 @@ Public choices are stored in `infra/environments/<env>/settings.json`:
 
 | Setting | Purpose |
 |---|---|
-| `appSubdomain` | The shared onboarding app label, default `devapp`; `@` selects each environment's domain apex. |
+| `appSubdomain` | The shared onboarding app label, default `demo`; `@` selects each environment's domain apex. |
 | `trustedProxyCIDRs` | Trusted ingress addresses for API rate limiting; first setup uses the target pod CIDR. |
 | `highAvailability` | Enables the [HA profile](#future-multi-node-ha-profile) on a prepared application cluster. |
-| `databaseName` | Defaults to `devapp_<env>`; production alone can explicitly retain legacy `devappdb` after the ownership/credential migration below. |
+| `databaseName` | Defaults to `swirl_demo_app_<env>`; production alone can explicitly retain legacy `swirl_demo_app_db` after the ownership/credential migration below. |
 
 The shared platform supplies registry/project paths, service endpoints and the
 Keycloak realm. Environment registration supplies its domain and TLS policy,
 namespace, hostname style and destination. The `suffix` style produces
-`devapp-int.example.com`, `devapp-uat.example.com` and `devapp.example.com`, covered
+`demo-int.example.com`, `demo-uat.example.com` and `demo.example.com`, covered
 by the parent zone wildcard. The optional `nested` style retains
-`devapp.int.example.com` and `devapp.uat.example.com` when deeper TLS coverage is
+`demo.int.example.com` and `demo.uat.example.com` when deeper TLS coverage is
 available.
 Onboarding applies one app label across all registered environments; proxy CIDRs
 and HA selection remain specific to each environment.
 
 Angular validates `/runtime-config.json` before authentication starts. Backend
 settings come from `backend-runtime.properties`; credentials come from the
-`devapp-runtime-credentials` ExternalSecret. Central provisioning creates each
+`swirl-demo-app-runtime-credentials` ExternalSecret. Central provisioning creates each
 environment's database and restricted user before delivery; application pods do
 not receive the PostgreSQL administrator credential or run a database-creation
 hook. Flyway owns schema migrations inside that environment's database.
 
-For an existing production `devappdb`, first migrate its owner and schema objects
-to the restricted `devapp_prod` role and preserve its credentials at
-`apps/devapp/prod/database` in Vault. Set `databaseName` to `devappdb` in production
+For an existing production `swirl_demo_app_db`, first migrate its owner and schema objects
+to the restricted `swirl_demo_app_prod` role and preserve its credentials at
+`apps/swirl-demo-app/prod/database` in Vault. Set `databaseName` to `swirl_demo_app_db` in production
 settings before onboarding. Central provisioning verifies this explicit adoption;
 it never transfers ownership or selects a different database silently. Other
 environments cannot select that database.
@@ -202,7 +202,7 @@ Application pins the generated runtime commit. Retrying a published snapshot
 reuses its recorded digests; a stale pipeline cannot replace a newer integration
 deployment.
 
-Onboarding gives DevApp dedicated project runners. Branch jobs can update only
+Onboarding gives Swirl Demo App dedicated project runners. Branch jobs can update only
 the integration Application; a protected runner handles release delivery.
 Kubernetes admission checks keep each Application bound to its assigned project,
 repository and target. Shared instance runners are disabled for this project;
@@ -226,10 +226,10 @@ npm versions together and refuses a stale branch.
 Inspect the selected Application through the central Kubernetes context:
 
 ```sh
-kubectl --kubeconfig /secure/platform.yaml -n infra get application devapp-int -o json | jq '{source:.spec.source,destination:.spec.destination,status:.status}'
-curl --fail https://devapp-int.example.com/runtime-config.json
-curl --fail https://devapp-int.example.com/health/user
-curl --fail https://devapp-int.example.com/health/order
+kubectl --kubeconfig /secure/platform.yaml -n infra get application swirl-demo-app-int -o json | jq '{source:.spec.source,destination:.spec.destination,status:.status}'
+curl --fail https://demo-int.example.com/runtime-config.json
+curl --fail https://demo-int.example.com/health/user
+curl --fail https://demo-int.example.com/health/order
 ```
 
 The health routes expose only application health; actuator metrics are not

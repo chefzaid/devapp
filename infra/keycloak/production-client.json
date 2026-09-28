@@ -1,6 +1,6 @@
 {
-  "clientId": "devapp-web",
-  "name": "DevApp Angular client",
+  "clientId": "swirlapp-web",
+  "name": "Swirl Demo App Angular client",
   "enabled": true,
   "protocol": "openid-connect",
   "publicClient": true,
@@ -8,10 +8,10 @@
   "implicitFlowEnabled": false,
   "directAccessGrantsEnabled": false,
   "serviceAccountsEnabled": false,
-  "rootUrl": "https://devapp.swirlit.dev",
-  "baseUrl": "https://devapp.swirlit.dev",
-  "redirectUris": ["https://devapp.swirlit.dev/*"],
-  "webOrigins": ["https://devapp.swirlit.dev"],
+  "rootUrl": "https://demo.swirlit.dev",
+  "baseUrl": "https://demo.swirlit.dev",
+  "redirectUris": ["https://demo.swirlit.dev/*"],
+  "webOrigins": ["https://demo.swirlit.dev"],
   "attributes": {
     "pkce.code.challenge.method": "S256",
     "post.logout.redirect.uris": "+"
@@ -32,11 +32,11 @@
       }
     },
     {
-      "name": "audience-devapp-web",
+      "name": "audience-swirlapp-web",
       "protocol": "openid-connect",
       "protocolMapper": "oidc-audience-mapper",
       "config": {
-        "included.client.audience": "devapp-web",
+        "included.client.audience": "swirlapp-web",
         "id.token.claim": "true",
         "access.token.claim": "true"
       }

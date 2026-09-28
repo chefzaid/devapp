@@ -2,8 +2,8 @@
 set -euo pipefail
 umask 077
 
-APP_NAME=devapp
-GITLAB_PROJECT_PATH="${GITLAB_PROJECT_PATH:-swirlit/devapp}"
+APP_NAME=swirl-demo-app
+GITLAB_PROJECT_PATH="${GITLAB_PROJECT_PATH:-swirlit/swirl-demo-app}"
 GITLAB_NAMESPACE="${GITLAB_NAMESPACE:-${GITLAB_PROJECT_PATH%/*}}"
 GITLAB_URL="${GITLAB_URL:-}"
 GITLAB_REGISTRY_HOST="${GITLAB_REGISTRY_HOST:-registry.swirlit.dev}"

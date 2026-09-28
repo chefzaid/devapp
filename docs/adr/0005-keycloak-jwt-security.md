@@ -5,7 +5,7 @@
 
 ## Context
 
-DevApp needs to demonstrate browser SSO and independent API authorization without implementing credential storage, password hashing, sessions, recovery, or identity lifecycle inside the example services.
+Swirl Demo App needs to demonstrate browser SSO and independent API authorization without implementing credential storage, password hashing, sessions, recovery, or identity lifecycle inside the example services.
 
 The shared platform already provides Keycloak. A browser SPA cannot safely hold a confidential client secret.
 

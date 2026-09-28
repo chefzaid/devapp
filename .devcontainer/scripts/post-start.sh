@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /workspace/devapp
+cd /workspace/swirl-demo-app
 
 cat <<'INFO'
-DevApp development environment
+Swirl Demo App development environment
 
-  Frontend:  cd devapp-web && npm start
-  User API:  mvn spring-boot:run -pl user-app
-  Order API: mvn spring-boot:run -pl order-app
+  Frontend:  cd swirlapp-web && npm start
+  User API:  mvn spring-boot:run -pl swirlapp-user
+  Order API: mvn spring-boot:run -pl swirlapp-order
 
 Local development uses H2, a simple in-memory cache, and disabled authentication.
 To start the complete infrastructure demo:

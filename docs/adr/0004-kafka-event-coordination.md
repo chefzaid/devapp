@@ -15,8 +15,8 @@ Coordinate order validation only through Kafka:
 
 - order creation persists `PENDING`
 - keyed `OrderEvent` request goes to `order_topic`
-- `user-app` resolves the user and publishes to `order_result_topic`
-- `order-app` validates and applies the result
+- `swirlapp-user` resolves the user and publishes to `order_result_topic`
+- `swirlapp-order` validates and applies the result
 - both primary and DLT topics have three partitions
 - producers use `acks=all`, idempotence, delivery timeout, and bounded retry
 - consumers acknowledge per record, retry transient failures four attempts by default, and publish exhausted records to matching DLTs

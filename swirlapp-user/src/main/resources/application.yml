@@ -1,0 +1,190 @@
+server:
+  port: 8080
+  forward-headers-strategy: framework
+  shutdown: graceful
+  compression:
+    enabled: true
+
+spring:
+  application:
+    name: swirlapp-user
+  profiles:
+    default: dev
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    url: jdbc:h2:mem:userdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+  h2:
+    console:
+      enabled: true
+  flyway:
+    enabled: false
+  cache:
+    type: simple
+    cache-names: users
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    properties:
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+      sasl.mechanism: SCRAM-SHA-512
+      sasl.jaas.config: >-
+        org.apache.kafka.common.security.scram.ScramLoginModule required
+        username="${KAFKA_USERNAME:}" password="${KAFKA_PASSWORD:}";
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:${KAFKA_TOPIC_PREFIX:}user-service-group}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+      properties:
+        spring.json.trusted.packages: dev.swirlit.demo.common.event
+        spring.json.value.default.type: dev.swirlit.demo.common.event.OrderEvent
+    producer:
+      acks: all
+      retries: 10
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        enable.idempotence: true
+        delivery.timeout.ms: 30000
+        request.timeout.ms: 10000
+        max.in.flight.requests.per.connection: 5
+    listener:
+      auto-startup: ${KAFKA_ENABLED:false}
+      ack-mode: record
+
+app:
+  security:
+    enabled: false
+  messaging:
+    enabled: ${KAFKA_ENABLED:false}
+    topics:
+      order: ${KAFKA_TOPIC_PREFIX:}order_topic
+      result: ${KAFKA_TOPIC_PREFIX:}order_result_topic
+    retry:
+      interval: 1s
+      max-attempts: 4
+  rate-limit:
+    enabled: false
+    requests-per-minute: ${RATE_LIMIT_REQUESTS_PER_MINUTE:120}
+    max-tracked-clients: 10000
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+  health:
+    redis:
+      enabled: false
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: User profile and Kafka order-validation service
+    version: 1.0.0
+    java: ${java.version}
+
+springdoc:
+  api-docs:
+    path: /api/users/openapi
+  swagger-ui:
+    path: /api/docs
+    urls:
+      - name: Users
+        url: /api/users/openapi
+      - name: Orders
+        url: /api/orders/openapi
+
+logging:
+  level:
+    dev.swirlit.demo: INFO
+    org.springframework.security: WARN
+
+---
+spring:
+  config:
+    activate:
+      on-profile: uat | prod
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME:swirl_demo_app_db}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  sql:
+    init:
+      mode: never
+  h2:
+    console:
+      enabled: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    table: flyway_schema_history_users
+    locations: classpath:db/migration
+  cache:
+    type: redis
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2s
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI}
+          jwk-set-uri: ${JWT_JWK_SET_URI}
+          audiences: ${JWT_AUDIENCE:swirlapp-web}
+
+app:
+  security:
+    enabled: true
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  messaging:
+    enabled: true
+  rate-limit:
+    enabled: true
+
+management:
+  health:
+    redis:
+      enabled: true

@@ -8,7 +8,7 @@ phase="${1:-all}"
 fail() { printf 'Delivery refused: %s\n' "$*" >&2; exit 1; }
 
 configure_git_identity() {
-  git config user.name "DevApp GitLab CI"
+  git config user.name "Swirl Demo App GitLab CI"
   git config user.email "gitlab-ci@${CI_SERVER_HOST:-localhost}"
 }
 
@@ -16,7 +16,7 @@ trailer() { git show -s --format="%(trailers:key=$2,valueonly)" "$1"; }
 
 write_manifest() {
   local manifest_path="${1:-infra/releases/$APP_VERSION.json}" kind="${2:-release}" name digest images='{}'
-  for name in user-app order-app devapp-web; do
+  for name in swirlapp-user swirlapp-order swirlapp-web; do
     digest="$(cat "package-output/image-digests/$name")"
     [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || fail 'The image publisher did not return an immutable digest.'
     images="$(jq --arg name "$name" --arg repository "$CI_REGISTRY/$CI_PROJECT_PATH/$name" --arg digest "$digest" \
@@ -36,8 +36,8 @@ write_release_environment() {
 
 finalize_release() {
   local release_json existing_release
-  release_json="$(jq -n --arg tag "$release_tag" --arg name "DevApp $APP_VERSION" \
-    --arg description "Published immutable DevApp images $APP_VERSION for promotion through central Argo CD." \
+  release_json="$(jq -n --arg tag "$release_tag" --arg name "Swirl Demo App $APP_VERSION" \
+    --arg description "Published immutable Swirl Demo App images $APP_VERSION for promotion through central Argo CD." \
     --arg package_url "${CI_SERVER_URL}/${CI_PROJECT_PATH}/-/packages" \
     '{tag_name:$tag,name:$name,description:$description,assets:{links:[{name:"Generic package artifacts and checksums",url:$package_url,link_type:"package"}]}}')"
   if curl --fail --show-error --silent --request POST --header "JOB-TOKEN: $CI_JOB_TOKEN" \
@@ -79,7 +79,7 @@ recover_publication() {
   jq -e --arg version "$APP_VERSION" --arg source "$CI_COMMIT_SHA" --arg pipeline "$CI_PIPELINE_ID" \
     --arg prefix "$CI_REGISTRY/$CI_PROJECT_PATH/" '
     .version == 1 and (.kind // "release") == "release" and .releaseVersion == $version and .sourceRevision == $source and .pipelineId == $pipeline and
-    (.images | keys) == ["devapp-web", "order-app", "user-app"] and
+    (.images | keys) == ["swirlapp-order", "swirlapp-user", "swirlapp-web"] and
     (.images | to_entries | all(.value.repository == ($prefix + .key) and (.value.digest | test("^sha256:[0-9a-f]{64}$"))))' \
     <<<"$manifest" >/dev/null || return 1
   release_revision="$published"
@@ -115,9 +115,9 @@ publish_release() {
   output_dir="$repository_root/package-output"
   package_url="$PACKAGE_REGISTRY_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/$CI_PROJECT_NAME/$APP_VERSION"
   mkdir -p "$output_dir"
-  cp user-app/target/user-app.jar "$output_dir/user-app-$APP_VERSION.jar"
-  cp order-app/target/order-app.jar "$output_dir/order-app-$APP_VERSION.jar"
-  cp "devapp-web/devapp-web-$APP_VERSION.tar.gz" "$output_dir/"
+  cp swirlapp-user/target/swirlapp-user.jar "$output_dir/swirlapp-user-$APP_VERSION.jar"
+  cp swirlapp-order/target/swirlapp-order.jar "$output_dir/swirlapp-order-$APP_VERSION.jar"
+  cp "swirlapp-web/swirlapp-web-$APP_VERSION.tar.gz" "$output_dir/"
   cp "infra/releases/$APP_VERSION.json" "$output_dir/release-manifest.json"
   (cd "$output_dir" && sha256sum ./*.jar ./*.tar.gz ./release-manifest.json > SHA256SUMS)
   for artifact in "$output_dir"/*; do
@@ -132,15 +132,15 @@ publish_release() {
   git checkout -B "$CI_DEFAULT_BRANCH" "origin/$CI_DEFAULT_BRANCH"
   infra/scripts/set-project-version.sh "$APP_VERSION"
   configure_git_identity
-  git add VERSION pom.xml devapp-common/pom.xml order-app/pom.xml user-app/pom.xml \
-    devapp-web/package.json devapp-web/package-lock.json "infra/releases/$APP_VERSION.json"
+  git add VERSION pom.xml swirlapp-common/pom.xml swirlapp-order/pom.xml swirlapp-user/pom.xml \
+    swirlapp-web/package.json swirlapp-web/package-lock.json "infra/releases/$APP_VERSION.json"
   git commit -m "release: $APP_VERSION [skip ci]"
   release_revision="$(git rev-parse HEAD)"
-  git tag --annotate "$release_tag" --message "DevApp $APP_VERSION"
+  git tag --annotate "$release_tag" --message "Swirl Demo App $APP_VERSION"
 
   infra/scripts/set-project-version.sh "$next_version"
-  git add VERSION pom.xml devapp-common/pom.xml order-app/pom.xml user-app/pom.xml \
-    devapp-web/package.json devapp-web/package-lock.json
+  git add VERSION pom.xml swirlapp-common/pom.xml swirlapp-order/pom.xml swirlapp-user/pom.xml \
+    swirlapp-web/package.json swirlapp-web/package-lock.json
   local commit_args=(--allow-empty -m "chore: prepare $next_version [skip ci]"
     --trailer "Release-Pipeline: $CI_PIPELINE_ID" --trailer "Release-Source: $CI_COMMIT_SHA")
   if [[ "${APP_ONBOARDING:-false}" == true ]]; then
@@ -186,7 +186,7 @@ load_snapshot() {
     --arg branch "$CI_COMMIT_BRANCH" --arg prefix "$CI_REGISTRY/$CI_PROJECT_PATH/" '
     .version == 1 and .kind == "snapshot" and .releaseVersion == $version and .sourceRevision == $source and
     .pipelineId == $pipeline and .sourceBranch == $branch and
-    (.images | keys) == ["devapp-web", "order-app", "user-app"] and
+    (.images | keys) == ["swirlapp-order", "swirlapp-user", "swirlapp-web"] and
     (.images | to_entries | all(.value.repository == ($prefix + .key) and (.value.digest | test("^sha256:[0-9a-f]{64}$"))))' \
     <<<"$manifest" >/dev/null || fail 'Invalid snapshot image or source provenance.'
   mkdir -p package-output
@@ -275,7 +275,7 @@ verify_application_owner() {
   current="$(kubectl --request-timeout=30s get application "$application_name" -n infra --ignore-not-found -o json)"
   [[ -n "$current" ]] || return 0
   local deployed_pipeline
-  deployed_pipeline="$(jq -r '.metadata.annotations["devapp.delivery/pipeline"] // "0"' <<<"$current")"
+  deployed_pipeline="$(jq -r '.metadata.annotations["swirl-demo-app.delivery/pipeline"] // "0"' <<<"$current")"
   [[ "$deployed_pipeline" =~ ^[0-9]+$ && "$deployed_pipeline" -le "$CI_PIPELINE_ID" ]] ||
     fail 'A newer pipeline already deployed this environment; start a new pipeline instead of overwriting it.'
   jq -e --slurpfile metadata package-output/deployment.json \
@@ -377,7 +377,7 @@ deploy_release() {
       .status.health.status == "Healthy" and (.status.summary.images as $actual |
       $metadata[0].images | all(. as $image | $actual | index($image))) and
       ([.status.resources[]? | select(.kind == "Deployment" and .health.status == "Healthy") | .name] as $ready |
-      ["user-app", "order-app", "devapp-web"] | all(. as $name | $ready | index($name)))' <<<"$application" >/dev/null; then
+      ["swirlapp-user", "swirlapp-order", "swirlapp-web"] | all(. as $name | $ready | index($name)))' <<<"$application" >/dev/null; then
       success=true
       break
     fi
@@ -387,7 +387,7 @@ deploy_release() {
   [[ "$success" == true ]] || fail 'Argo CD did not confirm the selected target, revision and image digests.'
   local deployment_url
   deployment_url="$(jq -r '.url' package-output/deployment.json)"
-  smoke_curl "$deployment_url/" | grep -q '<app-root' || fail 'The selected public route did not serve DevApp.'
+  smoke_curl "$deployment_url/" | grep -q '<app-root' || fail 'The selected public route did not serve Swirl Demo App.'
   smoke_curl "$deployment_url/runtime-config.json" | \
     jq -e --slurpfile metadata package-output/deployment.json '. == $metadata[0].runtimeConfig' >/dev/null ||
     fail 'The selected environment served another runtime configuration.'

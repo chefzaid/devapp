@@ -1,6 +1,6 @@
 # Testing Guide
 
-DevApp verifies the reusable layers it demonstrates: API contracts, validation and errors, transaction-oriented services, caching, security, Kafka state handling, Angular integration, and real browser authentication.
+Swirl Demo App verifies the reusable layers it demonstrates: API contracts, validation and errors, transaction-oriented services, caching, security, Kafka state handling, Angular integration, and real browser authentication.
 
 ## Test Layers
 
@@ -43,7 +43,7 @@ mvn clean verify
 Frontend unit tests and production build:
 
 ```bash
-cd devapp-web
+cd swirlapp-web
 npm ci
 npm test
 npm run test:coverage
@@ -96,31 +96,31 @@ mask build all
 Run one module and its required reactor dependencies:
 
 ```bash
-mvn -pl user-app -am test
-mvn -pl order-app -am test
+mvn -pl swirlapp-user -am test
+mvn -pl swirlapp-order -am test
 ```
 
 Run one class:
 
 ```bash
-mvn -pl user-app -am -Dtest=UserServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
-mvn -pl order-app -am -Dtest=OrderResultListenerTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn -pl swirlapp-user -am -Dtest=UserServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
+mvn -pl swirlapp-order -am -Dtest=OrderResultListenerTest -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
 Run one method:
 
 ```bash
-mvn -pl user-app -am -Dtest=UserServiceTest#createUserNormalizesInput \
+mvn -pl swirlapp-user -am -Dtest=UserServiceTest#createUserNormalizesInput \
   -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
 Test reports:
 
-- `devapp-common/target/surefire-reports/`
-- `user-app/target/surefire-reports/`
-- `order-app/target/surefire-reports/`
-- `user-app/target/site/jacoco/index.html`
-- `order-app/target/site/jacoco/index.html`
+- `swirlapp-common/target/surefire-reports/`
+- `swirlapp-user/target/surefire-reports/`
+- `swirlapp-order/target/surefire-reports/`
+- `swirlapp-user/target/site/jacoco/index.html`
+- `swirlapp-order/target/site/jacoco/index.html`
 
 The shared module skips its JaCoCo gate because it is infrastructure code tested directly. Each deployable service applies a 60 percent instruction gate after excluding application bootstrap, configuration, domain, and DTO classes.
 
@@ -158,9 +158,9 @@ The current clean frontend run executes 52 tests across 9 files.
 Coverage output:
 
 - terminal summary from `npm run test:coverage`
-- LCOV output under `devapp-web/coverage/`
+- LCOV output under `swirlapp-web/coverage/`
 
-CI uses `npm run test:ci`, which writes `devapp-web/test-results.xml` for GitLab CI and an LCOV report for analysis tooling.
+CI uses `npm run test:ci`, which writes `swirlapp-web/test-results.xml` for GitLab CI and an LCOV report for analysis tooling.
 
 ## Playwright Suites
 
@@ -169,7 +169,7 @@ CI uses `npm run test:ci`, which writes `devapp-web/test-results.xml` for GitLab
 `e2e/home.spec.ts` checks that the login route and SSO call to action render. When `WEB_URL` is unset, Playwright starts the Angular development server automatically.
 
 ```bash
-cd devapp-web
+cd swirlapp-web
 npm run test:e2e
 ```
 
@@ -189,8 +189,8 @@ npm run test:e2e
 Run against an environment:
 
 ```bash
-cd devapp-web
-WEB_URL=https://devapp.example.com \
+cd swirlapp-web
+WEB_URL=https://demo.example.com \
 OIDC_USERNAME=example-user \
 OIDC_PASSWORD='<from Vault/GitLab CI variable>' \
 npm run test:integration
@@ -333,13 +333,13 @@ Use Spring Security's JWT request post-processor and ensure the test enables sec
 ### Playwright cannot find browser binaries
 
 ```bash
-cd devapp-web
+cd swirlapp-web
 npm run test:e2e:install
 ```
 
 ### Public E2E receives an edge challenge
 
-The public Cloudflare path may challenge headless clients. GitLab CI resolves the DevApp and canonical Keycloak public hostnames directly to the in-cluster ingress. `IGNORE_HTTPS_ERRORS=true` is used only for that origin route because the ingress has a Cloudflare Origin CA certificate; do not use it for normal public-endpoint validation.
+The public Cloudflare path may challenge headless clients. GitLab CI resolves the Swirl Demo App and canonical Keycloak public hostnames directly to the in-cluster ingress. `IGNORE_HTTPS_ERRORS=true` is used only for that origin route because the ingress has a Cloudflare Origin CA certificate; do not use it for normal public-endpoint validation.
 
 ### A browser test passes alone but fails in the suite
 

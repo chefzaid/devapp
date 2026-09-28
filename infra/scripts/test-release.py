@@ -38,7 +38,7 @@ else:
 
 class PublicationTests(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory(prefix='devapp-release-')
+        temporary = tempfile.TemporaryDirectory(prefix='swirl-demo-app-release-')
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         self.work = self.root / 'work'
@@ -56,17 +56,17 @@ class PublicationTests(unittest.TestCase):
                      'commit-deployment.sh', 'set-image-tags.sh', 'current-version.sh'):
             shutil.copy2(ROOT / 'infra/scripts' / name, self.work / 'infra/scripts' / name)
         self.write('infra/scripts/set-project-version.sh', '#!/bin/sh\nprintf "%s\\n" "$1" > VERSION\n', executable=True)
-        self.write('infra/scripts/ci-container-build.sh', '#!/bin/sh\nprintf "build\\n" >> "$RELEASE_FIXTURE_BUILDS"\nmkdir -p package-output/image-digests\nfor name in user-app order-app devapp-web; do\n  printf "sha256:' + 'a' * 64 + '\\n" > "package-output/image-digests/$name"\ndone\n', executable=True)
-        for name in ('pom.xml', 'devapp-common/pom.xml', 'order-app/pom.xml', 'user-app/pom.xml',
-                     'devapp-web/package.json', 'devapp-web/package-lock.json'):
+        self.write('infra/scripts/ci-container-build.sh', '#!/bin/sh\nprintf "build\\n" >> "$RELEASE_FIXTURE_BUILDS"\nmkdir -p package-output/image-digests\nfor name in swirlapp-user swirlapp-order swirlapp-web; do\n  printf "sha256:' + 'a' * 64 + '\\n" > "package-output/image-digests/$name"\ndone\n', executable=True)
+        for name in ('pom.xml', 'swirlapp-common/pom.xml', 'swirlapp-order/pom.xml', 'swirlapp-user/pom.xml',
+                     'swirlapp-web/package.json', 'swirlapp-web/package-lock.json'):
             self.write(name, 'fixture\n')
-        for name in ('user-app/target/user-app.jar', 'order-app/target/order-app.jar',
-                     'devapp-web/devapp-web-1.0.1.tar.gz'):
+        for name in ('swirlapp-user/target/swirlapp-user.jar', 'swirlapp-order/target/swirlapp-order.jar',
+                     'swirlapp-web/swirlapp-web-1.0.1.tar.gz'):
             self.write(name, 'fixture artifact\n')
         self.write('VERSION', '1.0.0\n')
         self.write('infra/k8s/kustomization.yaml', 'images:\n' + ''.join(
-            f'  - name: registry.example.test/teams/testing/devapp/{name}\n    newTag: 1.0.0\n'
-            for name in ('user-app', 'order-app', 'devapp-web')))
+            f'  - name: registry.example.test/teams/testing/swirl-demo-app/{name}\n    newTag: 1.0.0\n'
+            for name in ('swirlapp-user', 'swirlapp-order', 'swirlapp-web')))
         self.write('.gitignore', 'release.env\npackage-output/\n')
         self.git('add', '.')
         self.git('commit', '-qm', 'Application source')
@@ -87,8 +87,8 @@ class PublicationTests(unittest.TestCase):
                     'CI_PIPELINE_SOURCE': 'api', 'CI_DEFAULT_BRANCH': 'trunk', 'CI_COMMIT_BRANCH': 'trunk',
                     'CI_COMMIT_SHA': self.source, 'ONBOARDING_EXPECTED_SHA': self.source,
                     'SONAR_SCAN_ONLY': 'false', 'NEW_MAJOR_VERSION': '', 'RELEASE_VERSION': '',
-                    'PIPELINE_MODE': 'standard', 'DEPLOYMENT_ENVIRONMENT': 'int', 'CI_PROJECT_PATH': 'teams/testing/devapp',
-                    'CI_PROJECT_NAME': 'devapp', 'CI_PROJECT_ID': '735', 'CI_REGISTRY': 'registry.example.test', 'CI_JOB_TOKEN': 'fixture-only-token',
+                    'PIPELINE_MODE': 'standard', 'DEPLOYMENT_ENVIRONMENT': 'int', 'CI_PROJECT_PATH': 'teams/testing/swirl-demo-app',
+                    'CI_PROJECT_NAME': 'swirl-demo-app', 'CI_PROJECT_ID': '735', 'CI_REGISTRY': 'registry.example.test', 'CI_JOB_TOKEN': 'fixture-only-token',
                     'CI_SERVER_URL': 'https://source.example.test', 'CI_API_V4_URL': 'https://source.example.test/api/v4',
                     'PACKAGE_REGISTRY_API_V4_URL': 'http://gitlab.services.test/api/v4',
                     'RELEASE_FIXTURE_STATE': str(self.state_path), 'RELEASE_FIXTURE_BUILDS': str(self.builds)}
@@ -139,7 +139,7 @@ class PublicationTests(unittest.TestCase):
         self.assertIn('NEXT_VERSION=1.1.0', (self.work / 'release.env').read_text())
         manifest = json.loads(self.git('show', 'v1.0.1:infra/releases/1.0.1.json').stdout)
         self.assertEqual(manifest['sourceRevision'], self.source)
-        self.assertEqual(set(manifest['images']), {'user-app', 'order-app', 'devapp-web'})
+        self.assertEqual(set(manifest['images']), {'swirlapp-user', 'swirlapp-order', 'swirlapp-web'})
         self.assertEqual(self.git('show', 'trunk:infra/k8s/kustomization.yaml').stdout,
                          self.git('show', self.source + ':infra/k8s/kustomization.yaml').stdout)
 
@@ -193,7 +193,7 @@ class PublicationTests(unittest.TestCase):
         self.git('checkout', '-q', '--detach', self.published)
         image_file = self.work / 'infra/releases/1.0.1.json'
         manifest = json.loads(image_file.read_text())
-        manifest['images']['user-app']['repository'] = 'registry.foreign.test/other/app'
+        manifest['images']['swirlapp-user']['repository'] = 'registry.foreign.test/other/app'
         image_file.write_text(json.dumps(manifest))
         self.git('add', '.')
         self.git('commit', '-q', '--amend', '--no-edit')

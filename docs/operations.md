@@ -7,7 +7,7 @@ Argo CD Applications remain in `infra`. The examples below select local `int`;
 change `APP_NAMESPACE` and `KUBECONFIG` for another target. See
 [deployment](deployment.md#ownership-and-topology).
 
-This runbook covers the DevApp application layer, including its public DNS record, registry-credential projection, Argo CD application, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring services are owned by [`swirl-cloud`](https://github.com/chefzaid/swirl-cloud); use its runbooks when the incident is platform-wide. All DevApp-specific configuration remains in this repository.
+This runbook covers the Swirl Demo App application layer, including its public DNS record, registry-credential projection, Argo CD application, and dashboard metadata. Shared database, messaging, identity, registry, CI/CD, ingress, logging, and monitoring services are owned by [`swirl-cloud`](https://github.com/chefzaid/swirl-cloud); use its runbooks when the incident is platform-wide. All Swirl Demo App-specific configuration remains in this repository.
 
 ## Runtime Surfaces
 
@@ -18,19 +18,19 @@ Public addresses use the settings saved by
 |---|---|
 | application | `https://<APP_HOST>` |
 | API documentation | `https://<APP_HOST>/api/docs` |
-| Grafana dashboard, after telemetry integration | `https://grafana.<PUBLIC_DOMAIN>/d/devapp-<env>-overview` |
+| Grafana dashboard, after telemetry integration | `https://grafana.<PUBLIC_DOMAIN>/d/swirl-demo-app-<env>-overview` |
 | Kibana logs, after telemetry integration | `https://kibana.<PUBLIC_DOMAIN>` |
 | GitLab source, CI and releases | `<GITLAB_PUBLIC_URL>/<GITLAB_PROJECT_PATH>` |
 | SonarQube | `https://sonarqube.<PUBLIC_DOMAIN>`, project `<SONAR_PROJECT_KEY>` |
-| Argo CD | `https://argocd.<PUBLIC_DOMAIN>/applications/devapp-<env>` |
+| Argo CD | `https://argocd.<PUBLIC_DOMAIN>/applications/swirl-demo-app-<env>` |
 
 Cluster-only:
 
 | Surface | Address |
 |---|---|
-| user service | `user-app.<namespace>.svc.cluster.local:8080` |
-| order service | `order-app.<namespace>.svc.cluster.local:8081` |
-| web service | `devapp-web.<namespace>.svc.cluster.local:80` |
+| user service | `swirlapp-user.<namespace>.svc.cluster.local:8080` |
+| order service | `swirlapp-order.<namespace>.svc.cluster.local:8081` |
+| web service | `swirlapp-web.<namespace>.svc.cluster.local:80` |
 
 Application services use target-cluster Kubernetes DNS. Shared PostgreSQL,
 Redis and Kafka use Kubernetes Services locally or the registered private gateway
@@ -40,17 +40,17 @@ remotely; Keycloak uses its shared public URL. Inspect the selected environment'
 ## First Checks After A Rollout
 
 ```bash
-kubectl --kubeconfig /secure/platform.yaml get application devapp-int -n infra
+kubectl --kubeconfig /secure/platform.yaml get application swirl-demo-app-int -n infra
 export KUBECONFIG=/secure/platform.yaml
 export APP_NAMESPACE=apps-int
 kubectl get deploy,pods,svc,ingress -n "$APP_NAMESPACE"
-kubectl get externalsecret devapp-runtime-credentials devapp-registry-auth -n "$APP_NAMESPACE"
+kubectl get externalsecret swirl-demo-app-runtime-credentials swirl-demo-app-registry-auth -n "$APP_NAMESPACE"
 ```
 
 Expected state:
 
 - Argo CD: `Synced` and `Healthy`
-- `user-app`, `order-app`, and `devapp-web`: desired replicas available
+- `swirlapp-user`, `swirlapp-order`, and `swirlapp-web`: desired replicas available
 - pods: ready with low/no restart growth
 - ExternalSecret: `Ready=True`
 - ingress host: the configured `APP_HOST`
@@ -58,9 +58,9 @@ Expected state:
 Rollout checks:
 
 ```bash
-kubectl rollout status deployment/user-app -n "$APP_NAMESPACE"
-kubectl rollout status deployment/order-app -n "$APP_NAMESPACE"
-kubectl rollout status deployment/devapp-web -n "$APP_NAMESPACE"
+kubectl rollout status deployment/swirlapp-user -n "$APP_NAMESPACE"
+kubectl rollout status deployment/swirlapp-order -n "$APP_NAMESPACE"
+kubectl rollout status deployment/swirlapp-web -n "$APP_NAMESPACE"
 ```
 
 ## Health And Readiness
@@ -83,7 +83,7 @@ validates their values before authentication; see the
 Public ingress exposes only the two health summaries. Inspect other Actuator endpoints through the service or a temporary port-forward:
 
 ```bash
-kubectl port-forward -n "$APP_NAMESPACE" svc/user-app 18080:8080
+kubectl port-forward -n "$APP_NAMESPACE" svc/swirlapp-user 18080:8080
 curl http://127.0.0.1:18080/actuator/health
 ```
 
@@ -140,15 +140,15 @@ Useful fields:
 Direct logs:
 
 ```bash
-kubectl logs -n "$APP_NAMESPACE" deployment/user-app --since=15m
-kubectl logs -n "$APP_NAMESPACE" deployment/order-app --since=15m
-kubectl logs -n "$APP_NAMESPACE" deployment/devapp-web --since=15m
+kubectl logs -n "$APP_NAMESPACE" deployment/swirlapp-user --since=15m
+kubectl logs -n "$APP_NAMESPACE" deployment/swirlapp-order --since=15m
+kubectl logs -n "$APP_NAMESPACE" deployment/swirlapp-web --since=15m
 ```
 
 Follow a specific pod when diagnosing restart or concurrency behavior:
 
 ```bash
-kubectl get pods -n "$APP_NAMESPACE" -l app=order-app
+kubectl get pods -n "$APP_NAMESPACE" -l app=swirlapp-order
 kubectl logs -n "$APP_NAMESPACE" <order-pod-name> -f
 kubectl logs -n "$APP_NAMESPACE" <order-pod-name> --previous
 ```
@@ -187,14 +187,14 @@ are roadmap items.
 Symptoms:
 
 - pod has `CreateContainerConfigError`
-- `devapp-runtime-credentials` Secret absent
+- `swirl-demo-app-runtime-credentials` Secret absent
 - ExternalSecret not ready
 
 Checks:
 
 ```bash
-kubectl describe externalsecret devapp-runtime-credentials -n "$APP_NAMESPACE"
-kubectl get secret devapp-runtime-credentials -n "$APP_NAMESPACE"
+kubectl describe externalsecret swirl-demo-app-runtime-credentials -n "$APP_NAMESPACE"
+kubectl get secret swirl-demo-app-runtime-credentials -n "$APP_NAMESPACE"
 kubectl get clustersecretstore vault-backend-int
 ```
 
@@ -211,8 +211,8 @@ Symptoms:
 Checks:
 
 ```bash
-kubectl logs -n "$APP_NAMESPACE" deployment/user-app --previous
-kubectl logs -n "$APP_NAMESPACE" deployment/order-app --previous
+kubectl logs -n "$APP_NAMESPACE" deployment/swirlapp-user --previous
+kubectl logs -n "$APP_NAMESPACE" deployment/swirlapp-order --previous
 ```
 
 Identify the owning service and its history table:
@@ -295,11 +295,11 @@ Do not log or paste the full access token. Decode only non-sensitive header/clai
 Check ingress path ordering/routing and the rendered manifest:
 
 ```bash
-kubectl describe ingress devapp-ingress -n "$APP_NAMESPACE"
+kubectl describe ingress swirl-demo-app-ingress -n "$APP_NAMESPACE"
 kubectl kustomize infra/k8s | less
 ```
 
-`/api/users`, `/api/orders`, and documentation paths must route before the `/` catch-all. Keycloak is reached on its own canonical public hostname and is not proxied by the DevApp ingress.
+`/api/users`, `/api/orders`, and documentation paths must route before the `/` catch-all. Keycloak is reached on its own canonical public hostname and is not proxied by the Swirl Demo App ingress.
 
 ### Prometheus target is down
 
@@ -341,7 +341,7 @@ Compare:
 
 ```bash
 git show HEAD:infra/argocd/int.yaml
-kubectl --kubeconfig /secure/platform.yaml get application devapp-int -n infra -o yaml
+kubectl --kubeconfig /secure/platform.yaml get application swirl-demo-app-int -n infra -o yaml
 ```
 
 Compare the selected Application pointer and its pinned runtime commit; snapshot
@@ -397,7 +397,7 @@ Database migrations require separate care. Application rollback is safe only whe
 
 Application data resides in shared PostgreSQL. Kafka and Redis have persistent platform storage in relevant environments. Backup schedules, retention, encryption, and restore infrastructure belong to `swirl-cloud`.
 
-DevApp still needs application-level recovery validation:
+Swirl Demo App still needs application-level recovery validation:
 
 - restore a database copy and run both services with Hibernate validation
 - verify both Flyway histories
@@ -417,9 +417,9 @@ Database credential rotation must coordinate:
 4. application restart/reconnection
 5. health verification
 
-Registry/repository credentials live at Vault `apps/devapp/registry`. Coordinate
+Registry/repository credentials live at Vault `apps/swirl-demo-app/registry`. Coordinate
 their replacement with ExternalSecret refreshes before revoking the prior token.
-Publication uses GitLab's job token; there is no separate `apps/devapp/ci` Secret.
+Publication uses GitLab's job token; there is no separate `apps/swirl-demo-app/ci` Secret.
 
 Keycloak signing-key rotation should allow token/JWK overlap and verify both backend resource servers. Never rotate by editing the exported disposable realm secret values for a live realm.
 

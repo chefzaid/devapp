@@ -62,11 +62,11 @@ variables:
   stage: build
   image: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
   cache:
-    - key: devapp-maven-v2
+    - key: swirl-demo-app-maven-v2
       paths:
         - .cache/maven/
       policy: pull-push
-    - key: devapp-npm-v2
+    - key: swirl-demo-app-npm-v2
       paths:
         - .cache/npm/
       policy: pull-push
@@ -76,13 +76,13 @@ variables:
   script:
     - infra/scripts/ci-verify.sh build
   artifacts:
-    name: "devapp-compiled-$CI_COMMIT_SHORT_SHA"
+    name: "swirl-demo-app-compiled-$CI_COMMIT_SHORT_SHA"
     expire_in: 7 days
     paths:
-      - user-app/target/user-app.jar
-      - order-app/target/order-app.jar
-      - devapp-web/dist/
-      - devapp-web/devapp-web-*.tar.gz
+      - swirlapp-user/target/swirlapp-user.jar
+      - swirlapp-order/target/swirlapp-order.jar
+      - swirlapp-web/dist/
+      - swirlapp-web/swirlapp-web-*.tar.gz
   rules:
     - if: '$RELEASE_VERSION != ""'
       when: never
@@ -96,11 +96,11 @@ variables:
       artifacts: false
   image: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
   cache:
-    - key: devapp-maven-v2
+    - key: swirl-demo-app-maven-v2
       paths:
         - .cache/maven/
       policy: pull-push
-    - key: devapp-npm-v2
+    - key: swirl-demo-app-npm-v2
       paths:
         - .cache/npm/
       policy: pull-push
@@ -112,21 +112,21 @@ variables:
   coverage: '/TOTAL_COVERAGE=([0-9]+(?:\.[0-9]+)?)%/'
   allow_failure: true
   artifacts:
-    name: "devapp-tests-$CI_COMMIT_SHORT_SHA"
+    name: "swirl-demo-app-tests-$CI_COMMIT_SHORT_SHA"
     when: always
     expire_in: 7 days
     reports:
       junit:
         - '**/target/surefire-reports/*.xml'
-        - devapp-web/test-results.xml
+        - swirlapp-web/test-results.xml
         - coverage-policy-junit.xml
       coverage_report:
         coverage_format: cobertura
-        path: devapp-web/coverage/devapp-web/cobertura-coverage.xml
+        path: swirlapp-web/coverage/swirlapp-web/cobertura-coverage.xml
       dotenv: coverage-policy.env
     paths:
-      - devapp-web/coverage/
-      - devapp-web/test-results.xml
+      - swirlapp-web/coverage/
+      - swirlapp-web/test-results.xml
       - '**/target/site/jacoco/'
       - '**/target/surefire-reports/'
       - '**/target/classes/'
@@ -147,25 +147,25 @@ variables:
     name: mcr.microsoft.com/playwright@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
     entrypoint: [""]
   cache:
-    - key: devapp-playwright-npm-v2
+    - key: swirl-demo-app-playwright-npm-v2
       paths:
         - .cache/npm/
       policy: pull-push
   before_script:
-    - cd devapp-web
+    - cd swirlapp-web
     - npm ci
   script:
     - npm run test:e2e
   artifacts:
-    name: "devapp-e2e-$CI_COMMIT_SHORT_SHA"
+    name: "swirl-demo-app-e2e-$CI_COMMIT_SHORT_SHA"
     expose_as: "Playwright E2E report"
     when: always
     expire_in: 7 days
     reports:
-      junit: devapp-web/test-results/playwright-junit.xml
+      junit: swirlapp-web/test-results/playwright-junit.xml
     paths:
-      - devapp-web/test-results/
-      - devapp-web/playwright-report/
+      - swirlapp-web/test-results/
+      - swirlapp-web/playwright-report/
   manual_confirmation: "Run the optional Playwright E2E tests for $CI_COMMIT_SHORT_SHA?"
   rules:
     - if: '$RELEASE_VERSION != ""'
@@ -188,11 +188,11 @@ variables:
     name: node:24.15.0-bookworm-slim@sha256:4e6b70dd6cbfc88c8157ba19aa3d9f9cce6ba4703576d55459e45efcbc9c5f5d
     entrypoint: [""]
   cache:
-    - key: devapp-maven-v2
+    - key: swirl-demo-app-maven-v2
       paths:
         - .cache/maven/
       policy: pull
-    - key: devapp-sonar-v1
+    - key: swirl-demo-app-sonar-v1
       paths:
         - .cache/sonar/cache/
       policy: pull-push
@@ -206,7 +206,7 @@ variables:
     - bash infra/scripts/ci-quality.sh
   allow_failure: true
   artifacts:
-    name: "devapp-quality-$CI_COMMIT_SHORT_SHA"
+    name: "swirl-demo-app-quality-$CI_COMMIT_SHORT_SHA"
     when: always
     expire_in: 7 days
     reports:
@@ -237,7 +237,7 @@ variables:
     TRIVY_NO_PROGRESS: "true"
     TRIVY_TIMEOUT: 10m
   cache:
-    - key: devapp-trivy-v1
+    - key: swirl-demo-app-trivy-v1
       paths:
         - .cache/trivy/
       policy: pull-push
@@ -248,7 +248,7 @@ variables:
     - trivy convert --scanners vuln,misconfig,secret --severity HIGH,CRITICAL --format table --exit-code 1 security-reports/trivy.json
   allow_failure: true
   artifacts:
-    name: "devapp-security-$CI_COMMIT_SHORT_SHA"
+    name: "swirl-demo-app-security-$CI_COMMIT_SHORT_SHA"
     when: always
     expire_in: 7 days
     paths:
@@ -277,11 +277,11 @@ variables:
     name: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
     entrypoint: [""]
   cache:
-    - key: devapp-kaniko-executor-v1
+    - key: swirl-demo-app-kaniko-executor-v1
       paths:
         - .cache/kaniko/
       policy: pull-push
-  resource_group: devapp-release
+  resource_group: swirl-demo-app-release
   interruptible: false
   before_script:
     - apk add --no-cache bash crane curl git jq
@@ -293,7 +293,7 @@ variables:
   script:
     - infra/scripts/ci-release.sh publish
   artifacts:
-    name: "devapp-release-$CI_COMMIT_SHORT_SHA"
+    name: "swirl-demo-app-release-$CI_COMMIT_SHORT_SHA"
     expose_as: "Release packages and checksums"
     when: always
     expire_in: 7 days
@@ -302,7 +302,7 @@ variables:
     paths:
       - package-output/
       - release.env
-  manual_confirmation: "Release the successful DevApp build for $CI_COMMIT_SHORT_SHA?"
+  manual_confirmation: "Release the successful Swirl Demo App build for $CI_COMMIT_SHORT_SHA?"
   rules:
     - if: '$RELEASE_VERSION != ""'
       when: never
@@ -327,11 +327,11 @@ variables:
     name: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
     entrypoint: [""]
   cache:
-    - key: devapp-kaniko-executor-v1
+    - key: swirl-demo-app-kaniko-executor-v1
       paths:
         - .cache/kaniko/
       policy: pull-push
-  resource_group: devapp-snapshot-$CI_PIPELINE_ID
+  resource_group: swirl-demo-app-snapshot-$CI_PIPELINE_ID
   interruptible: false
   before_script:
     - apk add --no-cache bash crane curl git jq
@@ -342,7 +342,7 @@ variables:
   script:
     - infra/scripts/ci-release.sh snapshot
   artifacts:
-    name: "devapp-snapshot-$CI_COMMIT_SHORT_SHA"
+    name: "swirl-demo-app-snapshot-$CI_COMMIT_SHORT_SHA"
     expose_as: "Immutable integration snapshot"
     when: always
     expire_in: 7 days
@@ -375,7 +375,7 @@ variables:
   image:
     name: docker.io/library/maven@sha256:8df9a1dbc464977482f726f28a8a1985dcef4e4e68bdda1ae0330711bcb3a192
     entrypoint: [""]
-  resource_group: devapp-$DEPLOYMENT_ENVIRONMENT
+  resource_group: swirl-demo-app-$DEPLOYMENT_ENVIRONMENT
   interruptible: false
   before_script:
     - apk add --no-cache bash curl git jq python3 py3-yaml
@@ -423,13 +423,13 @@ set-major-version:
   needs:
     - job: 00-delivery-policy
       artifacts: false
-  resource_group: devapp-release
+  resource_group: swirl-demo-app-release
   interruptible: false
   before_script:
     - apk add --no-cache bash git jq
   script:
     - infra/scripts/ci-set-major-version.sh
-  manual_confirmation: "Set the next DevApp major version from NEW_MAJOR_VERSION?"
+  manual_confirmation: "Set the next Swirl Demo App major version from NEW_MAJOR_VERSION?"
   rules:
     - if: '$RELEASE_VERSION != ""'
       when: never

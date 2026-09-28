@@ -18,7 +18,7 @@ run_npm_audit() {
   fi
 }
 
-run_npm_audit devapp-web devapp-web
+run_npm_audit swirlapp-web swirlapp-web
 
 submit_sonar() {
   local sonar_version="$1" attempt

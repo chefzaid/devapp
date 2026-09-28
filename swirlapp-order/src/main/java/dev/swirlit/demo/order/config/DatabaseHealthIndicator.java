@@ -1,0 +1,32 @@
+package dev.swirlit.demo.order.config;
+
+import dev.swirlit.demo.order.repository.OrderRepository;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
+import org.springframework.stereotype.Component;
+
+@Component("database")
+public class DatabaseHealthIndicator implements HealthIndicator {
+
+    private final OrderRepository orderRepository;
+
+    public DatabaseHealthIndicator(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+
+    @Override
+    public Health health() {
+        try {
+            long orderCount = orderRepository.count();
+            return Health.up()
+                    .withDetail("orderCount", orderCount)
+                    .withDetail("status", "Database connection successful")
+                    .build();
+        } catch (Exception e) {
+            return Health.down()
+                    .withDetail("error", e.getMessage())
+                    .withDetail("status", "Database connection failed")
+                    .build();
+        }
+    }
+}

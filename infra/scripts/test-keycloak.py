@@ -26,7 +26,7 @@ class FakeKeycloak:
                        ["profile", "email", "web-origins", "acr", "basic", "roles", "groups", "offline_access"]}
         self.assignments = {"default": set(), "optional": set()}
         if existing:
-            self.clients.append({"id": "original-uuid", "clientId": "devapp-web"})
+            self.clients.append({"id": "original-uuid", "clientId": "swirlapp-web"})
             self.mappers.append({"id": "original-mapper", "name": "groups", "config": {}})
             self.assignments = {
                 "default": {"profile", "roles", "groups"},
@@ -57,7 +57,7 @@ class FakeKeycloak:
                 self.assignments[mode].add(name)
                 return None
         if "?clientId=" in path:
-            return deepcopy([item for item in self.clients if item["clientId"] == "devapp-web"])
+            return deepcopy([item for item in self.clients if item["clientId"] == "swirlapp-web"])
         if path.endswith("/clients") and method == "POST":
             self.clients.append({**deepcopy(body), "id": "created-uuid"})
             self.mappers = [dict(item, id=f"created-mapper-{index}")
@@ -150,7 +150,7 @@ class ClientTests(unittest.TestCase):
 
     def test_ambiguous_client_fails_before_writing(self):
         api = FakeKeycloak(existing=True)
-        api.clients.append({"id": "ambiguous-uuid", "clientId": "devapp-web"})
+        api.clients.append({"id": "ambiguous-uuid", "clientId": "swirlapp-web"})
         with self.assertRaisesRegex(RuntimeError, "exactly one"):
             module.reconcile(api, "swirlit", self.desired)
         self.assertTrue(all(method == "GET" for method, _, _ in api.calls))

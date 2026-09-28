@@ -1,6 +1,6 @@
 # Technical Roadmap
 
-DevApp is a reusable application template, not a product roadmap. New work should demonstrate a technical capability that can be transplanted into another service with little domain knowledge. User and order behavior should remain the smallest useful example needed to prove the pattern.
+Swirl Demo App is a reusable application template, not a product roadmap. New work should demonstrate a technical capability that can be transplanted into another service with little domain knowledge. User and order behavior should remain the smallest useful example needed to prove the pattern.
 
 ## Contribution Rules For Roadmap Work
 
@@ -64,8 +64,8 @@ DevApp is a reusable application template, not a product roadmap. New work shoul
 - [ ] Add ephemeral preview environments and automated teardown for pull requests.
 - [ ] Add policy-as-code checks for Kubernetes manifests and container security contexts.
 - [ ] Add release promotion, rollback, provenance, and environment-approval examples without weakening Argo CD ownership.
-- [ ] Fix the `devapp-int`/`-uat`/`-prod` Argo CD `ComparisonError: Object 'Kind' is missing`: the Application source directory also contains `infra/environments/<env>/settings.json`, which Argo CD parses as a manifest. Exclude it (`directory.exclude`) or move the settings outside the source path.
-- [ ] Cut production over from the legacy `apps` namespace to `apps-prod`, adopting the existing `devappdb` database through the platform's reviewed ownership migration.
+- [ ] Fix the `swirl-demo-app-int`/`-uat`/`-prod` Argo CD `ComparisonError: Object 'Kind' is missing`: the Application source directory also contains `infra/environments/<env>/settings.json`, which Argo CD parses as a manifest. Exclude it (`directory.exclude`) or move the settings outside the source path.
+- [ ] Cut production over from the legacy `apps` namespace to `apps-prod`, adopting the existing `swirl_demo_app_db` database through the platform's reviewed ownership migration.
 
 ## Priority: Testing And Quality
 

@@ -52,6 +52,6 @@ build_image() {
   fi
 }
 
-build_image user-app "$repository_root" "$repository_root/user-app/Dockerfile.runtime"
-build_image order-app "$repository_root" "$repository_root/order-app/Dockerfile.runtime"
-build_image devapp-web "$repository_root/devapp-web" "$repository_root/devapp-web/Dockerfile.runtime"
+build_image swirlapp-user "$repository_root" "$repository_root/swirlapp-user/Dockerfile.runtime"
+build_image swirlapp-order "$repository_root" "$repository_root/swirlapp-order/Dockerfile.runtime"
+build_image swirlapp-web "$repository_root/swirlapp-web" "$repository_root/swirlapp-web/Dockerfile.runtime"

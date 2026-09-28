@@ -40,7 +40,7 @@ INVENTORY = {
         "ingressAddress": f"203.0.113.{index}", "podCIDR": "10.42.0.0/16", "nodeCIDRs": [f"100.100.{index}.10/32"]}
         for index, name in enumerate(("int", "uat", "prod"), 1)}}
 RELEASE = {"version": 1, "releaseVersion": "1.0.1", "sourceRevision": "a" * 40, "pipelineId": "73",
-           "images": {name: {"repository": "registry.example.test/teams/testing/devapp/" + name,
+           "images": {name: {"repository": "registry.example.test/teams/testing/swirl-demo-app/" + name,
                              "digest": "sha256:" + str(index) * 64}
                       for index, name in enumerate(RENDER.IMAGES, 1)}}
 
@@ -74,30 +74,30 @@ def copy_base(destination, source=ROOT):
             path.write_text(content)
     path = destination / "infra/argocd/application.yaml"
     application = yaml.safe_load(path.read_text())
-    application["spec"]["source"]["repoURL"] = "http://gitlab.services.test/teams/testing/devapp.git"
+    application["spec"]["source"]["repoURL"] = "http://gitlab.services.test/teams/testing/swirl-demo-app.git"
     path.write_text(yaml.safe_dump(application, sort_keys=False))
 
 
 class RenderingTests(unittest.TestCase):
     def setUp(self):
-        environment = patch.dict(os.environ, {"CI_PROJECT_PATH": "teams/testing/devapp"})
+        environment = patch.dict(os.environ, {"CI_PROJECT_PATH": "teams/testing/swirl-demo-app"})
         environment.start()
         self.addCleanup(environment.stop)
-        temporary = tempfile.TemporaryDirectory(prefix="devapp-environments-")
+        temporary = tempfile.TemporaryDirectory(prefix="swirl-demo-app-environments-")
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         copy_base(self.root)
 
     def test_fixture_accepts_an_already_parameterized_checkout(self):
-        with tempfile.TemporaryDirectory(prefix="devapp-configured-fixture-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="swirl-demo-app-configured-fixture-") as temporary:
             source = Path(temporary) / "configured"
             fixture = Path(temporary) / "fixture"
             copy_base(source)
             for path in (source / "infra").rglob("*"):
                 if path.is_file() and path.suffix in (".yaml", ".json", ".properties"):
-                    path.write_text(path.read_text().replace("registry.example.test/teams/testing/devapp",
+                    path.write_text(path.read_text().replace("registry.example.test/teams/testing/swirl-demo-app",
                         "registry.customer.test/nested/group/portal").replace(
-                            "http://gitlab.services.test/teams/testing/devapp.git",
+                            "http://gitlab.services.test/teams/testing/swirl-demo-app.git",
                             "https://gitlab.customer.test/nested/group/portal.git"))
             copy_base(fixture, source)
             metadata = RENDER.render(fixture, INVENTORY, "int", RELEASE, "a" * 40)
@@ -130,14 +130,14 @@ class RenderingTests(unittest.TestCase):
             images = [item["spec"]["template"]["spec"]["containers"][0]["image"] for item in resources if item["kind"] == "Deployment"]
             self.assertEqual(set(images), set(metadata["images"]))
             backend = next(item for item in resources if item["kind"] == "ConfigMap" and "DB_NAME" in item.get("data", {}))
-            self.assertEqual(backend["data"]["DB_NAME"], "devapp_" + environment)
-            self.assertEqual(backend["data"]["KAFKA_TOPIC_PREFIX"], "devapp." + environment + ".")
-            self.assertEqual(backend["data"]["REDIS_CACHE_PREFIX"], "devapp:" + environment + ":")
-            self.assertEqual(backend["data"]["JWT_AUDIENCE"], "devapp-" + environment + "-web")
-            secret = next(item for item in resources if item["kind"] == "ExternalSecret" and item["metadata"]["name"] == "devapp-runtime-credentials")
+            self.assertEqual(backend["data"]["DB_NAME"], "swirl_demo_app_" + environment)
+            self.assertEqual(backend["data"]["KAFKA_TOPIC_PREFIX"], "swirl-demo-app." + environment + ".")
+            self.assertEqual(backend["data"]["REDIS_CACHE_PREFIX"], "swirl-demo-app:" + environment + ":")
+            self.assertEqual(backend["data"]["JWT_AUDIENCE"], "swirl-demo-app-" + environment + "-web")
+            secret = next(item for item in resources if item["kind"] == "ExternalSecret" and item["metadata"]["name"] == "swirl-demo-app-runtime-credentials")
             self.assertEqual({item["remoteRef"]["key"] for item in secret["spec"]["data"]},
-                             {f"apps/devapp/{environment}/{service}" for service in ("database", "redis", "kafka")})
-            self.assertFalse(any(item["kind"] == "Job" and item["metadata"]["name"] == "devapp-db-setup" for item in resources))
+                             {f"apps/swirl-demo-app/{environment}/{service}" for service in ("database", "redis", "kafka")})
+            self.assertFalse(any(item["kind"] == "Job" and item["metadata"]["name"] == "swirl-demo-app-db-setup" for item in resources))
             previous.update({str(path.relative_to(self.root)): path.read_bytes()
                              for path in (self.root / f"infra/environments/{environment}").rglob("*") if path.is_file()})
             previous[f"infra/argocd/{environment}.yaml"] = (self.root / f"infra/argocd/{environment}.yaml").read_bytes()
@@ -174,15 +174,15 @@ class RenderingTests(unittest.TestCase):
                 for key in ("traefik.ingress.kubernetes.io/router.middlewares",
                             "traefik.ingress.kubernetes.io/service.serverstransport"):
                     if key in annotations:
-                        self.assertTrue(annotations[key].startswith(namespace + "-devapp-"))
+                        self.assertTrue(annotations[key].startswith(namespace + "-swirl-demo-app-"))
                 if item["kind"] == "ExternalSecret":
                     self.assertEqual(item["spec"]["secretStoreRef"]["name"], "vault-backend-" + environment)
                 if item["kind"] == "Ingress":
                     self.assertTrue(item["spec"]["tls"][0]["secretName"])
                 if item["kind"] == "ConfigMap" and "DB_HOST" in item.get("data", {}):
                     self.assertEqual(item["data"]["DB_HOST"], "postgres.infra.svc.cluster.local")
-                    self.assertEqual(item["data"]["DB_NAME"], "devapp_" + environment)
-                if item["kind"] == "ConfigMap" and item["metadata"]["name"] == "devapp-grafana-dashboard":
+                    self.assertEqual(item["data"]["DB_NAME"], "swirl_demo_app_" + environment)
+                if item["kind"] == "ConfigMap" and item["metadata"]["name"] == "swirl-demo-app-grafana-dashboard":
                     filename, content = next(iter(item["data"].items()))
                     dashboard = json.loads(content)
                     self.assertNotIn(filename, dashboard_files)
@@ -223,8 +223,8 @@ class RenderingTests(unittest.TestCase):
             path = self.root / "infra/environments" / environment / "settings.json"
             for _ in range(2):
                 result = RENDER.render(self.root, inventory, environment, RELEASE, "a" * 40)
-                self.assertEqual(result["host"], "devapp" + selected["hostnameSuffix"] + ".example.test")
-                self.assertEqual(json.loads(path.read_text())["appSubdomain"], "devapp")
+                self.assertEqual(result["host"], "demo" + selected["hostnameSuffix"] + ".example.test")
+                self.assertEqual(json.loads(path.read_text())["appSubdomain"], "demo")
             rendered = subprocess.run(["kubectl", "kustomize", str(path.parent)], text=True, capture_output=True, check=True)
             resources = list(yaml.safe_load_all(rendered.stdout))
             ingresses = [item for item in resources if item["kind"] == "Ingress"]
@@ -253,8 +253,8 @@ class RenderingTests(unittest.TestCase):
             if change == "environment": environment = "other"
             if change == "local": inventory["environments"][environment]["server"] = "https://kubernetes.default.svc"
             if change == "namespace": inventory["environments"][environment]["namespace"] = "infra"
-            if change == "digest": release["images"]["user-app"]["digest"] = "latest"
-            if change == "registry": release["images"]["user-app"]["repository"] = "registry.other.test/project/user-app"
+            if change == "digest": release["images"]["swirlapp-user"]["digest"] = "latest"
+            if change == "registry": release["images"]["swirlapp-user"]["repository"] = "registry.other.test/project/swirlapp-user"
             with self.subTest(change=change), self.assertRaises(ValueError):
                 RENDER.render(self.root, inventory, environment, release, "a" * 40)
         self.assertFalse((self.root / "infra/environments").exists())
@@ -277,13 +277,13 @@ class RenderingTests(unittest.TestCase):
     def test_explicit_legacy_database_adoption_survives_production_rerenders(self):
         settings = self.root / "infra/environments/prod/settings.json"
         settings.parent.mkdir(parents=True)
-        settings.write_text(json.dumps({"databaseName": "devappdb"}))
+        settings.write_text(json.dumps({"databaseName": "swirl_demo_app_db"}))
         for _ in range(2):
             metadata = RENDER.render(self.root, INVENTORY, "prod", RELEASE, "a" * 40)
-            self.assertEqual("devappdb", metadata["databaseName"])
-            self.assertIn("DB_NAME=devappdb\n", (settings.parent / "backend-runtime.properties").read_text())
-            self.assertEqual("devappdb", json.loads(settings.read_text())["databaseName"])
-        for environment, database in (("int", "devappdb"), ("uat", "devapp_prod"), ("prod", "anotherdb")):
+            self.assertEqual("swirl_demo_app_db", metadata["databaseName"])
+            self.assertIn("DB_NAME=swirl_demo_app_db\n", (settings.parent / "backend-runtime.properties").read_text())
+            self.assertEqual("swirl_demo_app_db", json.loads(settings.read_text())["databaseName"])
+        for environment, database in (("int", "swirl_demo_app_db"), ("uat", "swirl_demo_app_prod"), ("prod", "anotherdb")):
             target = self.root / f"infra/environments/{environment}/settings.json"
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(json.dumps({"databaseName": database}))
@@ -307,7 +307,7 @@ elif args[0] == 'apply':
     metadata = json.loads(pathlib.Path('package-output/deployment.json').read_text())
     app['status'] = {'sync': {'revision': app['spec']['source']['targetRevision'], 'status': 'Synced'},
       'health': {'status': 'Healthy'}, 'summary': {'images': metadata['images']},
-      'resources': [{'kind':'Deployment','name':name,'health':{'status':'Healthy'}} for name in ('user-app','order-app','devapp-web')]}
+      'resources': [{'kind':'Deployment','name':name,'health':{'status':'Healthy'}} for name in ('swirlapp-user','swirlapp-order','swirlapp-web')]}
     if state.get('wrong_destination'): app['spec']['destination']['name'] = 'wrong-cluster'
     state.setdefault('applications', {})[app['metadata']['name']] = app
     state.setdefault('applied', []).append(app['metadata']['name'])
@@ -338,7 +338,7 @@ class PromotionTests(unittest.TestCase):
         (fixture.root / "bin/kubectl").write_text(KUBECTL)
         (fixture.root / "bin/kubectl").chmod(0o700)
         curl = fixture.root / "bin/curl"
-        text = curl.read_text().replace("state_path =", '''if any(arg.startswith('https://devapp.') for arg in sys.argv[1:]):
+        text = curl.read_text().replace("state_path =", '''if any(arg.startswith('https://demo.') for arg in sys.argv[1:]):
     metadata = json.loads(pathlib.Path('package-output/deployment.json').read_text())
     url = sys.argv[-1]
     assert url.startswith(metadata['url'] + '/')
@@ -374,7 +374,7 @@ state_path =''', 1)
             for name, app in previous.items():
                 self.assertEqual(state["applications"][name], app)
             previous = copy.deepcopy(state["applications"])
-            app = state["applications"]["devapp-" + environment]
+            app = state["applications"]["swirl-demo-app-" + environment]
             runtime = app["spec"]["source"]["targetRevision"]
             tip = fixture.git("rev-parse", "origin/trunk").stdout.strip()
             self.assertNotEqual(runtime, tip)
@@ -409,7 +409,7 @@ state_path =''', 1)
                                 CI_COMMIT_SHA=fixture.git("rev-parse", "origin/trunk").stdout.strip())
             self.assertEqual(result.returncode, 0, result.stderr)
             applications = self.state()["applications"]
-            self.assertEqual(applications["devapp-" + environment]["spec"]["destination"],
+            self.assertEqual(applications["swirl-demo-app-" + environment]["spec"]["destination"],
                              {"name": "in-cluster", "namespace": "apps-" + environment})
             for name, application in previous.items():
                 self.assertEqual(applications[name], application)
@@ -470,7 +470,7 @@ class SnapshotTests(PromotionTests):
     def prepare_branch(self, branch="feature/é;$(example)", pipeline="84"):
         fixture = self.fixture
         fixture.git("checkout", "-q", "trunk")
-        fixture.write("infra/environments/int/settings.json", json.dumps({"appSubdomain": "devapp"}))
+        fixture.write("infra/environments/int/settings.json", json.dumps({"appSubdomain": "demo"}))
         fixture.git("add", "infra/environments/int/settings.json")
         fixture.git("commit", "-qm", "Current integration settings")
         fixture.git("push", "-q", "origin", "trunk")
@@ -503,7 +503,7 @@ class SnapshotTests(PromotionTests):
         for _ in range(2):
             result = self.deploy()
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
-        app = self.state()["applications"]["devapp-int"]
+        app = self.state()["applications"]["swirl-demo-app-int"]
         runtime = app["spec"]["source"]["targetRevision"]
         pointer = fixture.git("rev-parse", "origin/" + self.snapshot_branch).stdout.strip()
         self.assertEqual(fixture.git("rev-parse", pointer + "^").stdout.strip(), runtime)
@@ -512,12 +512,12 @@ class SnapshotTests(PromotionTests):
         self.assertEqual(fixture.git("rev-parse", "origin/" + self.env["CI_COMMIT_BRANCH"]).stdout.strip(), source)
         self.assertEqual(fixture.git("rev-parse", "origin/trunk").stdout.strip(), self.default_tip)
         self.assertEqual(fixture.git("ls-remote", "--tags", "origin").stdout, tags)
-        self.assertEqual(set(self.state()["applications"]), {"devapp-int"})
+        self.assertEqual(set(self.state()["applications"]), {"swirl-demo-app-int"})
         self.assertEqual(fixture.state()["posts"], posts)
         manifest = json.loads(fixture.git("show", runtime + ":infra/snapshots/84.json").stdout)
         self.assertEqual(manifest["sourceBranch"], self.env["CI_COMMIT_BRANCH"])
         self.assertEqual(manifest["releaseVersion"], "snapshot-" + source + "-84")
-        self.assertEqual(json.loads(fixture.git("show", runtime + ":infra/environments/int/settings.json").stdout)["appSubdomain"], "devapp")
+        self.assertEqual(json.loads(fixture.git("show", runtime + ":infra/environments/int/settings.json").stdout)["appSubdomain"], "demo")
         fixture.git("checkout", "-q", "--detach", source)
         (fixture.work / "release.env").unlink()
         result = self.snapshot()
@@ -554,7 +554,7 @@ class SnapshotTests(PromotionTests):
         result = self.deploy()
         self.assertEqual(result.returncode, 0, result.stderr)
         state = self.state()
-        state["applications"]["devapp-int"]["metadata"]["annotations"]["devapp.delivery/pipeline"] = "85"
+        state["applications"]["swirl-demo-app-int"]["metadata"]["annotations"]["swirl-demo-app.delivery/pipeline"] = "85"
         self.state(**state)
         result = self.deploy()
         self.assertNotEqual(result.returncode, 0)
@@ -568,7 +568,7 @@ class SnapshotTests(PromotionTests):
         fixture = self.fixture
         path = fixture.work / "infra/snapshots/84.json"
         manifest = json.loads(path.read_text())
-        manifest["images"]["user-app"]["digest"] = "sha256:" + "f" * 64
+        manifest["images"]["swirlapp-user"]["digest"] = "sha256:" + "f" * 64
         path.write_text(json.dumps(manifest))
         fixture.git("add", "infra/snapshots/84.json")
         fixture.git("commit", "-qm", "Tamper with snapshot receipt")

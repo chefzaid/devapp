@@ -14,7 +14,7 @@ printf '%s\n' "$version" > VERSION
 mvn --batch-mode --quiet org.codehaus.mojo:versions-maven-plugin:2.19.1:set \
   -DnewVersion="$version" -DprocessAllModules=true -DgenerateBackupPoms=false
 
-for manifest in devapp-web/package.json devapp-web/package-lock.json; do
+for manifest in swirlapp-web/package.json swirlapp-web/package-lock.json; do
   expected_replacements=1
   [[ "$manifest" == *package-lock.json ]] && expected_replacements=2
   temporary_file="$(mktemp "${manifest}.XXXXXX")"

@@ -1,14 +1,14 @@
 {
-  "realm": "devapp",
-  "displayName": "DevApp Demo",
+  "realm": "swirl-demo-app",
+  "displayName": "Swirl Demo App",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "clients": [
     {
-      "clientId": "devapp-web",
-      "name": "DevApp Angular client",
+      "clientId": "swirlapp-web",
+      "name": "Swirl Demo App Angular client",
       "enabled": true,
       "publicClient": true,
       "protocol": "openid-connect",
@@ -28,11 +28,11 @@
       },
       "protocolMappers": [
         {
-          "name": "devapp-api-audience",
+          "name": "swirl-demo-app-api-audience",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
           "config": {
-            "included.client.audience": "devapp-web",
+            "included.client.audience": "swirlapp-web",
             "id.token.claim": "false",
             "access.token.claim": "true"
           }
@@ -40,22 +40,22 @@
       ]
     },
     {
-      "clientId": "devapp-smoke",
+      "clientId": "swirl-demo-app-smoke",
       "name": "Local API smoke-test client",
       "enabled": true,
       "publicClient": false,
-      "secret": "devapp-smoke",
+      "secret": "swirl-demo-app-smoke",
       "protocol": "openid-connect",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "protocolMappers": [
         {
-          "name": "devapp-api-audience",
+          "name": "swirl-demo-app-api-audience",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
           "config": {
-            "included.client.audience": "devapp-web",
+            "included.client.audience": "swirlapp-web",
             "id.token.claim": "false",
             "access.token.claim": "true"
           }

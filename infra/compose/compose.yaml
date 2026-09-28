@@ -1,16 +1,16 @@
-name: devapp
+name: swirl-demo-app
 
 services:
   postgres:
     image: postgres:18.4-alpine
     environment:
-      POSTGRES_DB: devappdb
-      POSTGRES_USER: devapp
-      POSTGRES_PASSWORD: devapp
+      POSTGRES_DB: swirl_demo_app_db
+      POSTGRES_USER: swirl_demo_app
+      POSTGRES_PASSWORD: swirl-demo-app
     volumes:
       - postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U devapp -d devappdb"]
+      test: ["CMD-SHELL", "pg_isready -U swirl_demo_app -d swirl_demo_app_db"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -74,23 +74,23 @@ services:
       retries: 30
       start_period: 30s
 
-  user-app:
+  swirlapp-user:
     build:
       context: ../..
-      dockerfile: user-app/Dockerfile
+      dockerfile: swirlapp-user/Dockerfile
     environment: &backend-environment
       SPRING_PROFILES_ACTIVE: prod
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: devappdb
-      DB_USERNAME: devapp
-      DB_PASSWORD: devapp
+      DB_NAME: swirl_demo_app_db
+      DB_USERNAME: swirl_demo_app
+      DB_PASSWORD: swirl-demo-app
       REDIS_HOST: redis
       REDIS_PORT: 6379
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_ENABLED: "true"
-      JWT_ISSUER_URI: http://localhost:4200/auth/realms/devapp
-      JWT_JWK_SET_URI: http://keycloak:8080/auth/realms/devapp/protocol/openid-connect/certs
+      JWT_ISSUER_URI: http://localhost:4200/auth/realms/swirl-demo-app
+      JWT_JWK_SET_URI: http://keycloak:8080/auth/realms/swirl-demo-app/protocol/openid-connect/certs
       CORS_ALLOWED_ORIGINS: http://localhost:4200
     depends_on:
       postgres:
@@ -108,10 +108,10 @@ services:
       retries: 20
       start_period: 20s
 
-  order-app:
+  swirlapp-order:
     build:
       context: ../..
-      dockerfile: order-app/Dockerfile
+      dockerfile: swirlapp-order/Dockerfile
     environment:
       <<: *backend-environment
       KAFKA_CONSUMER_GROUP: order-service-group
@@ -133,17 +133,17 @@ services:
 
   web:
     build:
-      context: ../../devapp-web
+      context: ../../swirlapp-web
       dockerfile: Dockerfile
     ports:
       - "4200:8080"
     volumes:
       - ./web-runtime-config.json:/usr/share/nginx/html/runtime-config.json:ro
-      - ./nginx-proxies.conf:/etc/nginx/devapp/proxies.conf:ro
+      - ./nginx-proxies.conf:/etc/nginx/swirl-demo-app/proxies.conf:ro
     depends_on:
-      user-app:
+      swirlapp-user:
         condition: service_healthy
-      order-app:
+      swirlapp-order:
         condition: service_healthy
       keycloak:
         condition: service_healthy

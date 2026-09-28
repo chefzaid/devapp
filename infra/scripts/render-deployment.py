@@ -13,7 +13,7 @@ import yaml
 
 
 ENVIRONMENTS = ("int", "uat", "prod")
-IMAGES = ("user-app", "order-app", "devapp-web")
+IMAGES = ("swirlapp-user", "swirlapp-order", "swirlapp-web")
 SHA = re.compile(r"[0-9a-f]{40}")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)")
@@ -112,7 +112,7 @@ def release_manifest(value, registry, project, environment="int"):
         require(VERSION.fullmatch(value.get("releaseVersion", "")), "A release must use canonical major.minor.patch")
     require(SHA.fullmatch(value.get("sourceRevision", "")), "Release source must be an exact Git revision")
     require(str(value.get("pipelineId", "")).isdigit(), "Release manifest requires its publishing pipeline")
-    require(set(value.get("images", {})) == set(IMAGES), "Release must contain exactly the three DevApp images")
+    require(set(value.get("images", {})) == set(IMAGES), "Release must contain exactly the three Swirl Demo App images")
     for name, image in value["images"].items():
         require(image.get("repository") == f"{registry}/{project}/{name}" and DIGEST.fullmatch(image.get("digest", "")),
                 "Release image must use this project's central registry and an immutable digest")
@@ -124,7 +124,7 @@ def settings(root, selected, environment):
     value = json.loads(path.read_text()) if path.is_file() else {}
     require(isinstance(value, dict) and not set(value) - {"appSubdomain", "trustedProxyCIDRs", "highAvailability", "databaseName"},
             "Unsupported environment deployment setting")
-    label = value.get("appSubdomain", "devapp")
+    label = value.get("appSubdomain", "demo")
     require(label == "@" or isinstance(label, str) and LABEL.fullmatch(label), "Invalid application subdomain")
     require(environment != "prod" or label not in ("int", "uat"), "Production cannot own another environment's hostname")
     suffix = selected.get("hostnameSuffix", "")
@@ -136,9 +136,9 @@ def settings(root, selected, environment):
     for part in cidrs.split(","):
         ipaddress.ip_network(part.strip(), strict=False)
     require(isinstance(value.get("highAvailability", False), bool), "highAvailability must be boolean")
-    database = value.get("databaseName", "devapp_" + environment)
-    require(database == "devapp_" + environment or environment == "prod" and database == "devappdb",
-            "databaseName must be this environment's database; only prod can explicitly adopt legacy devappdb")
+    database = value.get("databaseName", "swirl_demo_app_" + environment)
+    require(database == "swirl_demo_app_" + environment or environment == "prod" and database == "swirl_demo_app_db",
+            "databaseName must be this environment's database; only prod can explicitly adopt legacy swirl_demo_app_db")
     return host, cidrs, value.get("highAvailability", False), database, label
 
 
@@ -176,9 +176,9 @@ def render(root, inventory, environment, release, revision, repository_url=None,
     require(urlparse(identity_url).scheme == "https", "Browser identity must use HTTPS")
     realm = public_string(keycloak["realm"], "Keycloak realm")
     require(re.fullmatch(r"[A-Za-z0-9_.-]+", realm) and realm != "master", "Invalid application realm")
-    client = f"devapp-{environment}-web"
+    client = f"swirl-demo-app-{environment}-web"
     web = {"keycloakUrl": identity_url, "keycloakRealm": realm, "keycloakClientId": client}
-    metadata = {"environment": environment, "application": f"devapp-{environment}", "host": host,
+    metadata = {"environment": environment, "application": f"swirl-demo-app-{environment}", "host": host,
                 "repository": repository_url, "project": f"applications-{environment}",
                 "url": "https://" + host, "runtimeConfig": web, "revision": revision, "databaseName": database,
                 "destination": {"name": selected["clusterName"], "namespace": namespace},
@@ -189,10 +189,10 @@ def render(root, inventory, environment, release, revision, repository_url=None,
         "DB_HOST": services["postgres"]["host"], "DB_PORT": str(services["postgres"]["port"]),
         "DB_NAME": database,
         "REDIS_HOST": services["redis"]["host"], "REDIS_PORT": str(services["redis"]["port"]),
-        "REDIS_CACHE_PREFIX": f"devapp:{environment}:",
+        "REDIS_CACHE_PREFIX": f"swirl-demo-app:{environment}:",
         "KAFKA_BOOTSTRAP_SERVERS": services["kafka"]["bootstrapServers"],
         "KAFKA_SECURITY_PROTOCOL": services["kafka"]["securityProtocol"],
-        "KAFKA_TOPIC_PREFIX": f"devapp.{environment}.",
+        "KAFKA_TOPIC_PREFIX": f"swirl-demo-app.{environment}.",
         "JWT_ISSUER_URI": identity_url + "/realms/" + realm,
         "JWT_JWK_SET_URI": identity_url + "/realms/" + realm + "/protocol/openid-connect/certs",
         "JWT_AUDIENCE": client, "CORS_ALLOWED_ORIGINS": "https://" + host,
@@ -201,30 +201,30 @@ def render(root, inventory, environment, release, revision, repository_url=None,
     for name, value in backend.items():
         public_string(value, name)
     relative = Path("infra/environments") / environment
-    patches = [{"target": {"kind": "Ingress", "name": "devapp-ingress"}, "patch": yaml.safe_dump([
+    patches = [{"target": {"kind": "Ingress", "name": "swirl-demo-app-ingress"}, "patch": yaml.safe_dump([
         {"op": "replace", "path": "/spec/rules/0/host", "value": host},
         {"op": "replace", "path": "/spec/tls/0/hosts", "value": [host]},
         ({"op": "remove", "path": "/spec/tls/0/secretName"} if central_tls else
          {"op": "replace", "path": "/spec/tls/0/secretName", "value": tls["secretName"]}),
         {"op": "replace", "path": "/metadata/annotations/gethomepage.dev~1href", "value": "https://" + host},
-        {"op": "replace", "path": "/metadata/annotations/gethomepage.dev~1name", "value": f"DevApp ({environment})"},
+        {"op": "replace", "path": "/metadata/annotations/gethomepage.dev~1name", "value": f"Swirl Demo App ({environment})"},
         {"op": "replace", "path": "/metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares",
-         "value": f"{namespace}-devapp-upload-limit@kubernetescrd"},
+         "value": f"{namespace}-swirl-demo-app-upload-limit@kubernetescrd"},
     ], sort_keys=False)}]
     for service in IMAGES:
         patches.append({"target": {"kind": "Service", "name": service}, "patch": yaml.safe_dump([
             {"op": "replace", "path": "/metadata/annotations/traefik.ingress.kubernetes.io~1service.serverstransport",
-             "value": f"{namespace}-devapp-backend@kubernetescrd"}], sort_keys=False)})
+             "value": f"{namespace}-swirl-demo-app-backend@kubernetescrd"}], sort_keys=False)})
     patches.append({"target": {"kind": "ExternalSecret"}, "patch": yaml.safe_dump([
         {"op": "replace", "path": "/spec/secretStoreRef/name", "value": selected.get("secretStoreName", "vault-backend")}
     ], sort_keys=False)})
     dashboard_resource = yaml.safe_load((root / "infra/k8s/observability.yaml").read_text())
-    dashboard = json.loads(dashboard_resource["data"]["devapp-overview.json"].replace(
+    dashboard = json.loads(dashboard_resource["data"]["swirl-demo-app-overview.json"].replace(
         r'namespace=\"apps\"', rf'namespace=\"{namespace}\"'))
-    dashboard["uid"] = f"devapp-{environment}-overview"
-    dashboard["title"] = f"DevApp {environment.upper()} Overview"
-    patches.append({"target": {"kind": "ConfigMap", "name": "devapp-grafana-dashboard"}, "patch": yaml.safe_dump([
-        {"op": "replace", "path": "/data", "value": {f"devapp-{environment}-overview.json": json.dumps(dashboard, indent=2) + "\n"}}
+    dashboard["uid"] = f"swirl-demo-app-{environment}-overview"
+    dashboard["title"] = f"Swirl Demo App {environment.upper()} Overview"
+    patches.append({"target": {"kind": "ConfigMap", "name": "swirl-demo-app-grafana-dashboard"}, "patch": yaml.safe_dump([
+        {"op": "replace", "path": "/data", "value": {f"swirl-demo-app-{environment}-overview.json": json.dumps(dashboard, indent=2) + "\n"}}
     ], sort_keys=False)})
     if selected.get("mode", "remote") == "local":
         # The platform owns shared-cluster network boundaries; app delivery cannot
@@ -234,46 +234,46 @@ def render(root, inventory, environment, release, revision, repository_url=None,
             "metadata": {"name": "platform-owned"}, "$patch": "delete"}, sort_keys=False)})
     secrets = list(yaml.safe_load_all((root / "infra/k8s/external-secrets.yaml").read_text()))
     runtime_secret = next(item for item in secrets if item and item.get("kind") == "ExternalSecret"
-                          and item["metadata"]["name"] == "devapp-runtime-credentials")
+                          and item["metadata"]["name"] == "swirl-demo-app-runtime-credentials")
     secret_patch = []
     for index, item in enumerate(runtime_secret["spec"]["data"]):
         service = {"DB": "database", "REDIS": "redis", "KAFKA": "kafka"}.get(item["secretKey"].split("_", 1)[0])
         require(service is not None, "Unsupported runtime credential mapping")
         secret_patch.append({"op": "replace", "path": f"/spec/data/{index}/remoteRef/key",
-                             "value": f"apps/devapp/{environment}/{service}"})
-    patches.append({"target": {"kind": "ExternalSecret", "name": "devapp-runtime-credentials"},
+                             "value": f"apps/swirl-demo-app/{environment}/{service}"})
+    patches.append({"target": {"kind": "ExternalSecret", "name": "swirl-demo-app-runtime-credentials"},
                     "patch": yaml.safe_dump(secret_patch, sort_keys=False)})
     kustomization = {"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "namespace": namespace,
                     "resources": ["../../overlays/ha" if ha else "../../k8s", "health-ingress.yaml"],
                     "configMapGenerator": [
-                        {"name": "devapp-backend-config", "behavior": "replace", "envs": ["backend-runtime.properties"],
+                        {"name": "swirl-demo-app-backend-config", "behavior": "replace", "envs": ["backend-runtime.properties"],
                          "options": {"annotations": {"argocd.argoproj.io/sync-wave": "-2"}}},
-                        {"name": "devapp-web-config", "behavior": "replace", "files": ["runtime-config.json=web-runtime-config.json"]}],
+                        {"name": "swirlapp-web-config", "behavior": "replace", "files": ["runtime-config.json=web-runtime-config.json"]}],
                     "images": [{"name": release["images"][name]["repository"], "digest": release["images"][name]["digest"]} for name in IMAGES],
                     "patches": patches}
     app = {"apiVersion": "argoproj.io/v1alpha1", "kind": "Application",
            "metadata": {"name": metadata["application"], "namespace": "infra",
-                        "annotations": {"devapp.delivery/pipeline": str(os.environ.get("CI_PIPELINE_ID", release["pipelineId"])),
-                                        "devapp.delivery/source": release["sourceRevision"],
-                                        "devapp.delivery/kind": release.get("kind", "release")},
-                        "labels": {"app.kubernetes.io/name": "devapp", "app.kubernetes.io/part-of": "devapp",
+                        "annotations": {"swirl-demo-app.delivery/pipeline": str(os.environ.get("CI_PIPELINE_ID", release["pipelineId"])),
+                                        "swirl-demo-app.delivery/source": release["sourceRevision"],
+                                        "swirl-demo-app.delivery/kind": release.get("kind", "release")},
+                        "labels": {"app.kubernetes.io/name": "swirl-demo-app", "app.kubernetes.io/part-of": "swirl-demo-app",
                                    "swirl-cloud/environment": environment}},
            "spec": {"project": f"applications-{environment}", "source": {"repoURL": repository_url,
                     "targetRevision": revision, "path": str(relative)}, "destination": metadata["destination"],
                     "syncPolicy": template["spec"]["syncPolicy"]}}
     health_ingress = {
         "apiVersion": "networking.k8s.io/v1", "kind": "Ingress", "metadata": {
-            "name": "devapp-health", "namespace": namespace, "annotations": {
+            "name": "swirl-demo-app-health", "namespace": namespace, "annotations": {
                 "argocd.argoproj.io/sync-wave": "10",
                 "traefik.ingress.kubernetes.io/router.entrypoints": "websecure",
                 "traefik.ingress.kubernetes.io/router.tls": "true",
-                "traefik.ingress.kubernetes.io/router.middlewares": f"{namespace}-devapp-health@kubernetescrd"}},
+                "traefik.ingress.kubernetes.io/router.middlewares": f"{namespace}-swirl-demo-app-health@kubernetescrd"}},
         "spec": {"ingressClassName": "traefik", "tls": [tls],
             "rules": [{"host": host, "http": {"paths": [{"path": "/health/" + name, "pathType": "Exact",
                 "backend": {"service": {"name": name + "-app", "port": {"number": port}}}}
                 for name, port in (("user", 8080), ("order", 8081))]}}]}}
     health_middleware = {"apiVersion": "traefik.io/v1alpha1", "kind": "Middleware",
-                         "metadata": {"name": "devapp-health", "namespace": namespace},
+                         "metadata": {"name": "swirl-demo-app-health", "namespace": namespace},
                          "spec": {"replacePath": {"path": "/actuator/health"}}}
     output_file(root, relative / "settings.json", json.dumps({
         "appSubdomain": app_label,

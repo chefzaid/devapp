@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-application-ingress
+  name: allow-swirl-demo-app-ingress
   namespace: apps
 spec:
   podSelector:

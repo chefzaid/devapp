@@ -19,6 +19,7 @@ DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)")
 LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
 RESERVED_NAMESPACES = {"default", "infra", "corp", "gitlab-runners", "longhorn-system", "external-secrets"}
+SHARED_NAMESPACE = "apps"
 
 
 def require(condition, message):
@@ -62,8 +63,10 @@ def target(inventory, environment):
     else:
         require(api.hostname != "kubernetes.default.svc", "A shared-cluster environment must explicitly select local mode")
     namespace = selected.get("namespace", "")
-    require(LABEL.fullmatch(namespace) and namespace not in RESERVED_NAMESPACES and not namespace.startswith("kube-")
-            and not (mode == "local" and namespace == "apps"), "Environment needs a dedicated application namespace")
+    require(LABEL.fullmatch(namespace) and namespace not in RESERVED_NAMESPACES and not namespace.startswith("kube-"),
+            "Environment needs an application namespace")
+    require(not (mode == "local" and namespace == SHARED_NAMESPACE and environment != "prod"),
+            "Only local prod runs in the shared apps namespace; int and uat need dedicated namespaces")
     store = selected.get("secretStoreName", "vault-backend-" + environment if mode == "local" else "vault-backend")
     require(LABEL.fullmatch(store), "Invalid environment secret store name")
     for other, entry in inventory.get("environments", {}).items():
@@ -228,9 +231,10 @@ def render(root, inventory, environment, release, revision, repository_url=None,
     patches.append({"target": {"kind": "ConfigMap", "name": "swirl-demo-app-grafana-dashboard"}, "patch": yaml.safe_dump([
         {"op": "replace", "path": "/data", "value": {f"swirl-demo-app-{environment}-overview.json": json.dumps(dashboard, indent=2) + "\n"}}
     ], sort_keys=False)})
-    if selected.get("mode", "remote") == "local":
-        # The platform owns shared-cluster network boundaries; app delivery cannot
-        # add an allow-all policy that defeats environment isolation.
+    if selected.get("mode", "remote") == "local" and namespace != SHARED_NAMESPACE:
+        # The platform owns dedicated environment network boundaries; app delivery
+        # cannot add a policy that defeats environment isolation. In the shared
+        # apps namespace the application ships its own ingress allowance instead.
         patches.append({"target": {"kind": "NetworkPolicy"}, "patch": yaml.safe_dump({
             "apiVersion": "networking.k8s.io/v1", "kind": "NetworkPolicy",
             "metadata": {"name": "platform-owned"}, "$patch": "delete"}, sort_keys=False)})

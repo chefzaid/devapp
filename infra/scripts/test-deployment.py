@@ -53,7 +53,7 @@ def shared_inventory():
     services["kafka"]["bootstrapServers"] = "kafka.infra.svc.cluster.local:9094"
     for environment, entry in inventory["environments"].items():
         entry.update(mode="local", clusterName="in-cluster", server="https://kubernetes.default.svc",
-                     namespace="apps-" + environment, ingressAddress="203.0.113.10",
+                     namespace="apps" if environment == "prod" else "apps-" + environment, ingressAddress="203.0.113.10",
                      secretStoreName="vault-backend-" + environment, services=copy.deepcopy(services))
     return inventory
 
@@ -161,13 +161,15 @@ class RenderingTests(unittest.TestCase):
         inventory = shared_inventory()
         identities, dashboard_ids, dashboard_files = set(), set(), set()
         for environment in RENDER.ENVIRONMENTS:
-            namespace = "apps-" + environment
+            namespace = "apps" if environment == "prod" else "apps-" + environment
             metadata = RENDER.render(self.root, inventory, environment, RELEASE, "a" * 40)
             self.assertEqual(metadata["destination"], {"name": "in-cluster", "namespace": namespace})
             rendered = subprocess.run(["kubectl", "kustomize", str(self.root / "infra/environments" / environment)],
                                       text=True, capture_output=True, check=True)
             resources = list(yaml.safe_load_all(rendered.stdout))
-            self.assertFalse(any(item["kind"] == "NetworkPolicy" for item in resources))
+            policies = [item["metadata"]["name"] for item in resources if item["kind"] == "NetworkPolicy"]
+            # Dedicated namespaces use platform policies; the shared prod namespace needs the app's own.
+            self.assertEqual(policies, ["allow-swirl-demo-app-ingress"] if environment == "prod" else [])
             for item in resources:
                 self.assertEqual(item["metadata"]["namespace"], namespace)
                 identity = (item["apiVersion"], item["kind"], namespace, item["metadata"]["name"])
@@ -192,8 +194,9 @@ class RenderingTests(unittest.TestCase):
                     self.assertNotIn(dashboard["uid"], dashboard_ids)
                     dashboard_files.add(filename)
                     dashboard_ids.add(dashboard["uid"])
-                    self.assertNotIn(r'namespace=\"apps\"', content)
                     self.assertIn(rf'namespace=\"{namespace}\"', content)
+                    for other in {"apps", "apps-int", "apps-uat"} - {namespace}:
+                        self.assertNotIn(rf'namespace=\"{other}\"', content)
 
     def test_remote_clusters_can_mix_with_local_environments(self):
         inventory = shared_inventory()
@@ -206,7 +209,7 @@ class RenderingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "distinct registered clusters"):
             RENDER.render(self.root, inventory, "prod", RELEASE, "a" * 40)
         inventory = shared_inventory()
-        inventory["environments"]["uat"]["namespace"] = "apps-prod"
+        inventory["environments"]["uat"]["namespace"] = "apps"
         with self.assertRaisesRegex(ValueError, "distinct namespaces"):
             RENDER.render(self.root, inventory, "prod", RELEASE, "a" * 40)
 
@@ -214,8 +217,14 @@ class RenderingTests(unittest.TestCase):
         for namespace in ("apps", "infra", "corp", "default", "gitlab-runners", "kube-system", "longhorn-system"):
             inventory = shared_inventory()
             inventory["environments"]["int"]["namespace"] = namespace
-            with self.subTest(namespace=namespace), self.assertRaisesRegex(ValueError, "dedicated application namespace"):
+            with self.subTest(namespace=namespace), self.assertRaisesRegex(ValueError, "application namespace|dedicated namespaces"):
                 RENDER.render(self.root, inventory, "int", RELEASE, "a" * 40)
+        for environment in ("int", "uat"):
+            inventory = shared_inventory()
+            inventory["environments"]["prod"]["namespace"] = "apps-prod"
+            inventory["environments"][environment]["namespace"] = "apps"
+            with self.subTest(environment=environment), self.assertRaisesRegex(ValueError, "Only local prod"):
+                RENDER.render(self.root, inventory, environment, RELEASE, "a" * 40)
 
     def test_suffix_hostnames_preserve_app_labels_on_rerun_and_support_apex_selection(self):
         inventory = shared_inventory()
@@ -441,7 +450,7 @@ state_path =''', 1)
             self.assertEqual(result.returncode, 0, result.stderr)
             applications = self.state()["applications"]
             self.assertEqual(applications["swirl-demo-app-" + environment]["spec"]["destination"],
-                             {"name": "in-cluster", "namespace": "apps-" + environment})
+                             {"name": "in-cluster", "namespace": "apps" if environment == "prod" else "apps-" + environment})
             for name, application in previous.items():
                 self.assertEqual(applications[name], application)
             previous = copy.deepcopy(applications)

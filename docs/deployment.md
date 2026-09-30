@@ -30,17 +30,17 @@ shared-service connectivity and platform credentials belong to `swirl-cloud`.
 Each environment has an Application named `swirl-demo-app-<env>` in the central `infra`
 namespace. It uses AppProject `applications-<env>` and the registered cluster and
 namespace. Shared-cluster targets use destination `in-cluster` and namespaces
-`apps-int`, `apps-uat` and `apps-prod` by default. An environment may instead use
+`apps-int`, `apps-uat` and, for prod, the shared `apps` namespace by default. An environment may instead use
 its own registered remote cluster; local and remote targets can coexist. Remote
 targets need distinct cluster registrations. All use the same GitLab, registry
 and Argo CD installation.
 
 Subdomains route to separate Deployments; they do not create isolation by
-themselves. Environment namespaces have their own Secrets and platform-managed
-access controls, network policies and resource limits. Shared-cluster environments
-also share capacity, outages and cluster maintenance. Existing workloads in
-`apps` remain there until an explicit migration; local environments cannot reuse
-that legacy namespace.
+themselves. `apps-int` and `apps-uat` have their own Secrets and platform-managed
+access controls, network policies and resource limits. Prod shares `apps` with the
+platform's single-environment applications: it keeps its own Vault store and Argo
+project, and ships the `allow-swirl-demo-app-ingress` NetworkPolicy itself.
+Shared-cluster environments also share capacity, outages and cluster maintenance.
 
 The central `infra/deployment-environments` ConfigMap supplies the authoritative
 cluster and shared-service endpoints. The registrar publishes this checkpoint

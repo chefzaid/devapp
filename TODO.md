@@ -65,7 +65,6 @@ Swirl Demo App is a reusable application template, not a product roadmap. New wo
 - [ ] Add policy-as-code checks for Kubernetes manifests and container security contexts.
 - [ ] Add release promotion, rollback, provenance, and environment-approval examples without weakening Argo CD ownership.
 - [ ] Fix the `swirl-demo-app-int`/`-uat`/`-prod` Argo CD `ComparisonError: Object 'Kind' is missing`: the Application source directory also contains `infra/environments/<env>/settings.json`, which Argo CD parses as a manifest. Exclude it (`directory.exclude`) or move the settings outside the source path.
-- [ ] Cut production over from the legacy `apps` namespace to `apps-prod`, adopting the existing `swirl_demo_app_db` database through the platform's reviewed ownership migration.
 
 ## Priority: Testing And Quality
 

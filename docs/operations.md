@@ -2,7 +2,7 @@
 
 Application commands use the selected environment's namespace and kubeconfig.
 For the shared cluster, use the platform context and `apps-int`, `apps-uat` or
-`apps-prod`. Remote targets use their registered context and namespace. Central
+`apps` (prod). Remote targets use their registered context and namespace. Central
 Argo CD Applications remain in `infra`. The examples below select local `int`;
 change `APP_NAMESPACE` and `KUBECONFIG` for another target. See
 [deployment](deployment.md#ownership-and-topology).
@@ -310,7 +310,7 @@ Checks:
 
 - pod readiness and annotations
 - service endpoints
-- `allow-application-ingress` NetworkPolicy
+- `allow-swirl-demo-app-ingress` NetworkPolicy (prod in `apps`); platform policies in `apps-int` and `apps-uat`
 - Prometheus namespace/pod labels still match the policy
 - `/actuator/prometheus` responds through the cluster service
 
